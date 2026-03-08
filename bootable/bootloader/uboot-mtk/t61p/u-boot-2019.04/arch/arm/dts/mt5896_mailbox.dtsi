@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	mailbox_to_pm51: mailbox_to_pm51 {
+		compatible = "mediatek,mt5896-mbox";
+		/* mailbox msg, control for trigger remote intr */
+		reg = <0x0 0x1c606000 0x0 0x40>, <0x0 0x1c620084 0x0 0x1>;
+		#mbox-cells = <1>;
+		/* fire bit# in reg host1/arm to host0/pm51 */
+		ipi-fire = <0>;
+		/* txdone timeout us(optional); no timeout, no txdone */
+		txdone-timeout = <50000>;
+		/* one mbox packet size include header(2) + data, default is 16 bytes */
+		packet-size = <16>;
+	};
+
+	mailbox_to_cm4: mailbox_to_cm4 {
+		compatible = "mediatek,mt5896-mbox";
+		/* mailbox msg, control for trigger remote intr */
+		reg = <0x0 0x1c606040 0x0 0x100>, <0x0 0x1c620084 0x0 0x1>;
+		#mbox-cells = <1>;
+		/* fire bit# in reg host1/arm to host3/cm4 */
+		ipi-fire = <2>;
+		/* txdone timeout us(optional); no timeout, no txdone */
+		/* txdone-timeout = <5000000>; */
+		/* one mbox packet size include header(2) + data, default is 16 bytes */
+		packet-size = <64>;
+	};
+};

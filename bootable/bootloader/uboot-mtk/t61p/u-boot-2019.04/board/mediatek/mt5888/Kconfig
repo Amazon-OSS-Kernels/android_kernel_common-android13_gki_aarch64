@@ -1,0 +1,36 @@
+if TARGET_MT5888
+
+config SYS_BOARD
+	default "mt5888"
+
+config SYS_CONFIG_NAME
+	default "mt5888"
+
+menu "Memory setting"
+
+config MIU0_BUSADDR
+	hex "Setting MIU0 bus address"
+	default 0x20000000
+	help
+	  Setting MIU0 buss address
+
+config MIU1_BUSADDR
+	hex "Setting MIU1 bus address"
+	default 0xA0000000
+	help
+	  Setting MIU1 buss address
+
+config DRAM_SIZE_MB_RELOCATE
+	hex "Setting DRAM relocate size (MB)"
+	default 152
+	help
+	  Setting DRAM relocate size (MB)
+
+config ARMv8_64BIT_KERNEL
+	bool "Select platform kernel type"
+	default y
+	help
+	  Select platform kernel type
+
+endmenu		# Memory setting
+endif

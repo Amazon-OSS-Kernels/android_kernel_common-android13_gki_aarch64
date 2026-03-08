@@ -1,0 +1,36 @@
+####################################################################
+#######                    Makefile.mboot                    #######
+####################################################################
+include .config
+UBOOT_BIN	    = u-boot.bin
+CHUNK_HEADER    = chunk_header.bin
+TOOLDIR         = tools
+MBOOT_ALIGNMENT_SIZE = 0x200
+
+SECUREDIR = Mediatek-internal/secure
+
+CKB_S_RI_KEY?=$(srctree)/$(SECUREDIR)/keys/CKB_S_RI_Key.pem
+
+OPENSSL_PADDING =
+ifeq ($(CONFIG_RSA_EMSA_PSS), y)
+OPENSSL_PADDING = -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:-1
+endif
+
+mboot.bin: $(UBOOT_BIN)
+	$(Q)echo "  MERGE   $@"
+	$(Q)[ '-f $@' ] && rm -rf $@
+ifeq (y, $(findstring y, $(CONFIG_MMC)\
+                         $(CONFIG_UFS)\
+                         $(CONFIG_SPI_FLASH)))
+	$(Q)openssl dgst -sha384 $(OPENSSL_PADDING) -sign $(CKB_S_RI_KEY) -out  $(UBOOT_BIN).signature.bin $(UBOOT_BIN)
+	$(Q)openssl dgst -sha384 $(OPENSSL_PADDING) -sign $(CKB_S_RI_KEY) -out  $(CHUNK_HEADER).signature.bin $(CHUNK_HEADER)
+	$(Q)dd if=/dev/zero of=signature.tmpp bs=1 count=16
+	$(Q)cat $(CHUNK_HEADER)>> $@;
+	$(Q)cat signature.tmpp >> $@;
+	$(Q)cat $(CHUNK_HEADER).signature.bin>> $@;
+	$(Q)cat $(UBOOT_BIN) >> $@;
+	$(Q)cat signature.tmpp >> $@;
+	$(Q)cat $(UBOOT_BIN).signature.bin>> $@;
+	$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+	$(Q)rm -rf signature.tmpp
+endif

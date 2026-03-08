@@ -1,0 +1,217 @@
+// SPDX-License-Identifier: GPL-2.0
+
+/ {
+	mediatek-sound-register {
+		coprocessor-register {
+			reg_dec_aud_ctrl = <0x950020>;
+			reg_dec_mad_offset_base_l = <0x950022>;
+			reg_dec_mad_offset_base_h = <0x950024>;
+			reg_dec_mad_offset_base_ext = <0x950048>;
+			reg_se_aud_ctrl = <0x9500A0>;
+			reg_se_mad_offset_base_l = <0x9500A2>;
+			reg_se_mad_offset_base_h = <0x9500A4>;
+			reg_se_mad_offset_base_ext = <0x9500C8>;
+			reg_se_idma_ctrl0 = <0x950080>;
+			reg_se_dsp_icache_base_l = <0x950090>;
+			reg_se_bdma_cfg = <0x9500C0>;
+			reg_fd230_sel = <0x95007E>;
+			reg_se_dsp_brg_data_l = <0x950082>;
+			reg_se_dsp_brg_data_h = <0x950083>;
+			reg_se_idma_wrbase_addr_l = <0x950084>;
+			reg_riu_mail_00 = <0x950140>;
+			reg_dsp_power_down_h = <0x950331>;
+			reg_dsp_dbg_cmd1 = <0x9503DC>;
+			reg_dsp_dbg_result1 = <0x9503FC>;
+			reg_se_mbase_h = <0x9500A6>;
+			reg_se_msize_h = <0x9500A8>;
+			reg_se_mcfg = <0x9500AA>;
+			reg_se_mbase_ext = <0x9500CA>;
+		};
+		decoder-register {
+			reg_dec_play_cmd = <0x9500AC>;
+			reg_dec_es_wptr = <0x9503D2>;
+			reg_volume = <0x950424>;
+		};
+		channel-mux-register {
+			reg_ch_m1_cfg = <0x951500>;
+			reg_ch_m2_cfg = <0x951501>;
+			reg_ch_m3_cfg = <0x951502>;
+			reg_ch_m4_cfg = <0x951503>;
+			reg_ch_m5_cfg = <0x951504>;
+			reg_ch_m6_cfg = <0x951505>;
+			reg_ch_m7_cfg = <0x951506>;
+			reg_ch_m8_cfg = <0x951507>;
+			reg_ch_m9_cfg = <0x951508>;
+			reg_ch_m10_cfg = <0x951509>;
+			reg_ch_m11_cfg = <0x95150A>;
+			reg_ch_m12_cfg = <0x95150B>;
+			reg_ch_m13_cfg = <0x95150C>;
+			reg_ch_m14_cfg = <0x95150D>;
+			reg_ch_m15_cfg = <0x95150E>;
+			reg_ch_m16_cfg = <0x95150F>;
+			reg_ch_5_cfg = <0x951510>;
+			reg_ch_6_cfg = <0x951511>;
+			reg_ch_7_cfg = <0x951512>;
+			reg_ch_8_cfg = <0x951513>;
+			reg_ch_9_cfg = <0x951514>;
+			reg_ch_10_cfg = <0x951515>;
+		};
+	};
+
+	mtk_sound_machine:mtk-sound-machine {
+		compatible = "mediatek,mtk-snd-machine";
+	};
+
+	mtk_sound_soc:mtk-sound-soc {
+		compatible = "mediatek,mtk-soc";
+		music_name = "boot0.mp3";
+		music_offset = <0x54000>;
+		riu_base = <0x1C000000>;
+		audio_bank_num = <22>;
+		reg = <0x0 0x1D2A0000 0x0 0x200>,	/* 950000 */
+		      <0x0 0x1D2A0200 0x0 0x200>,	/* 950100 */
+		      <0x0 0x1D2A0400 0x0 0x200>,	/* 950200 */
+		      <0x0 0x1D2A0600 0x0 0x200>,	/* 950300 */
+		      <0x0 0x1D2A0800 0x0 0x200>,	/* 950400 */
+		      <0x0 0x1D2A0A00 0x0 0x200>,	/* 950500 */
+		      <0x0 0x1D2A0C00 0x0 0x200>,	/* 950600 */
+		      <0x0 0x1D2A0E00 0x0 0x200>,	/* 950700 */
+		      <0x0 0x1D2A1000 0x0 0x200>,	/* 950800 */
+		      <0x0 0x1D2A1200 0x0 0x200>,	/* 950900 */
+		      <0x0 0x1D2A1400 0x0 0x200>,	/* 950A00 */
+		      <0x0 0x1D2A1600 0x0 0x200>,	/* 950B00 */
+		      <0x0 0x1D2A1800 0x0 0x200>,	/* 950C00 */
+		      <0x0 0x1D2A1A00 0x0 0x200>,	/* 950D00 */
+		      <0x0 0x1D2A1C00 0x0 0x200>,	/* 950E00 */
+		      <0x0 0x1D2A1E00 0x0 0x200>,	/* 950F00 */
+		      <0x0 0x1D2A2000 0x0 0x200>,	/* 951000 */
+		      <0x0 0x1D2A2200 0x0 0x200>,	/* 951100 */
+		      <0x0 0x1D2A2400 0x0 0x200>,	/* 951200 */
+		      <0x0 0x1D2A2600 0x0 0x200>,	/* 951300 */
+		      <0x0 0x1D2A2800 0x0 0x200>,	/* 951400 */
+		      <0x0 0x1D2A2A00 0x0 0x200>;	/* 951500 */
+	};
+
+	mtk-sound-coprocessor {
+		compatible = "mediatek,mtk-snd-coprocessor";
+		fw_name = "dsp_boot.bin";
+		fw_size = <0x340000>;
+	};
+
+	mtk_tv_machine:mtk-tvsnd-machine {
+		compatible = "mediatek,mtk-tvsnd-machine";
+	};
+
+	mtk_tv_offload_platform:mtk-tv-offload-platform {
+		compatible = "mediatek,mtk-tv-offload-platform";
+	};
+
+	mtk-tv-duplex-platform {
+		compatible = "mediatek,mtk-tv-duplex-platform";
+	};
+
+	mtk-tv-capture-platform {
+		compatible = "mediatek,mtk-tv-capture-platform";
+	};
+};
+
+/* Device(s) attach on hardware IP I2C #0 */
+&i2c0 {
+	rt9114: mtk-amp9114 {
+		compatible = "mediatek, rt9114";
+		status = "disabled";
+	};
+	rt9114_1: mtk-amp9114_1 {
+		compatible = "mediatek, rt9114";
+		status = "disabled";
+	};
+	rt9120: mtk-amp9120 {
+		compatible = "mediatek, rt9120";
+		status = "disabled";
+	};
+	tas5805: ti-tas5805 {
+		compatible = "ti, tas5805";
+		status = "disabled";
+	};
+	ad82088: esmt-ad82088 {
+		compatible = "esmt, ad82088";
+		status = "disabled";
+	};
+	cus_i2c0_amp0: cus-i2c0-amp0 {
+		status = "disabled";
+	};
+	cus_i2c0_amp1: cus-i2c0-amp1 {
+		status = "disabled";
+	};
+	cus_i2c0_amp2: cus-i2c0-amp2 {
+		status = "disabled";
+	};
+	cus_i2c0_amp3: cus-i2c0-amp3 {
+		status = "disabled";
+	};
+	cus_i2c0_amp4: cus-i2c0-amp4 {
+		status = "disabled";
+	};
+};
+
+&i2c1 {
+	rt9120_1: mtk-amp9120 {
+		compatible = "mediatek, rt9120";
+		status = "disabled";
+	};
+	tas5805_1: ti-tas5805 {
+		compatible = "ti, tas5805";
+		status = "disabled";
+	};
+	cus_i2c1_amp0: cus-i2c1-amp0 {
+		status = "disabled";
+	};
+	cus_i2c1_amp1: cus-i2c1-amp1 {
+		status = "disabled";
+	};
+	cus_i2c1_amp2: cus-i2c1-amp2 {
+		status = "disabled";
+	};
+	cus_i2c1_amp3: cus-i2c1-amp3 {
+		status = "disabled";
+	};
+	cus_i2c1_amp4: cus-i2c1-amp4 {
+		status = "disabled";
+	};
+};
+
+&i2c2 {
+	cus_i2c2_amp0: cus-i2c2-amp0 {
+		status = "disabled";
+	};
+	cus_i2c2_amp1: cus-i2c2-amp1 {
+		status = "disabled";
+	};
+	cus_i2c2_amp2: cus-i2c2-amp2 {
+		status = "disabled";
+	};
+	cus_i2c2_amp3: cus-i2c2-amp3 {
+		status = "disabled";
+	};
+	cus_i2c2_amp4: cus-i2c2-amp4 {
+		status = "disabled";
+	};
+};
+
+&i2c3 {
+	cus_i2c3_amp0: cus-i2c3-amp0 {
+		status = "disabled";
+	};
+	cus_i2c3_amp1: cus-i2c3-amp1 {
+		status = "disabled";
+	};
+	cus_i2c3_amp2: cus-i2c3-amp2 {
+		status = "disabled";
+	};
+	cus_i2c3_amp3: cus-i2c3-amp3 {
+		status = "disabled";
+	};
+	cus_i2c3_amp4: cus-i2c3-amp4 {
+		status = "disabled";
+	};
+};

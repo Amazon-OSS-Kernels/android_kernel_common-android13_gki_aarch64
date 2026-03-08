@@ -1,0 +1,31 @@
+#
+# GPIO infrastructure and common function
+#
+
+menu "Mediatek ROM Table Overlay Support"
+
+config ROM_OVERLAY
+	bool "Enable ROM Overlay Support"
+	default n
+	help
+	  Enable ROM overlay function.
+
+config ROM_TABLE_ADDRESS
+	hex "Setting ROM table address in DRAM"
+	default 0x20000000
+	help
+	  Setting ROM table address in DRAM
+
+config ROM_OVERLAY_UBOOT
+	bool "Enable ROM Overlay at U-BOOT dtb"
+	default n
+	help
+	  Enable ROM overlay at u-boot dtb.
+
+config ROM_OVERLAY_KERNEL
+	bool "Enable ROM Overlay at Kernel dtb"
+	default n
+	help
+	  Enable ROM overlay at Kernel dtb.
+
+endmenu
