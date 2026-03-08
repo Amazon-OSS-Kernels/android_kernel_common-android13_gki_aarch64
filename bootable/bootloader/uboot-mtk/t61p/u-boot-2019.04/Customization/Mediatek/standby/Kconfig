@@ -1,0 +1,14 @@
+#
+# Standby configuration
+#
+
+menu "Mediatek Standby Support"
+
+config MTK_BT_USB
+	bool "Enable BT feature"
+	default y
+	help
+	  Enable BT feature.
+	  To enable / disable BT in secondary standby
+
+endmenu

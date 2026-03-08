@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+
+/ {
+	mtk_vrr: mtk-vrr {
+		compatible = "mediatek,vrr";
+		memory-region = <&MI_VRR_SHM>;
+	};
+
+};

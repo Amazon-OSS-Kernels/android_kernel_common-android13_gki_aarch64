@@ -1,0 +1,28 @@
+#
+# GPIO infrastructure and common function
+#
+
+menu "Mediatek AB Support"
+
+config AB_SIDELOAD
+	bool "Enable AB Sideload"
+	depends on ANDROID_AB
+	default n
+	help
+	  Enable AB Sideload feature.
+
+config AB_FROM_ROM
+	bool "Enable AB from ROM"
+	depends on AB_SIDELOAD
+	default n
+	help
+	  Enable AB selection from ROM feature.
+
+config AB_FIXED_SLOT
+	int "Use Fixed Slot"
+	depends on !AB_FROM_ROM
+	default 0
+	help
+	  Set fixed slot number if AB_FROM_ROM is not set.
+
+endmenu

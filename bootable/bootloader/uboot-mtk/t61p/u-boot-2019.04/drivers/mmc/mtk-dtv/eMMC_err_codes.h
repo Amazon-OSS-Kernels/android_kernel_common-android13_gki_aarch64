@@ -1,0 +1,211 @@
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+*/
+
+#ifndef __EMMC_ERR_CODES_H__
+#define __EMMC_ERR_CODES_H__
+//===========================================================
+// device status (R1, R1b)
+//===========================================================
+#define EMMC_R1_ADDRESS_OUT_OF_RANGE     BIT31
+#define EMMC_R1_ADDRESS_MISALIGN         BIT30
+#define EMMC_R1_BLOCK_LEN_ERROR          BIT29
+#define EMMC_R1_ERASE_SEQ_ERROR          BIT28
+#define EMMC_R1_ERASE_PARAM              BIT27
+#define EMMC_R1_WP_VIOLATION             BIT26
+#define EMMC_R1_DEVICE_IS_LOCKED         BIT25
+#define EMMC_R1_LOCK_UNLOCK_FAILED       BIT24
+#define EMMC_R1_COM_CRC_ERROR            BIT23
+#define EMMC_R1_ILLEGAL_COMMAND          BIT22
+#define EMMC_R1_DEVICE_ECC_FAILED        BIT21
+#define EMMC_R1_CC_ERROR                 BIT20
+#define EMMC_R1_ERROR                    BIT19
+#define EMMC_R1_CID_CSD_OVERWRITE        BIT16
+#define EMMC_R1_WP_ERASE_SKIP            BIT15
+#define EMMC_R1_ERASE_RESET              BIT13
+#define EMMC_R1_CURRENT_STATE            (BIT12 | BIT11 | BIT10 | BIT9)
+#define EMMC_R1_READY_FOR_DATA           BIT8
+#define EMMC_R1_SWITCH_ERROR             BIT7
+#define EMMC_R1_EXCEPTION_EVENT          BIT6
+#define EMMC_R1_APP_CMD                  BIT5
+
+#define EMMC_ERR_R1_31_24       (EMMC_R1_ADDRESS_OUT_OF_RANGE | \
+					EMMC_R1_ADDRESS_MISALIGN | \
+					EMMC_R1_BLOCK_LEN_ERROR | \
+					EMMC_R1_ERASE_SEQ_ERROR | \
+					EMMC_R1_ERASE_PARAM | \
+					EMMC_R1_WP_VIOLATION | \
+					EMMC_R1_LOCK_UNLOCK_FAILED)
+#define EMMC_ERR_R1_23_16       (EMMC_R1_COM_CRC_ERROR | \
+								 EMMC_R1_ILLEGAL_COMMAND | \
+								 EMMC_R1_DEVICE_ECC_FAILED | \
+								 EMMC_R1_CC_ERROR | \
+								 EMMC_R1_ERROR | \
+								 EMMC_R1_CID_CSD_OVERWRITE)
+#define EMMC_ERR_R1_15_8        (EMMC_R1_WP_ERASE_SKIP | \
+								 EMMC_R1_ERASE_RESET)
+#define EMMC_ERR_R1_7_0         (EMMC_R1_SWITCH_ERROR)
+
+#define EMMC_ERR_R1_31_0        (EMMC_ERR_R1_31_24 | EMMC_ERR_R1_23_16 | EMMC_ERR_R1_15_8 | EMMC_ERR_R1_7_0)
+#define EMMC_ERR_R1_NEED_RETRY  (EMMC_R1_COM_CRC_ERROR | \
+					EMMC_R1_DEVICE_ECC_FAILED | \
+					EMMC_R1_CC_ERROR | \
+					EMMC_R1_ERROR | \
+					EMMC_R1_SWITCH_ERROR)
+
+#define EMMC_ERR_R1_31_24_SHIFT 24
+#define EMMC_ERR_R1_23_16_SHIFT 16
+#define EMMC_ERR_R1_15_8_SHIFT  8
+
+//===========================================================
+// driver error codes
+//===========================================================
+#define EMMC_ST_SUCCESS                  0
+
+#define EMMC_ST_ERR_MEM_CORRUPT          (0x0001 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NOT_ALIGN            (0x0002 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NOT_PACKED           (0x0003 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_DATA_MISMATCH        (0x0004 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_WAIT_REG0    (0x0005 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_FIFOCLKRDY   (0x0006 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_MIULASTDONE  (0x0007 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_WAITD0HIGH   (0x0008 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_CARDDMAEND   (0x0009 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_TIMEOUT_WAITCIFDEVENT   (0x000A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_FCIE_STS_ERR         (0x000B | EMMC_ST_PLAT)
+
+#define EMMC_ST_ERR_BIST_FAIL            (0x0010 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_DEBUG_MODE           (0x0011 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_FCIE_NO_CLK          (0x0012 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_PARAMETER            (0x0013 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NOT_INIT             (0x0014 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_INVALID_PARAM        (0x0015 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_PARTITION_CHKSUM     (0x0016 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_PART_INFO         (0x0017 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_PARTITION         (0x0018 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_OK_DDR_PARAM      (0x0019 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SAVE_DDRT_FAIL       (0x001A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_DDRT_CHKSUM          (0x001B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_DDRT_NONA            (0x001C | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CIS_NNI              (0x001D | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CIS_PNI              (0x001E | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CIS_NNI_NONA         (0x001F | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CIS_PNI_NONA         (0x0020 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SDR_DETECT_DDR       (0x0021 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_CIS               (0x0022 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NOT_EMMC_PLATFOROM   (0x0023 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_FCIE_NO_RIU          (0x0024 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_INT_TO               (0x0025 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_UNKNOWN_CLK          (0x0026 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_BUILD_DDRT           (0x0027 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_RSP_IN_RAM        (0x0028 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_SLOWER_CLK        (0x0029 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_PAD_ABNORMAL_OFF     (0x0030 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SAVE_BLEN_FAIL       (0x0031 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_BLEN_CHKSUM          (0x0032 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CHKSUM               (0x0033 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ERR_DET              (0x0034 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SKEW4_NOT_ENOUGH     (0x0035 | EMMC_ST_PLAT)
+
+#define EMMC_ST_ERR_CMD1                 (0x0A00 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD1_DEV_NOT_RDY     (0x0A01 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD2                 (0x0A02 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD3_CMD7            (0x0A03 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_R1_31_24             (0x0A04 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_R1_23_16             (0x0A05 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_R1_15_8              (0x0A06 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_R1_7_0               (0x0A07 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD8_CIFD            (0x0A08 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD8_MIU             (0x0A09 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD17_CIFD           (0x0A0A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD17_MIU            (0x0A0B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD18                (0x0A0C | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6                 (0x0A0D | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD13                (0x0A0E | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD12                (0x0A0F | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_CIFD           (0x0A10 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_CIFD_WAIT_D0H  (0x0A11 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_CIFD_CHK_R1    (0x0A12 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_MIU            (0x0A13 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_MIU_WAIT_D0H   (0x0A14 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_MIU_CHK_R1     (0x0A15 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD25                (0x0A16 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD25_WAIT_D0H       (0x0A17 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD25_CHK_R1         (0x0A18 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD9                 (0x0A19 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SEC_UPFW_TO          (0x0A20 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD16                (0x0A21 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_NO_HS200_1_8V        (0x0A22 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_ONE_BIT        (0x0A23 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_RSP            (0x0A24 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_DATA_CRC       (0x0A25 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_NO_DRVING      (0x0A26 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_HS200_FAIL     (0x0A27 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_DATA_CMP       (0x0A28 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD21_NO_HS200_1_8V  (0x0A29 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SET_DRV_STRENGTH     (0x0A2A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_SKEW4                (0x0A2B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD31_MIU            (0x0A2C | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD28                (0x0A2D | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_WP_BOOT_PWR_CFG      (0x0A2E | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_WP_BOOT_PWR_FAIL     (0x0A2F | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD23                (0x0A30 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD17_RSP            (0x0A31 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD17_DATA_CRC       (0x0A32 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD18_RSP            (0x0A33 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD24_RSP            (0x0A34 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD25_RSP            (0x0A35 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD12_RSP            (0x0A36 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD10                (0x0A37 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_RSP              (0x0A38 | EMMC_ST_PLAT)
+
+
+#define EMMC_ST_ERR_CMD8_ECHO                (0x0B00 | EMMC_ST_PLAT)
+#define	EMMC_ST_ERR_CMD8_NO_RSP              (0x0B01 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD55_NO_RSP             (0x0B02 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD55_RSP_CRC            (0x0B03 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD55_APP_CMD_BIT        (0x0B04 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD41_DEV_BUSY          (0x0B05 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD41_NO_RSP            (0x0B06 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD9_CSD_FMT             (0x0B07 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD6_NO_RSP             (0x0B08 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD6_WRONG_PARA         (0x0B09 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD13_NO_RSP            (0x0B0A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_ACMD13_DAT_CRC           (0x0B0B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_NO_RSP              (0x0B0C | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_DAT_CRC             (0x0B0D | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_WRONG_PARA          (0x0B0E | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_HS_NOT_SRPO         (0x0B0F | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_SWC_STS_ERR         (0x0B10 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD6_SWC_STS_CODE        (0x0B11 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD32_NO_RSP             (0x0B12 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD32_SEQ_ERR            (0x0B13 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD32_PARAM_ERR          (0x0B14 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD32_RESET              (0x0B15 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD33_NO_RSP             (0x0B16 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD33_SEQ_ERR            (0x0B17 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD33_PARAM_ERR          (0x0B18 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD33_RESET              (0x0B19 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_NO_RSP             (0x0B1A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_SEQ_ERR            (0x0B1B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_PARAM_ERR          (0x0B1C | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_RESET              (0x0B1D | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_TO                 (0x0B1E | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD3536_ERR              (0x0B1F | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMD38_ERR                (0x0B20 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_EXCEED_SIZE     (0x0B21 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_HMAC_ERR        (0x0B22 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_WCNT_MAX        (0x0B23 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_RES_GEN_FAIL    (0x0B24 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_RES_AUT_FAIL    (0x0B25 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_RES_CNT_FAIL    (0x0B26 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_RES_ADDR_FAIL   (0x0B27 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_RES_WRITE_FAIL  (0x0B28 | EMMC_ST_PLAT)
+#define RMMC_ST_ERR_RPMB_RES_READ_FAIL   (0x0B29 | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_RPMB_AUT_KEY_FAIL    (0x0B2A | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMDQ_RSP_IDX_ERR     (0x0B2B | EMMC_ST_PLAT)
+#define EMMC_ST_ERR_CMDQ_RSP_R1_ERR      (0x0B2C | EMMC_ST_PLAT)
+
+
+#endif /* __EMMC_ERR_CODES_H__ */

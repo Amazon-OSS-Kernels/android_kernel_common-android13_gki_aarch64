@@ -1,0 +1,626 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+/ {
+	aliases {
+		spi0 = &mspi0;
+		spi1 = &mspi1;
+		spi2 = &mspi2;
+		spi3 = &mspi3;
+		spi4 = &mspi4;
+		spi5 = &mspi5;
+		spi6 = &mspi6;
+		spi7 = &mspi7;
+		spi8 = &mspi_ci;
+		spi9 = &frc_mspi0;
+	};
+
+	mspi0: mspi@1c640800 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0x5 0x4>;
+		mspi_channel = <0>;
+		reg = <0 0x1c640800 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f40>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi0
+					0x1c2054f0 0x2000 0x2000
+					// reg_sw_en_xtal_12m2mcu_mspi0
+					0x1c205540 0x0020 0x0020
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi02mcu_mspi0
+					0x1c207c14 0xffff 0x0001
+					// reg_sw_en_mspi0_div2mcu_ckctrl_top
+					0x1c207c08 0xffff 0x0001
+					// reg_ckg_mspi0_mheg5
+					0x1c207240 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0000
+				      123000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0004
+				      108000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0008
+				       86000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x000c
+				       72000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0010
+				       62000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0014
+				       48000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x0018
+				       30000000 0x1c207240 0x0007 0x0004 0x1c207248 0x001f 0x001c
+				       24000000 0x1c207240 0x0007 0x0000 0x1c207248 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi1: mspi@1c640a00 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0x6 0x4>;
+		mspi_channel = <1>;
+		reg = <0 0x1c640a00 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f40>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf0>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi1
+					0x1c2054f0 0x4000 0x4000
+					// reg_sw_en_xtal_12m2mcu_mspi1
+					0x1c205540 0x0040 0x0040
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi12mcu_mspi1
+					0x1c207be4 0xffff 0x0001
+					// reg_sw_en_mspi1_div2mcu_ckctrl_top
+					0x1c207c0c 0xffff 0x0001
+					// reg_ckg_mspi1_mheg5
+					0x1c207250 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0000
+				      123000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0004
+				      108000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0008
+				       86000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x000c
+				       72000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0010
+				       62000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0014
+				       48000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x0018
+				       30000000 0x1c207250 0x0007 0x0004 0x1c207258 0x001f 0x001c
+				       24000000 0x1c207250 0x0007 0x0000 0x1c207258 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi2: mspi@1c640c00 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0x7 0x4>;
+		mspi_channel = <2>;
+		reg = <0 0x1c640c00 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f41>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi2
+					0x1c2054f0 0x8000 0x8000
+					// reg_sw_en_xtal_12m2mcu_mspi2
+					0x1c205540 0x0080 0x0080
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi22mcu_mspi2
+					0x1c207be8 0xffff 0x0001
+					// reg_sw_en_mspi2_div2mcu_ckctrl_top
+					0x1c207c10 0xffff 0x0001
+					// reg_ckg_mspi2_mheg5
+					0x1c207260 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0000
+				      123000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0004
+				      108000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0008
+				       86000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x000c
+				       72000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0010
+				       62000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0014
+				       48000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x0018
+				       30000000 0x1c207260 0x0007 0x0004 0x1c207268 0x001f 0x001c
+				       24000000 0x1c207260 0x0007 0x0000 0x1c207268 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi3: mspi@1c640e00 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0x8 0x4>;
+		mspi_channel = <3>;
+		reg = <0 0x1c640e00 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f41>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf0>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi3
+					0x1c2054f4 0x0001 0x0001
+					// reg_sw_en_xtal_12m2mcu_mspi3
+					0x1c205540 0x0100 0x0100
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi32mcu_mspi3
+					0x1c207bec 0xffff 0x0001
+					// reg_sw_en_mspi3_div2mcu_ckctrl_top
+					0x1c207c18 0xffff 0x0001
+					// reg_ckg_mspi3_mheg5
+					0x1c207270 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0000
+				      123000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0004
+				      108000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0008
+				       86000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x000c
+				       72000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0010
+				       62000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0014
+				       48000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x0018
+				       30000000 0x1c207270 0x0007 0x0004 0x1c207278 0x001f 0x001c
+				       24000000 0x1c207270 0x0007 0x0000 0x1c207278 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi4: mspi@1c641000 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0x9 0x4>;
+		mspi_channel = <4>;
+		reg = <0 0x1c641000 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f44>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi4
+					0x1c2054f4 0x0002 0x0002
+					// reg_sw_en_xtal_12m2mcu_mspi4
+					0x1c205540 0x0200 0x0200
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi42mcu_mspi4
+					0x1c207bf0 0xffff 0x0001
+					// reg_sw_en_mspi4_div2mcu_ckctrl_top
+					0x1c207c1c 0xffff 0x0001
+					// reg_ckg_mspi4_mheg5
+					0x1c207280 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0000
+				      123000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0004
+				      108000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0008
+				       86000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x000c
+				       72000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0010
+				       62000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0014
+				       48000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x0018
+				       30000000 0x1c207280 0x0007 0x0004 0x1c207288 0x001f 0x001c
+				       24000000 0x1c207280 0x0007 0x0000 0x1c207288 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi5: mspi@1c641200 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0xa 0x4>;
+		mspi_channel = <5>;
+		reg = <0 0x1c641200 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f44>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf0>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi5
+					0x1c2054f4 0x0004 0x0004
+					// reg_sw_en_xtal_12m2mcu_mspi5
+					0x1c205540 0x0400 0x0400
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi52mcu_mspi5
+					0x1c207bf4 0xffff 0x0001
+					// reg_sw_en_mspi5_div2mcu_ckctrl_top
+					0x1c207c20 0xffff 0x0001
+					// reg_ckg_mspi5_mheg5
+					0x1c207290 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0000
+				      123000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0004
+				      108000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0008
+				       86000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x000c
+				       72000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0010
+				       62000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0014
+				       48000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x0018
+				       30000000 0x1c207290 0x0007 0x0004 0x1c207298 0x001f 0x001c
+				       24000000 0x1c207290 0x0007 0x0000 0x1c207298 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi6: mspi@1c641400 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0xb 0x4>;
+		mspi_channel = <6>;
+		reg = <0 0x1c641400 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f45>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi6
+					0x1c2054f4 0x0008 0x0008
+					// reg_sw_en_xtal_12m2mcu_mspi6
+					0x1c205540 0x0800 0x0800
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi62mcu_mspi6
+					0x1c207bf8 0xffff 0x0001
+					// reg_sw_en_mspi6_div2mcu_ckctrl_top
+					0x1c207c24 0xffff 0x0001
+					// reg_ckg_mspi6_mheg5
+					0x1c2072a0 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0000
+				      123000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0004
+				      108000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0008
+				       86000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x000c
+				       72000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0010
+				       62000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0014
+				       48000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x0018
+				       30000000 0x1c2072a0 0x0007 0x0004 0x1c2072a8 0x001f 0x001c
+				       24000000 0x1c2072a0 0x0007 0x0000 0x1c2072a8 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi7: mspi@1c641600 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0xc 0x4>;
+		mspi_channel = <7>;
+		reg = <0 0x1c641600 0 0x200>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f45>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf0>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi7
+					0x1c2054f4 0x0010 0x0010
+					// reg_sw_en_xtal_12m2mcu_mspi7
+					0x1c205540 0x1000 0x1000
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi72mcu_mspi7
+					0x1c207bfc 0xffff 0x0001
+					// reg_sw_en_mspi7_div2mcu_ckctrl_top
+					0x1c207c28 0xffff 0x0001
+					// reg_ckg_mspi7_mheg5
+					0x1c2072b0 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi7, reg_ckg_mspi7_div
+				      172000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0000
+				      123000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0004
+				      108000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0008
+				       86000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x000c
+				       72000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0010
+				       62000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0014
+				       48000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x0018
+				       30000000 0x1c2072b0 0x0007 0x0004 0x1c2072b8 0x001f 0x001c
+				       24000000 0x1c2072b0 0x0007 0x0000 0x1c2072b8 0x001f 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	mspi_ci: mspi@1c641A00 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0xd 0x4>;
+		mspi_channel = <8>;
+		reg = <0 0x1c641A00 0 0x200>,<0 0x1c206000 0 0x2000>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f48>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 5 sw_en and 1 clk mux need to be enabled
+					6
+					// reg_sw_en_smi2mcu_mspi_cilink
+					0x1c2054f4 0x0020 0x0020
+					// reg_sw_en_xtal_12m2mcu_mspi_cilink
+					0x1c205540 0x2000 0x2000
+					// reg_sw_en_mcu_nonpm2mcu_mspi_all
+					0x1c207b78 0x2000 0x2000
+					// reg_sw_en_mspi_cilink_div2mcu_ckctrl_top
+					0x1c207c00 0xffff 0x0001
+					// reg_sw_en_mspi_cilink2mcu_mspi_cilink
+					0x1c207c04 0xffff 0x0001
+					// reg_ckg_mspi_cilink_mheg5
+					0x1c207230 0x0300 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_mspi_cilink, reg_ckg_mspi_cilink_div
+				      172000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0000
+				      123000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0004
+				      108000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0008
+				       86000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x000c
+				       72000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0010
+				       62000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0014
+				       48000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x0018
+				       30000000 0x1c207230 0x0007 0x0004 0x1c207238 0x001f 0x001c
+				       24000000 0x1c207230 0x0007 0x0000 0x1c207238 0x001f 0x0000
+				      >;
+
+		clock-frequency = <54000000>;
+		status = "okay";
+	};
+
+	frc_mspi0: mspi@1d004a00 {
+		compatible = "mediatek,mt5896-spi";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		interrupt-parent = <&mtk_intc2_irq_low>;
+		interrupts = <0x0 0xe 0x4>;
+		mspi_channel = <9>;
+		reg = <0 0x1d004a00 0 0x200>,<0 0x1c206000 0 0x2000>;
+
+		tr_mux = <8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8
+			  8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8>;	// bits per word for all data words
+		xfer_interval = <0>;	// The clk ticks delay between byte to byte transfer
+		xfer_turn_d = <0>;	// The clk ticks delay between last write and first read
+		xfer_trig_d = <0>;	// The clk ticks delay from "reg_mspi_trigger" to first SPI clock
+		xfer_done_d = <0>;	// The clk ticks delay from last SPI clock to "reg_mspi_done_flag"
+
+		module-clock-divider = <0x1c600f50>;	// clock divider register and mask
+		module-clock-divider-mask = <0xf>;
+
+		module-clocks-enable = <// 2 sw_en and 1 clk mux need to be enabled
+					3
+					// reg_sw_en_frc_mspi0_div2mcu_ckctrl_top
+					0x1c207adc 0xffff 1
+					// reg_sw_en_frc_mspi02frciopm, reg_sw_en_frc_mspi02frciopmrv55
+					0x1c207ae0 0xffff 0x0003
+					// reg_ckg_frc_mspi0_frciopmrv55
+					0x1c2072c8 0xffff 0x0000
+					>;
+
+		/* Format for module clock mux setting:
+		 * Each clock mux setting have 7 <u32> values:
+		 *     clock speed in Hz
+		 *     register address of clock mux #1
+		 *     register mask of clock mux #1
+		 *     register value of clock mux #1
+		 *     register address of clock mux #2
+		 *     register mask of clock mux #2
+		 *     register value of clock mux #2
+		 */
+		module-clock-select = <// reg_ckg_frc_mspi0, reg_ckg_frc_mspi0_div
+				      172000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0000
+				      123000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0004
+				      108000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0008
+				       86000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x000c
+				       72000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0010
+				       62000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0014
+				       48000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x0018
+				       30000000 0x1c2072c0 0xffff 0x0004 0x1c2072d0 0xffff 0x001c
+				       24000000 0x1c2072c0 0xffff 0x0000 0x1c2072d0 0xffff 0x0000
+				      >;
+
+		clock-frequency = <24000000>;
+		status = "okay";
+	};
+
+	frc_mspi: frc_mspi {
+	};
+};

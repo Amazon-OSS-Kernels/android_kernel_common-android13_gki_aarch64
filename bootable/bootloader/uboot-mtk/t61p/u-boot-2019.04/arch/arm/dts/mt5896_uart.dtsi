@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	uart0: UART0 {
+		compatible = "mediatek_tv,ns16550";
+		reg = <0x0 0x1c646100 0x0 0x80>, <0x0 0x1c061000 0x0 0x80>;
+		reg-shift = <3>;
+		interrupts = <0x0 0x16 0x4>;
+		current-speed = <115200>;
+		clock-frequency = <24000000>;
+		console-uart;
+		u-boot,dm-pre-reloc;
+	};
+
+	uart1: UART1 {
+	};
+
+	uart2: UART2 {
+	};
+
+	uart3: UART3 {
+	};
+
+	uart4: UART4 {
+	};
+
+	uart5: UART5 {
+	};
+};

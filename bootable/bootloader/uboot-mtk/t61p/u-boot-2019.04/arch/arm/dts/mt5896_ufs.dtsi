@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	ufs0: mtk-dtv-ufs {
+		compatible = "mediatek,mt8183-ufshci";
+		status ="disabled";
+		reg = <0x0 0x1c710000 0x0 0x2300>;
+		crypto-disable-list = <0x0 0x0 0x0 0x1600000>;
+	};
+};
+
