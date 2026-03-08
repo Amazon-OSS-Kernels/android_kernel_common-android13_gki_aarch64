@@ -21,7 +21,7 @@ BUILDING THE KERNEL
         git gnupg flex bison gperf build-essential zip curl \
         zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev \
         x11proto-core-dev libx11-dev lib32z-dev ccache libgl1-mesa-dev \
-        libxml2-utils xsltproc unzip python lib32z1 lib32stdc++6 libssl-dev \
+        libxml2-utils xsltproc unzip python3 lib32z1 lib32stdc++6 libssl-dev \
         libswitch-perl swig maven libncurses5 xxd bc vim
 
 2. You may need to install pycryptodome
@@ -48,7 +48,7 @@ BUILDING THE KERNEL
 
 6.  Execute the script by running:
 
-    ./build_kernel.sh "<path to platform.tar>" "<target output directory>"
+    ./build_kernel.sh "<target output directory>"
 
 
 BUILDING BUSYBOX (if applicable)
