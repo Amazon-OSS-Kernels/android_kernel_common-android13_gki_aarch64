@@ -1,0 +1,13 @@
+#
+# Image decoder
+#
+
+menu "Image decoder drivers"
+
+config MTK_NJPD
+	bool "MediaTek New JPEG Decoder Driver"
+	help
+		This Driver support MediaTek New JPEG Decoder Protect
+		 Say Y to enable for the MediaTek new JPEG decoder protect.
+
+endmenu

@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	dip0:dip0 {
+		compatible = "mediatek,mt5896-dip0";
+		interrupt-parent = <&mtk_intc0_irq>;
+		interrupts = <0x0 0x26 0x4>;
+		reg = <0x0 0x1D497E00 0 0x600>,
+		      <0x0 0x1D499000 0 0x400>,
+		      <0x0 0x1D497C00 0 0x200>,
+		      <0x0 0x1D497600 0 0x0>,
+		      <0x0 0x1D499400 0 0x0>,
+		      <0x0 0x1D499C00 0 0x0>,
+		      <0x0 0x1D482C00 0 0x0>,
+		      <0x0 0x1D486600 0 0x0>,
+		      <0x0 0x1D475CC8 0 0x4>;
+		capability {
+			DSCL = <0x01>;
+			USCL = <0x00>;
+			Rotate = <0x00>;
+			RWSep = <0x00>;
+			B2R = <0x00>;
+			MFDEC = <0x00>;
+			3DDI = <0x00>;
+			DNR = <0x00>;
+			HDR = <0x00>;
+			LetterBox = <0x00>;
+			DIPR = <0x01>;
+			DiprBlending = <0x00>;
+			DiprPixelNum = <1>;
+			B2rPixelNum = <0>;
+			DipPixelNum = <4>;
+			FrontPack = <0>;
+			CropAlign = <2>;
+			HMirrorSz = <0>;
+			RWSepVer = <0>;
+			VsdInW = <7680>;
+			B2rHttPixelUnit = <0>;
+			fixed_dd_index = <40>;
+			TileWidthMax = <3840>;
+		};
+	};
+
+	dip1:dip1 {
+		compatible = "mediatek,mt5896-dip1";
+		interrupt-parent = <&mtk_intc0_irq>;
+		interrupts = <0x0 0x26 0x4>;
+		reg = <0x0 0x1D498400 0 0x600>,
+		      <0x0 0x1D499000 0 0x400>,
+		      <0x0 0x1D497C00 0 0x200>,
+		      <0x0 0x1D497600 0 0x600>,
+		      <0x0 0x1D499400 0 0x200>,
+		      <0x0 0x1D499C00 0 0x400>,
+		      <0x0 0x1D482C00 0 0x200>,
+		      <0x0 0x1D486600 0 0x400>,
+		      <0x0 0x1D475CC8 0 0x4>;
+		capability {
+			DSCL = <0x01>;
+			USCL = <0x01>;
+			Rotate = <0x01>;
+			RWSep = <0x01>;
+			B2R = <0x01>;
+			MFDEC = <0x00>;
+			3DDI = <0x01>;
+			DNR = <0x01>;
+			HDR = <0x01>;
+			LetterBox = <0x01>;
+			DIPR = <0x01>;
+			DiprBlending = <0x00>;
+			DiprPixelNum = <1>;
+			B2rPixelNum = <4>;
+			DipPixelNum = <2>;
+			FrontPack = <0>;
+			CropAlign = <2>;
+			HMirrorSz = <3840>;
+			RWSepVer = <0>;
+			VsdInW = <3840>;
+			B2rHttPixelUnit = <0>;
+			fixed_dd_index = <41>;
+			TileWidthMax = <3840>;
+		};
+		iommu_buf_tag {
+			di_buf = <43>;
+		};
+	};
+
+	dip2:dip2 {
+		compatible = "mediatek,mt5896-dip2";
+		interrupt-parent = <&mtk_intc0_irq>;
+		interrupts = <0x0 0x26 0x4>;
+		reg = <0x0 0x1D498A00 0 0x600>,
+		      <0x0 0x1D499000 0 0x400>,
+		      <0x0 0x1D497C00 0 0x200>,
+		      <0x0 0x1D497600 0 0x0>,
+		      <0x0 0x1D499400 0 0x0>,
+		      <0x0 0x1D499C00 0 0x0>,
+		      <0x0 0x1D482C00 0 0x0>,
+		      <0x0 0x1D486600 0 0x0>,
+		      <0x0 0x1D475CC8 0 0x4>;
+		capability {
+			DSCL = <0x01>;
+			USCL = <0x00>;
+			Rotate = <0x00>;
+			RWSep = <0x00>;
+			B2R = <0x00>;
+			MFDEC = <0x00>;
+			3DDI = <0x00>;
+			DNR = <0x00>;
+			HDR = <0x00>;
+			LetterBox = <0x00>;
+			DIPR = <0x01>;
+			DiprBlending = <0x00>;
+			DiprPixelNum = <1>;
+			B2rPixelNum = <0>;
+			DipPixelNum = <1>;
+			FrontPack = <0>;
+			CropAlign = <2>;
+			HMirrorSz = <0>;
+			RWSepVer = <0>;
+			VsdInW = <3840>;
+			B2rHttPixelUnit = <0>;
+			fixed_dd_index = <42>;
+			TileWidthMax = <3840>;
+		};
+	};
+};

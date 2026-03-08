@@ -1,0 +1,1002 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	pinctrl: pinctrl@1c2e4000 {
+		compatible = "mediatek,mt5896-pinctrl";
+		reg = <0x0 0x1c2e4000 0x0 0x200>;
+		#pinctrl-cells = <1>;
+		pinctrl-mtk,register-width = <8>;
+		pinctrl-mtk,function-mask = <0xff>;
+
+		frc_fuart_pmux: frc_fuart_pmux {
+		};
+
+		vb1_pmux: vb1_pmux {
+		};
+
+		/* i2c */
+		i2c0_pmux: i2c0_pmux {
+		};
+
+		i2c1_pmux: i2c1_pmux {
+		};
+
+		i2c2_pmux: i2c2_pmux {
+		};
+
+		i2c3_pmux: i2c3_pmux {
+		};
+
+		i2c4_pmux: i2c4_pmux {
+		};
+		/* end of i2c */
+
+		/* ts */
+		ext_ts_demod_pmux: ext_ts_demod_pmux {
+		};
+
+		ext1_ts_demod_pmux: ext1_ts_demod_pmux {
+		};
+
+		ext2_ts_demod_pmux: ext2_ts_demod_pmux {
+		};
+
+		ext4_ts_demod_pmux: ext4_ts_demod_pmux {
+		};
+
+		ts_cilink_tx_rx_demod0_pmux: ts_cilink_tx_rx_demod0_pmux {
+		};
+
+		ts_cilink_tx_rx_demod1_pmux: ts_cilink_tx_rx_demod1_pmux {
+		};
+
+		ts_cilink_tx_rx_clk_pmux: ts_cilink_tx_rx_clk_pmux {
+		};
+
+		ext_ts_para_demod_pmux: ext_ts_para_demod_pmux {
+		};
+
+		ext1_ts_para_demod_pmux: ext1_ts_para_demod_pmux {
+		};
+
+		ext2_ts_para_demod_pmux: ext2_ts_para_demod_pmux {
+		};
+
+		ext3_ts_para_demod_pmux: ext3_ts_para_demod_pmux {
+		};
+
+		ts1_para_out_pmux: ts1_para_out_pmux {
+		};
+
+		ts1_out_pmux: ts1_out_pmux {
+		};
+		/* end of ts */
+
+		/* smart card */
+		smart_card1_pmux: smart_card1_pmux {
+		};
+
+		smart_card1_ext_pmux: smart_card1_ext_pmux {
+		};
+
+		smart_card2_pmux: smart_card2_pmux {
+		};
+		/* end of smart card */
+
+		/* spi */
+		mspi_cilink_pmux: mspi_cilink_pmux {
+		};
+
+		mspi_frc_pmux: mspi_frc_pmux {
+		};
+
+		mspi_serflash_pmux: mspi_serflash_pmux {
+		};
+
+		mspi_demod_pmux: mspi_demod_pmux {
+		};
+		/* end of spi */
+
+		/* pwm */
+		panel_bri4_pmux: panel_bri4_pmux {
+		};
+		panel_bri3_pmux: panel_bri3_pmux {
+		};
+		panel_bri0_pmux: panel_bri0_pmux {
+		};
+		panel_bri1_pmux: panel_bri1_pmux {
+		};
+		panel_bri2_pmux: panel_bri2_pmux {
+		};
+		panel_bri5_pmux: panel_bri5_pmux {
+		};
+		panel_bri6_pmux: panel_bri6_pmux {
+		};
+		panel_bri7_pmux: panel_bri7_pmux {
+		};
+		/* end of pwm */
+
+		/* i2s */
+		i2s_out_pmux: i2s_out_pmux {
+		};
+
+		i2s_out2_pmux: i2s_out2_pmux {
+		};
+
+		i2s_in_pmux: i2s_in_pmux {
+		};
+
+		i2s_in2_pmux: i2s_in2_pmux {
+		};
+		/* end of i2s */
+
+		/* diseqc */
+		diseqc_out_pmux: diseqc_out_pmux {
+		};
+
+		diseqc_in_pmux: diseqc_in_pmux {
+		};
+		/* end of diseqc */
+
+		/* spdif */
+		spdif_out_pmux: spdif_out_pmux {
+		};
+
+		spdif_in_pmux: spdif_in_pmux {
+		};
+		/* end of spdif */
+
+		/* uart */
+		fuart0_pmux: fuart0_pmux {
+		};
+
+		uart0_pmux: uart0_pmux {
+		};
+
+		uart1_pmux: uart1_pmux {
+		};
+
+		uart2_pmux: uart2_pmux {
+		};
+
+		digmux_uart4_pmux: digmux_uart4_pmux {
+		};
+		/* end of uart */
+
+		/* ldc_in_out */
+		ldc_in_out_pmux: ldc_in_out_pmux {
+		};
+		/* end of ldc_in_out */
+
+		/* ldc_tmon_gpio */
+		ldc_tmon_gpio_pmux: ldc_tmon_gpio_pmux {
+		};
+		/* end of ldc_tmon_gpio */
+
+		/* ldc_tmon */
+		ldc_tmon_pmux: ldc_tmon_pmux {
+		};
+		/* end of ldc_tmon */
+
+		/* ld spi */
+		ld0_spi_pmux: ld0_spi_pmux {
+		};
+
+		ld1_spi_pmux: ld1_spi_pmux {
+		};
+
+		ld2_spi_pmux: ld2_spi_pmux {
+		};
+
+		ld3_spi_pmux: ld3_spi_pmux {
+		};
+
+		ld4_spi_pmux: ld4_spi_pmux {
+		};
+
+		ld5_spi_pmux: ld5_spi_pmux {
+		};
+
+		ld6_spi_pmux: ld6_spi_pmux {
+		};
+
+		ld7_spi_pmux: ld7_spi_pmux {
+		};
+
+		vsync_like1_pmux: vsync_like1_pmux {
+		};
+
+		vsync_like2_pmux: vsync_like2_pmux {
+		};
+
+		vsync_like3_pmux: vsync_like3_pmux {
+		};
+
+		vsync_like4_pmux: vsync_like4_pmux {
+		};
+
+		vsync_like5_pmux: vsync_like5_pmux {
+		};
+
+		vsync_like6_pmux: vsync_like6_pmux {
+		};
+
+		hsync_like1_pmux: hsync_like1_pmux {
+		};
+
+		hsync_like2_pmux: hsync_like2_pmux {
+		};
+
+		hsync_like3_pmux: hsync_like3_pmux {
+		};
+
+		hsync_like4_pmux: hsync_like4_pmux {
+		};
+
+		hsync_like5_pmux: hsync_like5_pmux {
+		};
+		/* end of ld spi */
+
+		/* pcie */
+		pcie_p0_pmux: pcie_p0_pmux {
+		};
+		/* end of pcie */
+
+		/* pcm */
+		pcm_pmux: pcm_pmux {
+		};
+		/* end of pcm */
+
+		/* nand */
+		nand_pmux: nand_pmux {
+		};
+		/* end of nand */
+
+		/* irs */
+		irs_pmux: irs_pmux {
+		};
+
+		ir_tx_nonpm_pmux: ir_tx_nonpm_pmux {
+		};
+
+		ir_tx_1_nonpm_pmux: ir_tx_1_nonpm_pmux {
+		};
+		/* end of irs */
+
+		/* gpio ktf */
+		gpio_func0_pmux: gpio_func0_pmux {
+		};
+		gpio_func1_pmux: gpio_func1_pmux {
+		};
+		/* end of gpio ktf */
+		/* ci */
+		ci_pmux: ci_pmux {
+		};
+		/* end of ci */
+		/* audio dsp */
+		audio_dsp_pmux: audio_dsp_pmux {
+		};
+		/* end of audio dsp */
+		/* ffm */
+		ffm_dsp_pmux: ffm_dsp_pmux {
+		};
+		/* end of ffm */
+		/* radar */
+		radar_spi_pmux: radar_spi_pmux {
+		};
+		/* end of radar */
+	};
+
+	pm_pinctrl: pinctrl@1c022000 {
+		compatible = "mediatek,mt5896-pinctrl";
+		reg = <0x0 0x1c022000 0x0 0x200>;
+		#pinctrl-cells = <1>;
+		pinctrl-mtk,register-width = <8>;
+		pinctrl-mtk,function-mask = <0xff>;
+
+		pm_uart_pmux: pm_uart_pmux {
+		};
+
+		pm_led_pwm_pmux: pm_led_pwm_pmux {
+		};
+
+		/* dmic record */
+		dmic_record_pmux: dmic_record_pmux {
+		};
+
+		dmic_record_i2s_in_pmux: dmic_record_i2s_in_pmux {
+		};
+		/* end of dmic record */
+
+		/* i2c */
+		pm_i2c0_pmux: pm_i2c0_pmux {
+		};
+
+		pm_i2c1_pmux: pm_i2c1_pmux {
+		};
+		/* end of i2c */
+
+		/* spi */
+		pm_spi_pmux: pm_spi_pmux {
+		};
+
+		pm_mspi_cilink_pmux: pm_mspi_cilink_pmux {
+		};
+
+		/* end of spi */
+
+		/* uart */
+		pm_uart0_pmux: pm_uart0_pmux {
+		};
+
+		pm_uart1_pmux: pm_uart1_pmux {
+		};
+
+		pm_fuart0_pmux: pm_fuart0_pmux {
+		};
+
+		hdmib_pm_uart0_pmux: hdmib_pm_uart0_pmux {
+		};
+		hdmic_pm_uart0_pmux: hdmic_pm_uart0_pmux {
+		};
+		/* end of uart */
+
+		/* ir */
+		ir_tx_pmux: ir_tx_pmux {
+		};
+		ir_tx_1_pmux: ir_tx_1_pmux {
+		};
+		pm_ir_pmux: pm_ir_pmux {
+		};
+		pm_irs_pmux: pm_irs_pmux {
+		};
+		/* end of ir */
+
+		/* pwm */
+		fan_pwm_pmux: fan_pwm_pmux {
+		};
+		/* end of pwm */
+
+		/* dmic */
+		dmic_google_led_pmux: dmic_google_led_pmux {
+		};
+		/* end of dmic */
+
+		/* rgmii */
+		rgmii_pmux: rgmii_pmux {
+		};
+
+		/* for fpga haps */
+		rgmii_fpga_haps_pmux: rgmii_fpga_haps_pmux {
+		};
+		/* end of rgmii */
+
+		/* pcie_pm */
+		pcie_p1_pmux: pcie_p1_pmux {
+		};
+		/* end of pcie_pm*/
+
+		/* irs_haps */
+		irs_haps_pmux: irs_haps_pmux {
+		};
+		/* end of irs_haps */
+
+		/* shared pad mux */
+		ts_cilink_tx_rx_demod0_pmux_shared: ts_cilink_tx_rx_demod0_pmux_shared {
+		};
+		ts_cilink_tx_rx_demod1_pmux_shared: ts_cilink_tx_rx_demod1_pmux_shared {
+		};
+		ts_cilink_tx_rx_clk_pmux_shared: ts_cilink_tx_rx_clk_pmux_shared {
+		};
+		smart_card1_pmux_shared: smart_card1_pmux_shared {
+		};
+		smart_card2_pmux_shared: smart_card2_pmux_shared {
+		};
+		mspi_cilink_pmux_shared: mspi_cilink_pmux_shared {
+		};
+		ts1_para_out_pmux_shared: ts1_para_out_pmux_shared {
+		};
+		ci_pmux_shared: ci_pmux_shared {
+		};
+		/* end of shared pad mux */
+	};
+
+	pinconf: pinconf@1c2e6200 {
+		compatible = "mediatek,mt5896-pinconf";
+		reg = <0x0 0x1c2e6200 0x0 0x600>;
+		#pinctrl-cells = <1>;
+		pinctrl-mtk,register-width = <8>;
+		pinctrl-mtk,function-mask = <0xff>;
+
+		/* i2c */
+		i2c0_sda0_pcfg: i2c0_sda0_pcfg {
+		};
+
+		i2c0_scl0_pcfg: i2c0_scl0_pcfg {
+		};
+		/* end of i2c */
+
+		/* ts */
+		ts_cilink_tx_demod0_pcfg: ts_cilink_tx_demod0_pcfg {
+		};
+
+		ts_cilink_tx_clk_pcfg: ts_cilink_tx_clk_pcfg {
+		};
+		/* end of ts */
+
+		/* mspi */
+		mspi_cilink_pcfg: mspi_cilink_pcfg {
+		};
+		/* end of mspi */
+
+		/* ld spi */
+		ld0_spi_pcfg: ld0_spi_pcfg {
+		};
+
+		ld1_spi_pcfg: ld1_spi_pcfg {
+		};
+
+		ld2_spi_pcfg: ld2_spi_pcfg {
+		};
+
+		ld3_spi_pcfg: ld3_spi_pcfg {
+		};
+
+		ld4_spi_pcfg: ld4_spi_pcfg {
+		};
+
+		ld5_spi_pcfg: ld5_spi_pcfg {
+		};
+
+		ld6_spi_pcfg: ld6_spi_pcfg {
+		};
+
+		ld7_spi_pcfg: ld7_spi_pcfg {
+		};
+		/* end of ld spi */
+
+		/* gpio ktf */
+		gpio_func0_pcfg: gpio_func0_pcfg {
+		};
+		gpio_func1_pcfg: gpio_func1_pcfg {
+		};
+		/* end of gpio ktf */
+
+		gpio0_pcfg: gpio0_pcfg {
+		};
+		gpio1_pcfg: gpio1_pcfg {
+		};
+		gpio2_pcfg: gpio2_pcfg {
+		};
+		gpio3_pcfg: gpio3_pcfg {
+		};
+		gpio4_pcfg: gpio4_pcfg {
+		};
+		gpio5_pcfg: gpio5_pcfg {
+		};
+		gpio6_pcfg: gpio6_pcfg {
+		};
+		gpio7_pcfg: gpio7_pcfg {
+		};
+		gpio8_pcfg: gpio8_pcfg {
+		};
+		gpio9_pcfg: gpio9_pcfg {
+		};
+		gpio10_pcfg: gpio10_pcfg {
+		};
+		i2sout_mclk_a_pcfg: i2sout_mclk_a_pcfg {
+		};
+		i2sout_ws_a_pcfg: i2sout_ws_a_pcfg {
+		};
+		i2sout_bck_a_pcfg: i2sout_bck_a_pcfg {
+		};
+		i2sout_sd0_a_pcfg: i2sout_sd0_a_pcfg {
+		};
+		i2sout_sd1_a_pcfg: i2sout_sd1_a_pcfg {
+		};
+		i2sout_sd2_a_pcfg: i2sout_sd2_a_pcfg {
+		};
+		i2sout_sd3_a_pcfg: i2sout_sd3_a_pcfg {
+		};
+		i2sout_sd4_a_pcfg: i2sout_sd4_a_pcfg {
+		};
+		i2sin_ws_a_pcfg: i2sin_ws_a_pcfg {
+		};
+		i2sout_sd5_a_pcfg: i2sout_sd5_a_pcfg {
+		};
+		i2sout_mclk_b_pcfg: i2sout_mclk_b_pcfg {
+		};
+		i2sout_ws_b_pcfg: i2sout_ws_b_pcfg {
+		};
+		i2sout_bck_b_pcfg: i2sout_bck_b_pcfg {
+		};
+		i2sout_sd0_b_pcfg: i2sout_sd0_b_pcfg {
+		};
+		i2sin_bck_a_pcfg: i2sin_bck_a_pcfg {
+		};
+		i2sin_sd0_a_pcfg: i2sin_sd0_a_pcfg {
+		};
+		i2sin_mclk_a_pcfg: i2sin_mclk_a_pcfg {
+		};
+		i2sin_sd1_a_pcfg: i2sin_sd1_a_pcfg {
+		};
+		i2sin_sd2_a_pcfg: i2sin_sd2_a_pcfg {
+		};
+		i2sin_sd3_a_pcfg: i2sin_sd3_a_pcfg {
+		};
+		i2sin_mclk_b_pcfg: i2sin_mclk_b_pcfg {
+		};
+		i2sin_bck_b_pcfg: i2sin_bck_b_pcfg {
+		};
+		i2sin_ws_b_pcfg: i2sin_ws_b_pcfg {
+		};
+		i2sin_sd0_b_pcfg: i2sin_sd0_b_pcfg {
+		};
+		au_spi_ck_pcfg: au_spi_ck_pcfg {
+		};
+		au_spi_mosi_pcfg: au_spi_mosi_pcfg {
+		};
+		au_spi_miso_pcfg: au_spi_miso_pcfg {
+		};
+		au_spi_cs0_pcfg: au_spi_cs0_pcfg {
+		};
+		au_spi_cs1_pcfg: au_spi_cs1_pcfg {
+		};
+		au_spi_cs2_pcfg: au_spi_cs2_pcfg {
+		};
+		au_spi_cs3_pcfg: au_spi_cs3_pcfg {
+		};
+		gpio42_pcfg: gpio42_pcfg {
+		};
+		gpio43_pcfg: gpio43_pcfg {
+		};
+		gpio44_pcfg: gpio44_pcfg {
+		};
+		gpio45_pcfg: gpio45_pcfg {
+		};
+		gpio46_pcfg: gpio46_pcfg {
+		};
+		gpio47_pcfg: gpio47_pcfg {
+		};
+		gpio48_pcfg: gpio48_pcfg {
+		};
+		vb1_htpdn_v1_pcfg: vb1_htpdn_v1_pcfg {
+		};
+		vb1_lockn_v1_pcfg: vb1_lockn_v1_pcfg {
+		};
+		vb1_htpdn_v2_pcfg: vb1_htpdn_v2_pcfg {
+		};
+		vb1_lockn_v2_pcfg: vb1_lockn_v2_pcfg {
+		};
+		vb1_lockn_osd_pcfg: vb1_lockn_osd_pcfg {
+		};
+		vb1_htpdn_osd_pcfg: vb1_htpdn_osd_pcfg {
+		};
+		gpio55_pcfg: gpio55_pcfg {
+		};
+		gpio56_pcfg: gpio56_pcfg {
+		};
+		gpio57_pcfg: gpio57_pcfg {
+		};
+		gpio58_pcfg: gpio58_pcfg {
+		};
+		gpio59_pcfg: gpio59_pcfg {
+		};
+		gpio60_pcfg: gpio60_pcfg {
+		};
+		gpio61_pcfg: gpio61_pcfg {
+		};
+		gpio62_pcfg: gpio62_pcfg {
+		};
+		gpio63_pcfg: gpio63_pcfg {
+		};
+		gpio64_pcfg: gpio64_pcfg {
+		};
+		gpio65_pcfg: gpio65_pcfg {
+		};
+		tuner_freeze_seq_pcfg: tuner_freeze_seq_pcfg {
+		};
+		gpio67_pcfg: gpio67_pcfg {
+		};
+		gpio68_pcfg: gpio68_pcfg {
+		};
+		gpio69_pcfg: gpio69_pcfg {
+		};
+		gpio70_pcfg: gpio70_pcfg {
+		};
+		gpio71_pcfg: gpio71_pcfg {
+		};
+		gpio72_pcfg: gpio72_pcfg {
+		};
+		i2c0_osda0_pcfg: i2c0_osda0_pcfg {
+		};
+		i2c0_oscl0_pcfg: i2c0_oscl0_pcfg {
+		};
+		i2c1_osda1_pcfg: i2c1_osda1_pcfg {
+		};
+		i2c1_oscl1_pcfg: i2c1_oscl1_pcfg {
+		};
+		i2c3_oscl3_pcfg: i2c3_oscl3_pcfg {
+		};
+		i2c3_osda3_pcfg: i2c3_osda3_pcfg {
+		};
+		spi_clk_pcfg: spi_clk_pcfg {
+		};
+		spi_mosi_pcfg: spi_mosi_pcfg {
+		};
+		spi_miso_pcfg: spi_miso_pcfg {
+		};
+		spi_cs_pcfg: spi_cs_pcfg {
+		};
+		int_pcfg: int_pcfg {
+		};
+		cil_demod0_clk_pcfg: cil_demod0_clk_pcfg {
+		};
+		cil_tx_clk_pcfg: cil_tx_clk_pcfg {
+		};
+		cil_tx0_d0_pcfg: cil_tx0_d0_pcfg {
+		};
+		cil_tx0_d1_pcfg: cil_tx0_d1_pcfg {
+		};
+		cil_rx_clk_pcfg: cil_rx_clk_pcfg {
+		};
+		cil_rx0_d0_pcfg: cil_rx0_d0_pcfg {
+		};
+		cil_rx0_d1_pcfg: cil_rx0_d1_pcfg {
+		};
+		cil_demod1_clk_pcfg: cil_demod1_clk_pcfg {
+		};
+		cil_tx1_d0_pcfg: cil_tx1_d0_pcfg {
+		};
+		cil_tx1_d1_pcfg: cil_tx1_d1_pcfg {
+		};
+		cil_rx1_d0_pcfg: cil_rx1_d0_pcfg {
+		};
+		cil_rx1_d1_pcfg: cil_rx1_d1_pcfg {
+		};
+		ci_reset_pcfg: ci_reset_pcfg {
+		};
+		demod_rst_pcfg: demod_rst_pcfg {
+		};
+		demod_tsclk_pcfg: demod_tsclk_pcfg {
+		};
+		demod_tsval_pcfg: demod_tsval_pcfg {
+		};
+		demod_tssync_pcfg: demod_tssync_pcfg {
+		};
+		demod_tsdata0_pcfg: demod_tsdata0_pcfg {
+		};
+		demod_tsdata1_pcfg: demod_tsdata1_pcfg {
+		};
+		demod_tsdata2_pcfg: demod_tsdata2_pcfg {
+		};
+		demod_tsdata3_pcfg: demod_tsdata3_pcfg {
+		};
+		demod_tsdata4_pcfg: demod_tsdata4_pcfg {
+		};
+		demod_tsdata5_pcfg: demod_tsdata5_pcfg {
+		};
+		demod_tsdata6_pcfg: demod_tsdata6_pcfg {
+		};
+		demod_tsdata7_pcfg: demod_tsdata7_pcfg {
+		};
+		demod_ts2_val_pcfg: demod_ts2_val_pcfg {
+		};
+		demod_ts2_sync_pcfg: demod_ts2_sync_pcfg {
+		};
+		demod_ts2_d0_pcfg: demod_ts2_d0_pcfg {
+		};
+		demod_ts2_clk_pcfg: demod_ts2_clk_pcfg {
+		};
+		aspdifi_pcfg: aspdifi_pcfg {
+		};
+		aspdifo0_pcfg: aspdifo0_pcfg {
+		};
+		u1rx_pcfg: u1rx_pcfg {
+		};
+		u1tx_pcfg: u1tx_pcfg {
+		};
+		i2c2_osda2_pcfg: i2c2_osda2_pcfg {
+		};
+		i2c2_oscl2_pcfg: i2c2_oscl2_pcfg {
+		};
+		diseqc_out_dig_pcfg: diseqc_out_dig_pcfg {
+		};
+		diseqc_in_dig_pcfg: diseqc_in_dig_pcfg {
+		};
+	};
+
+	pm_pinconf: pinconf@1c022a00 {
+		compatible = "mediatek,mt5896-pinconf";
+		reg = <0x0 0x1c022a00 0x0 0x400>;
+		#pinctrl-cells = <1>;
+		pinctrl-mtk,register-width = <8>;
+		pinctrl-mtk,function-mask = <0xff>;
+
+		/* rgmii */
+		rgmii_tx_pcfg: rgmii_tx_pcfg {
+		};
+		/* rgmii extend node */
+		rgmii_tx_ext1_pcfg: rgmii_tx_ext1_pcfg {
+		};
+		/* end of rgmii */
+
+		/* pm ts */
+		ts_cilink_tx_demod0_pcfg_shared: ts_cilink_tx_demod0_pcfg_shared {
+		};
+
+		ts_cilink_tx_clk_pcfg_shared: ts_cilink_tx_clk_pcfg_shared {
+		};
+		/* end of pm ts */
+
+		opctrl0_pcfg: opctrl0_pcfg {
+		};
+		opctrl1_pcfg: opctrl1_pcfg {
+		};
+		opctrl2_pcfg: opctrl2_pcfg {
+		};
+		opctrl3_pcfg: opctrl3_pcfg {
+		};
+		opctrl4_pcfg: opctrl4_pcfg {
+		};
+		opctrl5_pcfg: opctrl5_pcfg {
+		};
+		opctrl6_pcfg: opctrl6_pcfg {
+		};
+		opctrl7_pcfg: opctrl7_pcfg {
+		};
+		opctrl8_pcfg: opctrl8_pcfg {
+		};
+		opctrl9_pcfg: opctrl9_pcfg {
+		};
+		opctrl10_pcfg: opctrl10_pcfg {
+		};
+		opctrl11_pcfg: opctrl11_pcfg {
+		};
+		opctrl12_pcfg: opctrl12_pcfg {
+		};
+		opctrl13_pcfg: opctrl13_pcfg {
+		};
+		opctrl14_pcfg: opctrl14_pcfg {
+		};
+		opctrl15_pcfg: opctrl15_pcfg {
+		};
+		opctrl16_pcfg: opctrl16_pcfg {
+		};
+		opctrl17_pcfg: opctrl17_pcfg {
+		};
+		opctrl18_pcfg: opctrl18_pcfg {
+		};
+		opctrl19_pcfg: opctrl19_pcfg {
+		};
+		opctrl20_pcfg: opctrl20_pcfg {
+		};
+		opctrl21_pcfg: opctrl21_pcfg {
+		};
+		opctrl22_pcfg: opctrl22_pcfg {
+		};
+		u2tx_pcfg: u2tx_pcfg {
+		};
+		u2rx_pcfg: u2rx_pcfg {
+		};
+		ddca_da_pcfg: ddca_da_pcfg {
+		};
+		ddca_ck_pcfg: ddca_ck_pcfg {
+		};
+		pwr_ctrl_pcfg: pwr_ctrl_pcfg {
+		};
+		irin_pcfg: irin_pcfg {
+		};
+		led_pwm0_pcfg: led_pwm0_pcfg {
+		};
+		led_pwm1_pcfg: led_pwm1_pcfg {
+		};
+		led_pwm2_pcfg: led_pwm2_pcfg {
+		};
+		led_pwm3_pcfg: led_pwm3_pcfg {
+		};
+		phyled0_pcfg: phyled0_pcfg {
+		};
+		phyled1_pcfg: phyled1_pcfg {
+		};
+		hdmi_cec_pcfg: hdmi_cec_pcfg {
+		};
+		hdmi_a_hpd_pcfg: hdmi_a_hpd_pcfg {
+		};
+		hdmi_a_pwr5v_pcfg: hdmi_a_pwr5v_pcfg {
+		};
+		hdmi_a_sda_pcfg: hdmi_a_sda_pcfg {
+		};
+		hdmi_a_scl_pcfg: hdmi_a_scl_pcfg {
+		};
+		hdmi_b_hpd_pcfg: hdmi_b_hpd_pcfg {
+		};
+		hdmi_b_pwr5v_pcfg: hdmi_b_pwr5v_pcfg {
+		};
+		hdmi_b_sda_pcfg: hdmi_b_sda_pcfg {
+		};
+		hdmi_b_scl_pcfg: hdmi_b_scl_pcfg {
+		};
+		hdmi_c_hpd_pcfg: hdmi_c_hpd_pcfg {
+		};
+		hdmi_c_pwr5v_pcfg: hdmi_c_pwr5v_pcfg {
+		};
+		hdmi_c_sda_pcfg: hdmi_c_sda_pcfg {
+		};
+		hdmi_c_scl_pcfg: hdmi_c_scl_pcfg {
+		};
+		hdmi_d_hpd_pcfg: hdmi_d_hpd_pcfg {
+		};
+		hdmi_d_pwr5v_pcfg: hdmi_d_pwr5v_pcfg {
+		};
+		hdmi_d_sda_pcfg: hdmi_d_sda_pcfg {
+		};
+		hdmi_d_scl_pcfg: hdmi_d_scl_pcfg {
+		};
+		i2c_tu_sda_pcfg: i2c_tu_sda_pcfg {
+		};
+		i2c_tu_scl_pcfg: i2c_tu_scl_pcfg {
+		};
+		dmic_bck_pcfg: dmic_bck_pcfg {
+		};
+		dmic_sd0_pcfg: dmic_sd0_pcfg {
+		};
+		dmic_sd1_pcfg: dmic_sd1_pcfg {
+		};
+		pmu_rstctl_pcfg: pmu_rstctl_pcfg {
+		};
+		pmu_bl_on_pcfg: pmu_bl_on_pcfg {
+		};
+		pmu_p_hl_pcfg: pmu_p_hl_pcfg {
+		};
+		pmu_p_on1_pcfg: pmu_p_on1_pcfg {
+		};
+		pmu_p_on2_pcfg: pmu_p_on2_pcfg {
+		};
+		rgmii_txctl_pcfg: rgmii_txctl_pcfg {
+		};
+		rgmii_txc_pcfg: rgmii_txc_pcfg {
+		};
+		rgmii_txd0_pcfg: rgmii_txd0_pcfg {
+		};
+		rgmii_txd1_pcfg: rgmii_txd1_pcfg {
+		};
+		rgmii_txd2_pcfg: rgmii_txd2_pcfg {
+		};
+		rgmii_txd3_pcfg: rgmii_txd3_pcfg {
+		};
+		rgmii_rxc_pcfg: rgmii_rxc_pcfg {
+		};
+		rgmii_rxctl_pcfg: rgmii_rxctl_pcfg {
+		};
+		rgmii_rxd0_pcfg: rgmii_rxd0_pcfg {
+		};
+		rgmii_rxd1_pcfg: rgmii_rxd1_pcfg {
+		};
+		rgmii_rxd2_pcfg: rgmii_rxd2_pcfg {
+		};
+		rgmii_rxd3_pcfg: rgmii_rxd3_pcfg {
+		};
+		rgmii_mdc_pcfg: rgmii_mdc_pcfg {
+		};
+		rgmii_mdio_pcfg: rgmii_mdio_pcfg {
+		};
+		rgmii_reset_pcfg: rgmii_reset_pcfg {
+		};
+		rgmii_pmeb_pcfg: rgmii_pmeb_pcfg {
+		};
+		pcie2_waken_pcfg: pcie2_waken_pcfg {
+		};
+		pcie2_perstb_pcfg: pcie2_perstb_pcfg {
+		};
+		pcie2_pwr_ctl_pcfg: pcie2_pwr_ctl_pcfg {
+		};
+		pcie2_clkreqn_pcfg: pcie2_clkreqn_pcfg {
+		};
+		cil_rx0_d0_pcfg_shared: cil_rx0_d0_pcfg_shared {
+		};
+		cil_demod0_clk_pcfg_shared: cil_demod0_clk_pcfg_shared {
+		};
+		cil_tx_clk_pcfg_shared: cil_tx_clk_pcfg_shared {
+		};
+		cil_tx0_d0_pcfg_shared: cil_tx0_d0_pcfg_shared {
+		};
+		cil_tx0_d1_pcfg_shared: cil_tx0_d1_pcfg_shared {
+		};
+		cil_rx_clk_pcfg_shared: cil_rx_clk_pcfg_shared {
+		};
+		cil_rx0_d1_pcfg_shared: cil_rx0_d1_pcfg_shared {
+		};
+		cil_rx1_d1_pcfg_shared: cil_rx1_d1_pcfg_shared {
+		};
+		cil_rx1_d0_pcfg_shared: cil_rx1_d0_pcfg_shared {
+		};
+		cil_tx1_d1_pcfg_shared: cil_tx1_d1_pcfg_shared {
+		};
+		cil_tx1_d0_pcfg_shared: cil_tx1_d0_pcfg_shared {
+		};
+		cil_demod1_clk_pcfg_shared: cil_demod1_clk_pcfg_shared {
+		};
+		spi_clk_pcfg_shared: spi_clk_pcfg_shared {
+		};
+		spi_mosi_pcfg_shared: spi_mosi_pcfg_shared {
+		};
+		spi_miso_pcfg_shared: spi_miso_pcfg_shared {
+		};
+		spi_cs_pcfg_shared: spi_cs_pcfg_shared {
+		};
+		bootup_note_pcfg: bootup_note_pcfg {
+		};
+		u3rx_pcfg: u3rx_pcfg {
+		};
+		u3tx_pcfg: u3tx_pcfg {
+		};
+		smart_card2_pcfg_shared: smart_card2_pcfg_shared {
+		};
+		ci_reset_pcfg_shared: ci_reset_pcfg_shared {
+		};
+		int_pcfg_shared: int_pcfg_shared {
+		};
+		vid0_pcfg: vid0_pcfg {
+		};
+	};
+
+	gpio0: gpio@1c2e6000 {
+		compatible = "mediatek,mt5896-gpio";
+		reg = <0x0 0x1c2e6000 0x0 0x200>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <139>;
+		base = <0>;
+		max-ngpios = <200>; /* for uboot gpio_renumber */
+		pinctrl-parent = <&pinctrl>;
+	};
+
+	pm_gpio0: gpio@1c023000 {
+		compatible = "mediatek,mt5896-gpio";
+		reg = <0x0 0x1c023000 0x0 0x200>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <97>;
+		base = <200>;
+		max-ngpios = <200>; /* for uboot gpio_renumber */
+		pinctrl-parent = <&pm_pinctrl>;
+		status = "okay";
+	};
+
+	pm_gpio1: pm_gpio1 {
+		compatible = "mediatek,mt5896-gpio";
+		reg = <0x0 0x1c023000 0x0 0x200>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <97>;
+		base = <200>;
+		max-ngpios = <200>; /* for uboot gpio_renumber */
+		pinctrl-parent = <&pm_pinctrl>;
+		status = "disabled";
+	};
+
+	ktf_nonpm_gpio0: ktf_nonpm_gpio_0 {
+		compatible = "mediatek,ktf-nonpm-gpio";
+	};
+
+	gpio_front_led: front_leds {
+	};
+	gpio_breath_led: breath_leds {
+		compatible = "breath-leds";
+		//mboxes = <&mailbox_to_cm4 MBOX_CHAN_ID_LED>;
+		mboxes = <&mailbox_to_pm51 MBOX_CHAN_ID_LED>;
+	};
+
+	customer_flag_gpios: customer-flag-gpios-node {
+		compatible = "mediatek,customer-flag-gpios";
+		customer-flag-gpios = <&pm_gpio0 4 0>;
+	};
+
+    /* for reset button GPIO */
+	reset_button_gpios: reset-button-gpios-node {
+	};
+};
