@@ -1,0 +1,86 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ */
+
+/dts-v1/;
+#include "mt5896.dtsi"
+#ifdef CONFIG_HAPS
+#include "mt5896-haps-panel.dtsi"
+#include "mt5896-haps.dtsi"
+#else
+#include "mt5896-panel.dtsi"
+#include "mt5896-asic.dtsi"
+#endif
+
+/ {
+	model = "MediaTek MT5896 RFB";
+	platform = "MT9025";
+	compatible = "mediatek,mt5896-rfb", "mediatek,mt5896";
+
+	chosen {
+		stdout-path = &uart0;
+	};
+
+	lx_mem: lx_memory {
+		device_type = "memory";
+	};
+
+	lx_mem2: lx_memory2 {
+		device_type = "memory";
+	};
+
+	lx_mem3: lx_memory3 {
+		device_type = "memory";
+	};
+
+	lx_mem4: lx_memory4 {
+		device_type = "memory";
+	};
+
+	memory_info: memory_info {
+		cpu_emi0_base = <0x20000000>;
+		emi0_base_addr = <0x00000000>;
+	};
+
+	odm: odm {
+		/* reserved for overlay by odm */
+	};
+};
+
+&mmc0{
+    status ="okay";
+    bus-width = <8>;
+    non-removable;
+    max-frequency = <200000000>;
+    device-driving =<0>;
+    emmc-cids-count =<2>;
+    emmc-cids-driving = [
+                        11 01 00 30 31 36 47 30 30 00 01
+                        80 00 00 01 10 11 59 DE 5C 35 01
+                        ];
+};
+
+&ufs0 {
+	status ="okay";
+};
+
+&nand0 {
+	status ="okay";
+};
+
+&pwmpm {
+	/* TODO: PAD mux setting, add pinctrl phandle */
+
+	/* private control setting */
+	/* IP source clock division for each channel, default 0 */
+	div = <0 0 0 0 0 0>;
+	/* enable/disable double buffer for each channel, default disable */
+	double-buffer = <0 0 0 0 0 0>;
+	/* power down value for each channel, default 0 */
+	pd-value = <0 0 0 0 0 0>;
+
+	status = "okay";
+};

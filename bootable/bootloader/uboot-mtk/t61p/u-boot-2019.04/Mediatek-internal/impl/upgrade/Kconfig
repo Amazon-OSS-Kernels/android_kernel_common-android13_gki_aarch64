@@ -1,0 +1,75 @@
+#
+# GPIO infrastructure and common function
+#
+
+menu "Mediatek Upgrade Support"
+
+config MTK_UPGRADE
+    bool "Enable MTK Upgrade"
+    default y
+    help
+      Enable MTK upgrade implement.
+      (including USB, OAD, NET upgrade)
+
+config USB_UPGRADE
+    bool "Enable USB Upgrade"
+    depends on MTK_UPGRADE
+    default y
+    help
+      Enable USB upgrade function.
+
+config MTK_INTERNAL_USB_UPGRADE_SCRIPPT
+    bool "Enable MTK Internel USB Upgrade Script"
+    depends on MTK_UPGRADE
+    default n
+    help
+      Enable MTK Internel USB Upgrade Script.	  
+
+config OAD_UPGRADE
+    bool "Enable OAD and Updatelogic Upgrade"
+    depends on MTK_UPGRADE
+    default y
+    help
+      Enable OAD/Updatelogic upgrade function.
+
+config UPGRADE_OSD
+    bool "Enable Upgrade OSD"
+    depends on USB_UPGRADE
+    help
+      Enable upgrade OSD(On Screen Display).
+      The screen will show the progress of the current update.
+      If unsure, say 'N'.
+
+config LVGL_UPGRADE_BAR
+    bool "LVGL_UPGRADE_BAR"
+    depends on UPGRADE_OSD
+    help
+      Use libLVGL paint upgrade bar.
+
+config SECURE_UPGRADE_V2
+    bool "Enable Secure Upgrade V2"
+    depends on USB_UPGRADE
+    help
+      Enable secure upgrade version 2.
+      If unsure, say 'N'.
+
+config SECURE_AES256_SHA384
+    bool "Use AES256 and SHA384"
+    depends on SECURE_UPGRADE_V2
+    default y
+    help
+      Use AES256/SHA384 to decrypt and hash upgrade.bin .
+
+config SECURE_HW_IP
+    bool "Use HW Driver"
+    depends on SECURE_UPGRADE_V2
+    help
+      Use HW drivers AES, RSA, SHA to replace SW solution .
+
+config USB_AUTO_UPGRADE
+    bool "Enable USB Auto Upgrade"
+    depends on USB_UPGRADE
+    help
+      Enable USB auto-upgrade when AC and DC on.
+      If unsure, say 'N'.
+endmenu

@@ -1,0 +1,14 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ */
+
+&mmc0{
+    cap-mmc-highspeed;
+    mmc-ddr-1_8v;
+    mmc-hs200-1_8v;
+    mmc-hs400-1_8v;
+    mmc-hs400-enhanced-strobe;
+};
