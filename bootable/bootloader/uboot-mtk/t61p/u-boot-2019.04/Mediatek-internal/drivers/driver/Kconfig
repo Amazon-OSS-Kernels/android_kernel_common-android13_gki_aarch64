@@ -1,0 +1,374 @@
+#
+# GPIO infrastructure and drivers
+#
+
+menu "Mediatek Driver Support"
+
+config API_GFX
+    bool "Enable GFX option"
+    default y
+    help
+      Enable compilation option for API GFX.
+
+config GFX_TRAPZOID
+    bool "Enable GFX TRAPZOID"
+    default y
+    help
+      Select if you want to enable GFX TRAPZOID. If unsure, say 'N'.
+
+config API_GOP
+    bool "Enable API_GOP option"
+    default y
+    help
+      Enable compilation option for API GOP.
+
+config GOP_POOL_ARRANGE
+    bool "Enable GOP POOL ARRANGE"
+    default y
+    help
+      Select if you want to enable GOP POOL ARRANGE. If unsure, say 'N'.
+
+config GOP_GWIN_MISC
+    bool "Enable GOP GWIN MISC"
+    default y
+    help
+      Select if you want to enable GOP GWIN MISC. If unsure, say 'N'.
+
+config GOP_2ND_PAL
+    bool "Enable GOP 2ND PAL"
+    default y
+    help
+      Select if you want to enable GOP 2ND Palette. If unsure, say 'N'.
+
+config GOP_BG
+    bool "Enable GOP background"
+    default y
+    help
+      Select if you want to enable GOP Back Ground. If unsure, say 'N'.
+
+config GOP_FADE
+    bool "Enable GOP FADE"
+    default y
+    help
+      Select if you want to enable GOP FADE. If unsure, say 'N'.
+
+config GOP_YUV_SWAP
+    bool "Enable GOP YUV SWAP"
+    default y
+    help
+      Select if you want to enable GOP YUV SWAP. If unsure, say 'N'.
+
+config GOP_CONTRAST
+    bool "Enable GOP CONTRAST"
+    default y
+    help
+      Select if you want to enable GOP CONTRAST. If unsure, say 'N'.
+
+config GOP_VE_CAPTURE
+    bool "Enable GOP VE CAPTURE"
+    default y
+    help
+      Select if you want to enable GOP VE CAPTURE. If unsure, say 'N'.
+
+config GOP_SCROLL
+    bool "Enable GOP SCROLL"
+    default y
+    help
+      Select if you want to enable GOP SCROLL. If unsure, say 'N'.
+
+config GOP_TEST_PATTERN
+    bool "Enable GOP TEST PATTERN"
+    default y
+    help
+      Select if you want to enable GOP TEST PATTERN. If unsure, say 'N'.
+
+config GOP_AFBC_FEATURE
+    bool "Enable GOP AFBC FEATURE"
+    default y
+    help
+      Select if you want to enable GOP AFBC feature. If unsure, say 'N'.
+
+config GOP_CSC_MATRIX
+    bool "Enable GOP CSC MATRIX"
+    default y
+    help
+      Select if you want to enable GOP programable 3*3 matrix. If unsure, say 'N'.
+
+config GOP_DST_OP_DUAL_RATE
+    bool "Enable dst op dual rate"
+    default y
+    help
+      Select if you want to enable GOP OP DUAL RATE. If unsure, say 'N'.
+
+config GOP_DST_FRC
+    bool "Enable dst frc"
+    default y
+    help
+      Select if you want to enable GOP FRC. If unsure, say 'N'.
+
+config GOP_SCALING_DOWN
+    bool "Enable GOP scaling down"
+    default y
+    help
+      Select if you want to enable GOP scaling down. If unsure, say 'N'.
+
+config GOP_DEBUG_LEVEL
+    bool "Enable GOP debug level"
+    default y
+    help
+      Select if you want to enable GOP debug level. If unsure, say 'N'.
+
+config MBOOT
+    bool "Enable MBOOT option"
+    help
+      Enable compilation option for MBOOT.
+
+config ENABLE_DEMURA
+    bool "Demura Support"
+    default n
+    help
+        Enable DeMura Function
+
+config ENABLE_EEPROM
+    bool "Eeprom Support"
+    default n
+    help
+        Enable Eeprom Function.
+
+if(ENABLE_DEMURA)
+    config DEMURA_SPI_BUS
+    string "SPI Bus for Demura Read"
+    default "1:0"
+    help
+        Fill the spi for demura function
+
+    config DEMURA_BIN_PARTITION
+    string "Partition for Demura Bin"
+    default "persist"
+    help
+        Fill the partition for demura bin
+
+    config DEMURA_BIN_PATH
+    string "Path for Demura Bin"
+    default "/demura_out.bin"
+    help
+        Fill the path for demura bin
+
+    config DEMURA_BIN_PATH_DLG
+    string "Path for Demura_DLG Bin"
+    default "/demura_out2.bin"
+    help
+        Fill the path for demura_DLG bin
+
+    config DEMURA_FCIC
+    bool "DEMURA_FCIC"
+    default n
+    help
+        Selecting this item will enable FCIC-Demura-IP
+
+    config DEMURA_SIW
+    bool "DEMURA_SIW"
+    default n
+    help
+        Selecting this item will enable LXS(SIW)-Demura-IP
+
+    config DEMURA_MSTAR
+    bool "DEMURA_MTK"
+    default y
+    help
+        Selecting this item will enable Mstar-Demura-IP
+
+if(DEMURA_MSTAR)
+config ENABLE_DEMURA_DLG
+    bool "Demura DLG Support"
+    default y
+    help
+        Enable DeMura DLG Function
+
+choice
+    prompt "Select Demura Vendor"
+    default DEMURA_VENDOR_MSTAR
+
+    config DEMURA_VENDOR_MSTAR
+    bool "DEMURA_VENDOR_MSTAR"
+    help
+        Selecting this item will enable Mstar-Demura
+
+    config DEMURA_VENDOR_CSOT
+    bool "DEMURA_VENDOR_CSOT"
+    help
+        Selecting this item will enable CSOT-Demura
+
+    config DEMURA_VENDOR_AUO
+    bool "DEMURA_VENDOR_AUO"
+    help
+        Selecting this item will enable AUO-Demura
+
+    config DEMURA_VENDOR_INNOLUX
+    bool "DEMURA_VENDOR_INNOLUX"
+    help
+        Selecting this item will enable Innolux-Demura
+
+    config DEMURA_VENDOR_LGD
+    bool "DEMURA_VENDOR_LGD"
+    help
+        Selecting this item will enable LGDisplay-Demura
+
+    config DEMURA_VENDOR_CHOT
+    bool "DEMURA_VENDOR_CHOT"
+    help
+        Selecting this item will enable CHOT-Demura
+
+    config DEMURA_VENDOR_NOVA
+    bool "DEMURA_VENDOR_NOVA"
+    help
+        Selecting this item will enable NOVA-Demura
+
+    config DEMURA_VENDOR_SDC
+    bool "DEMURA_VENDOR_SDC"
+    help
+        Selecting this item will enable SDC-Demura
+
+    config DEMURA_VENDOR_CSOT_HISILICON
+    bool "DEMURA_VENDOR_CSOT_HISILICON"
+    help
+        Selecting this item will enable CSOT_HISILICON-Demura
+
+    config DEMURA_VENDOR_MULTI
+    bool "DEMURA_VENDOR_MULTI"
+    help
+        Selecting this item will enable MULTI-Demura
+endchoice
+
+if(DEMURA_VENDOR_MULTI)
+choice
+    prompt "Select Panel Vendor"
+    default PANEL_VENDOR_MTK_FORMAT
+
+    config PANEL_VENDOR_AUO
+    bool "PANEL_VENDOR_AUO"
+    help
+        Selecting this item will enable AUO panel type for Demura
+
+    config PANEL_VENDOR_LGD_V18
+    bool "PANEL_VENDOR_LGD_V18"
+    help
+        Selecting this item will enable LGD V18
+
+    config PANEL_VENDOR_LGD_SQ18_19_MONO
+    bool "PANEL_VENDOR_LGD_SQ18_19_MONO"
+    help
+        Selecting this item will enable LGD SQ V18 V19 MONO
+
+    config PANEL_VENDOR_LGD_SQ18_19_COLOR
+    bool "PANEL_VENDOR_LGD_SQ18_19_COLOR"
+    help
+        Selecting this item will enable LGD SQ V18 V19 COLOR
+
+    config PANEL_VENDOR_LGD_V19_MONO
+    bool "PANEL_VENDOR_LGD_V19_MONO"
+    help
+        Selecting this item will enable LGD V19 MONO
+
+    config PANEL_VENDOR_LGD_V19_COLOR
+    bool "PANEL_VENDOR_LGD_V19_COLOR"
+    help
+        Selecting this item will enable LGD V19 COLOR
+
+    config PANEL_VENDOR_NOVA
+    bool "PANEL_VENDOR_NOVA"
+    help
+        Selecting this item will enable NOVA
+
+    config PANEL_VENDOR_CSOT_HISILICON
+    bool "PANEL_VENDOR_CSOT_HISILICON"
+    help
+        Selecting this item will enable CSOT HISILICON
+
+    config PANEL_VENDOR_CSOT_HIMAX
+    bool "PANEL_VENDOR_COST_HIMAX"
+    help
+        Selecting this item will enable CSOT HIMAX
+
+    config PANEL_VENDOR_SDC
+    bool "PANEL_VENDOR_SDC"
+    help
+        Selecting this item will enable SDC
+
+    config PANEL_VENDOR_INX
+    bool "PANEL_VENDOR_INX"
+    help
+        Selecting this item will enable Innolux
+
+    config PANEL_VENDOR_CSOT_CSOT
+    bool "PANEL_VENDOR_CSOT_CSOT"
+    help
+        Selecting this item will enable CSOT_CSOT
+
+    config PANEL_VENDOR_HKC_NOVA
+    bool "PANEL_VENDOR_HKC_NOVA"
+    help
+        Selecting this item will enable HKC
+
+    config PANEL_VENDOR_MTK_FORMAT
+    bool "PANEL_VENDOR_MTK_FORMAT"
+    help
+        Selecting this item will enable MTK format-Demura
+endchoice
+
+
+choice
+    prompt "Select Bin Format"
+    default MTK_DEMURA_UFC_BIN
+
+    config MTK_DEMURA_DMC_BIN
+    bool "MTK_DEMURA_DMC_BIN"
+    help
+        Selecting this item will enable dmc bin
+
+    config MTK_DEMURA_UFC_BIN
+    bool "MTK_DEMURA_UFC_BIN"
+    help
+        Selecting this item will enable ufc bin
+endchoice
+
+
+if(DEMURA_VENDOR_LGD)
+choice
+    prompt "Select LGD version"
+    config DEMURA_VENDOR_LGD_V19
+        bool "DEMURA_VENDOR_LGD_V19"
+        help
+            Selecting this item will enable V19 LGDisplay-Demura
+
+    config DEMURA_VENDOR_LGD_SQ18_19
+        bool "DEMURA_VENDOR_LGD_SQ18_19"
+        help
+            Selecting this item will enable SQ18_19 LGDisplay-Demura
+
+    config DEMURA_VENDOR_LGD_V18
+        bool "DEMURA_VENDOR_LGD_V18"
+        help
+            Selecting this item will enable V18 LGDisplay-Demura
+endchoice
+
+if(DEMURA_VENDOR_LGD_V19 || DEMURA_VENDOR_LGD_SQ18_19)
+choice
+    prompt "Select Demura CIC or CUC"
+    config DEMURA_VENDOR_LGD_CIC_ONLY
+        bool "DEMURA_VENDOR_LGD_CIC_ONLY"
+        help
+            Selecting this item will enable CIC_ONLY LGDisplay-Demura
+
+    config DEMURA_VENDOR_LGD_CIC_CUC
+        bool "DEMURA_VENDOR_LGD_CIC_CUC"
+        help
+            Selecting this item will enable CIC_CUC LGDisplay-Demura
+endchoice
+
+endif
+endif
+endif
+endif
+endif
+endmenu
