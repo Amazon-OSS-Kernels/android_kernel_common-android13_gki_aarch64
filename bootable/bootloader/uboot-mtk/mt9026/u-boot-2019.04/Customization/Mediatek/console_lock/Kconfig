@@ -1,0 +1,24 @@
+#
+# Console lock configuration
+#
+
+menu "Mediatek Console Lock Support"
+
+config CONSOLE_LOCK
+	bool "Enable Console Lock feature"
+	depends on MMC_MTK_DTV
+	default n
+	help
+	  Enable console lock / log enable feature.
+	  To enable / disable uart output by config log enable bit.
+	  To enable / disable log enable bit configurable by console lock
+
+config CONSOLE_UNLOCK_USB
+	bool "Enable Console Unlock Usb feature"
+	depends on MMC_MTK_DTV
+	default n
+	help
+	  Enable console unlock usb feature.
+	  To enable / disable unlock console by using response file in usb.
+
+endmenu

@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+/ {
+	pwm:pwmscan0 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487600 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <0>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+	};
+
+	pwmu1:pwmscan1 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487640 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <1>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu2:pwmscan2 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487680 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <2>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu3:pwmscan3 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c4876c0 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <3>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu4:pwmscan4 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487700 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <4>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu5:pwmscan5 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487740 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <5>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu6:pwmscan6 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c487780 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <6>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+
+	pwmu7:pwmscan7 {
+		compatible = "mediatek,mt5896-pwm";
+		reg = <0x0 0x1c4877c0 0x0 0x200>,
+			<0x0 0x1c206000 0x0 0x4000>;
+		/* clocks = <&CLK_pwm>; */
+		reg-names = "scanpwm",
+				"clkgen1_nonpm";
+		channel = <7>;
+		shift = <0>;
+		div = <0>;
+		rst-mux = <0>;
+		rst-vsync = <0>;
+		rstcnt = <0>;
+		#pwm-cells = <2>;
+		status = "disabled";
+	};
+};

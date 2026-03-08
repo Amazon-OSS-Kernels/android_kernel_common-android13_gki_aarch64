@@ -1,0 +1,3 @@
+# Mediatek Drivers
+
+source "Mediatek-internal/drivers/driver/Kconfig"
