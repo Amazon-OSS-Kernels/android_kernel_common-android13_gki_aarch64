@@ -169,7 +169,7 @@ int chk_cmd_lockdown(const char* command)
 const unsigned char *amzn_get_unlock_key(unsigned int *key_len)
 {
 	static const unsigned char unlock_key[] =
-#if (defined(SBOOT_ABC_BOARD)||defined(SBOOT_GOLDFINCH_BOARD)||defined(SBOOT_ABC_BOARD))
+#if (defined(SBOOT_WYOMING_BOARD)||defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABC_BOARD))
 	{ MT9025_3P_UNLOCK_PUBKEY };
 #elif (defined(SBOOT_ABCEU_BOARD))
         { MT9025_1P_ABCEU_UNLOCK_PUBKEY };
@@ -448,12 +448,12 @@ int amzn_yk_get_pub_key_list(const amzn_yk_pub_key_t **key_list)
 #if defined(UFBL_PROJ_ABC)
 		{YUBIKEY_PUB_KEY_TAG_ABC_LP, g_yubikey_unlock_public_key_ABC_lp,
 				sizeof(g_yubikey_unlock_public_key_ABC_lp)},
-#elif defined(UFBL_PROJ_GOLDFINCH)
-		{YUBIKEY_PUB_KEY_TAG_GOLDFINCH_GP, g_yubikey_unlock_public_key_goldfinch_gp,
-				sizeof(g_yubikey_unlock_public_key_goldfinch_gp)},
 #elif defined(UFBL_PROJ_ABC)
-		{YUBIKEY_PUB_KEY_TAG_ABC_WP, g_yubikey_unlock_public_key_ABC_wp,
-				sizeof(g_yubikey_unlock_public_key_ABC_wp)},
+		{YUBIKEY_PUB_KEY_TAG_ABC_GP, g_yubikey_unlock_public_key_ABC_gp,
+				sizeof(g_yubikey_unlock_public_key_ABC_gp)},
+#elif defined(UFBL_PROJ_WYOMING)
+		{YUBIKEY_PUB_KEY_TAG_WYOMING_WP, g_yubikey_unlock_public_key_wyoming_wp,
+				sizeof(g_yubikey_unlock_public_key_wyoming_wp)},
 #elif defined(UFBL_PROJ_ABC)
 		{YUBIKEY_PUB_KEY_TAG_ABC_GM, g_yubikey_unlock_public_key_ABC_gm,
 				sizeof(g_yubikey_unlock_public_key_ABC_gm)},

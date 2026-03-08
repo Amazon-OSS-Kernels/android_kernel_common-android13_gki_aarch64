@@ -75,11 +75,11 @@ sbvc_result sboot_version_check(char *sboot_buf, int sboot_len, int partition_nu
 	int prod_match = 0;
 	/* const version_bump: sboot version bumped can be different per device */
 	/* It should be updated whenever there's version bump for anti-rollback */
-#if defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#if defined(SBOOT_WYOMING_BOARD)
+	const char *device_name = "WYOMING";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_GOLDFINCH_BOARD)
-	const char *device_name = "GOLDFINCH";
+#elif defined(SBOOT_ABC_BOARD)
+	const char *device_name = "ABC";
 	const unsigned short version_bump = 0;
 #elif defined(SBOOT_ABC_BOARD)
 	const char *device_name = "ABC";
