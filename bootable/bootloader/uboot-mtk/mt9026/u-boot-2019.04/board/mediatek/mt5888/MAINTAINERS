@@ -1,0 +1,7 @@
+MTmt5888
+M:	 <@mediatek.com>
+M:	 <@mediatek.com>
+S:	Maintained
+F:	board/mediatek/mt5888
+F:	include/configs/mt5888.h
+F:	configs/mt5888_rfb_defconfig
