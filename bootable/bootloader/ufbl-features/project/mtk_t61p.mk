@@ -29,12 +29,12 @@ else ifeq ($(TARGET_PRODUCT), ABC)
 DEFINES += -DUFBL_PROJ_ABC
 else ifeq ($(TARGET_PRODUCT), queena)
 DEFINES += -DUFBL_PROJ_QUNEENA
-else ifeq ($(TARGET_PRODUCT), ABC)
-DEFINES += -DUFBL_PROJ_ABC
+else ifeq ($(TARGET_PRODUCT), lassen)
+DEFINES += -DUFBL_PROJ_LASSEN
 FEATURE_REPLAY_PROTECTED_UNLOCK := true
 FEATURE_YUBIKEY_UNLOCK_PUB_KEY_TAG := true
-else ifeq ($(TARGET_PRODUCT), ABC)
-DEFINES += -DUFBL_PROJ_ABC
+else ifeq ($(TARGET_PRODUCT), goldfinch)
+DEFINES += -DUFBL_PROJ_GOLDFINCH
 FEATURE_REPLAY_PROTECTED_UNLOCK := true
 FEATURE_YUBIKEY_UNLOCK_PUB_KEY_TAG := true
 else ifeq ($(TARGET_PRODUCT), wyoming)
@@ -118,10 +118,10 @@ DEFINES += -DUFBL_FEATURE_YUBIKEY_UNLOCK_PUB_KEY_TAG
 # Since Yubikey tag is so important and it can only be provisioned once.
 # So define them as macro and collect all values here together for Diag
 # team to get correct values easily.
-ifeq ($(TARGET_PRODUCT), ABC)
-DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABC_LP=\"ABC-lp\"
-else ifeq ($(TARGET_PRODUCT), ABC)
-DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABC_GP=\"ABC-gp\"
+ifeq ($(TARGET_PRODUCT), lassen)
+DEFINES += -DYUBIKEY_PUB_KEY_TAG_LASSEN_LP=\"lassen-lp\"
+else ifeq ($(TARGET_PRODUCT), goldfinch)
+DEFINES += -DYUBIKEY_PUB_KEY_TAG_GOLDFINCH_GP=\"goldfinch-gp\"
 else ifeq ($(TARGET_PRODUCT), wyoming)
 DEFINES += -DYUBIKEY_PUB_KEY_TAG_WYOMING_WP=\"wyoming-wp\"
 else ifeq ($(TARGET_PRODUCT), ABC)
@@ -136,6 +136,7 @@ DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABC_DT=\"ABC-dt\"
 else ifeq ($(TARGET_PRODUCT), ABCeu)
 DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABCEU_GM=\"ABCeu-gm\"
 DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABCEU_SP=\"ABCeu-sp\"
+DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABCEU_MT=\"ABCeu-mt\"
 else ifeq ($(TARGET_PRODUCT), ABC)
 DEFINES += -DYUBIKEY_PUB_KEY_TAG_ABC_FF=\"ABC-ff\"
 endif

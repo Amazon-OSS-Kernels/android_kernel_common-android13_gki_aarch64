@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <config.h>
 #include <common.h>
@@ -443,10 +443,22 @@ static int PWM_init(bool onoff)
         UBOOT_DEBUG("u32PWMtoBLdelay = 0x%x\n",u32PWMtoBLdelay);
 
         if (onoff)
+        {
           SetPWM(u32PWMPeriod[i],u32PWMDuty[i], u32PWMDIV[i],
                  PWMPort[i],pwm_setting.m_bPolPWM[i], u32PWMDutyInit[i], u32PWMDutyDelay[i]);
+        }
+        else if (pwm_setting.m_bPolPWM[i])
+        {
+          // The case of PWM polarity 1, need to set PWM high level, after circuit transfer to minimum level of backlight
+          // Here set period=duty=0, PWM will output high level.
+          // And cannot set polarity here, or it will becomes low level.
+          SetPWM(0, 0, 0,PWMPort[i],0, u32PWMDutyInit[i], u32PWMDutyDelay[i]);
+        }
         else
-          SetPWM(0, 0, 0,PWMPort[i],1, u32PWMDutyInit[i], u32PWMDutyDelay[i]);
+        {
+          // The case of PWM polarity 0, SetPWM should not be called.
+          // SetPWM will enable PWM and start to output waveform even duty set to 0
+        }
     }
     return 0;
 }
@@ -919,7 +931,7 @@ int mtk_panel_check_DLG_supported_version(int version)
 	return ret;
 }
 
-int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl)
+int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl, bool using_tcon_en)
 {
 	struct udevice *dev;
 	struct gpio_desc gpio_vcc;
@@ -933,7 +945,7 @@ int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl)
 		return -1;
 	}
 
-	if (pm_check_back_ground_active() == 0)
+	if ((pm_check_back_ground_active() == 0) || using_tcon_en)
 	{
 		//enable VCC gpio
 		if(vcc_bl_cusctrl != 1){
@@ -1016,7 +1028,7 @@ int mtk_panel_init_device(void)
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
     mtk_pnl_cust_settings_befor_vcc(&multi_cust_ic);
 #endif
-	mtk_set_panel_vcc_cusctrl(panelpara.m_bVccBlCusCtrl);
+	mtk_set_panel_vcc_cusctrl(panelpara.m_bVccBlCusCtrl, panelpara.using_tcon_en);
 
     uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     uclass_get_device_by_name(UCLASS_DISPLAY, "ext_video_out", &dev);
@@ -1171,6 +1183,7 @@ int mtk_panel_enable(bool en)
     int ret = 0;
     unsigned long lCurrentTimer = 0;
     unsigned long lModOnDelayTime = 0;
+    bool bqhq_en = 0;
 
     //struct dm_display_ops *ops = display_get_ops(dev);
     struct display_timing timing;
@@ -1188,6 +1201,22 @@ int mtk_panel_enable(bool en)
         timing.flags = 1<<5; //set active high bit
     else
         timing.flags = 1<<4; //set active low bit
+
+    if ((pm_check_back_ground_active() == 1) &&
+        (panelpara.using_tcon_en == 0))
+    {
+        UBOOT_INFO("QHB case, do_panel_output_enable return\n");
+        bqhq_en = 1;
+    }
+    else
+    {
+        UBOOT_DEBUG("NOT QHB case, do_panel_output_enable continuous\n");
+    }
+
+    if (bqhq_en)
+    {
+        return 0;
+    }
 
     ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     if (!ret) {
@@ -1311,6 +1340,12 @@ int mtk_panel_mute(bool en)
         timing.flags = 1<<MUTE_ENABLE_BIT; //set active high bit
     else
         timing.flags = 1<<MUTE_DISABLE_BIT; //set active low bit
+
+    if ((pm_check_back_ground_active() == 1) &&
+	  panelpara.using_tcon_en && (en == false)) {
+	  UBOOT_DEBUG("[mtk_panel_mute] QHB+TCONLESS case, no need to disable mute\n");
+        return 0;
+    }
 
     ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     if (!ret) {

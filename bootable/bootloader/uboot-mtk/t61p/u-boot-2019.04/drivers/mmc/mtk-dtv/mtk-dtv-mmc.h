@@ -171,6 +171,8 @@ struct emmc_crypto_disable_info {
 #define READ_TIMEOUT      5000000
 
 #define MAX_TIME_WAIT_N_BLK_END_MASK (BIT(32) - 1)
+#define WRITE_SINGLE_BLK_TIMEOUT 5000000
+#define READ_TIMEOUT      5000000
 
 #endif
 

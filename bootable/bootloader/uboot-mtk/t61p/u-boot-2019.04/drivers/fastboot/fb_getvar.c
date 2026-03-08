@@ -293,6 +293,12 @@ static void getvar_serialno(char *var_parameter, char *response)
 {
 	const char *tmp = env_get("serial#");
 
+	if (tmp) {
+		fastboot_okay(tmp, response);
+		return;
+	}
+
+	tmp = env_get("serialno");
 	if (tmp)
 		fastboot_okay(tmp, response);
 	else
@@ -578,17 +584,17 @@ static void getvar_product_variant(char *var_parameter, char *response)
 	char ammo_var[PROD_VAR_SIZE+1] = {0,};
 
 	idme_get_oem_data_field("ammo_var=", ammo_var, PROD_VAR_SIZE);
-	/* following if condition is only for wyoming, ABC, ABC */
+	/* following if condition is only for wyoming, goldfinch, lassen */
 	/* and ABC as AMMO is enabled in the middle of development    */
 	if (!(strcmp(ammo_var, ""))) {
 		const char *board_name = env_get("board");
 
 		if (!(strcmp(board_name, "wyoming")))
 			sprintf(ammo_var, "wyoming-wp");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-gp");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-lp");
+		else if (!(strcmp(board_name, "goldfinch")))
+			sprintf(ammo_var, "goldfinch-gp");
+		else if (!(strcmp(board_name, "lassen")))
+			sprintf(ammo_var, "lassen-lp");
 		else if (!(strcmp(board_name, "ABC")))
 			sprintf(ammo_var, "ABC-ca");
 		else if (!(strcmp(board_name, "ABCeu")))

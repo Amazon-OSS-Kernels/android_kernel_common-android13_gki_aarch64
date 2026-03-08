@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef __eMMC_CONFIG_H__
 #define __eMMC_CONFIG_H__
@@ -74,8 +74,8 @@
 #define TIME_WAIT_FIFOCLK_RDY          HW_TIMER_DELAY_10ms
 #define TIME_WAIT_CMDRSP_END           HW_TIMER_DELAY_10ms
 #define TIME_WAIT_R_1_BLK_END          HW_TIMER_DELAY_100ms
-#define TIME_WAIT_1_BLK_END            (HW_TIMER_DELAY_1s*1)
-#define TIME_WAIT_n_BLK_END            (HW_TIMER_DELAY_1s*2) // safe for 512 blocks
+#define TIME_WAIT_1_BLK_END            (HW_TIMER_DELAY_1s*5)
+#define TIME_WAIT_n_BLK_END            (HW_TIMER_DELAY_1s*10) // safe for 512 blocks
 #endif
 
 #endif /* __eMMC_CONFIG_H__ */

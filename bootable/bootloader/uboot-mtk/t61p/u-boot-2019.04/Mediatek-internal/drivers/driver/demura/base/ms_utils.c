@@ -284,7 +284,7 @@ MS_BOOL init_spi_flash(void)
 {
     char cmd[256];
     char *cfg_bypass_spi = env_get(DEMURA_ENV_BYPASS_SPI);
-    st_panel_spi_info panel_spi_bus;
+    st_panel_spi_info panel_spi_bus = {0};
 
     if (cfg_bypass_spi)
     {
@@ -337,7 +337,10 @@ MS_BOOL read_spi_flash(MS_U8 *pBuf, MS_U32 pos, MS_U32 length)
         }
     }
     memset(cmd, 0, sizeof(cmd));
-    snprintf(cmd, sizeof(cmd), "sf read %p 0x%x 0x%x", pBuf, (unsigned int)pos, (unsigned int)length);
+    if (snprintf(cmd, sizeof(cmd), "sf read %p 0x%x 0x%x", pBuf, (unsigned int)pos, (unsigned int)length) < 0)
+    {
+        return FALSE;
+    }
     if (run_command(cmd, 0) != 0)
     {
         printf("command(%s) error\n", cmd);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <linux/libfdt.h>
@@ -467,6 +467,10 @@ void cus_panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *fi
 	{
 		panel_data->u32panel_type = fdt32_to_cpu(fdt_data->attribute[0]);
 	}
+    if (strstr(fdt_data->field, "TCON_Enable") != NULL)
+    {
+        panel_data->using_tcon_en = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
 }
 
 void panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target)

@@ -1167,6 +1167,9 @@ bool mtk_tcon_panelgamma_setting(struct udevice *dev)
     bool data_exist = FALSE;
     loff_t data_len = 0;
     unsigned char *pdata_buf = NULL;
+	struct st_tcon_pq_force_en tcon_enable;
+
+	memset(&tcon_enable, 0x00, sizeof(tcon_enable));
 
     TCON_FUNC_ENTER();
     TCON_CHECK_PARAMETER_NULL(dev);
@@ -1192,7 +1195,9 @@ bool mtk_tcon_panelgamma_setting(struct udevice *dev)
         }
 
         //verity panel gamma value
-        //_verify_panelgamma(dev, pdata_buf, (uint32_t)data_len);
+		is_tcon_pq_force_enable(&tcon_enable);
+		if (tcon_enable.force_enable && tcon_enable.pga_bin_path)
+			_verify_panelgamma(dev, pdata_buf, (uint32_t)data_len);
     }
     else
     {

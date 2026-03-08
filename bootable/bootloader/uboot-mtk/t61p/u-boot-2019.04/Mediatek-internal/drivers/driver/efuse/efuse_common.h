@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2023 MediaTek Inc.
 */
+
 #ifndef _EFUSE_COMMON_H_
 #define _EFUSE_COMMON_H_
 

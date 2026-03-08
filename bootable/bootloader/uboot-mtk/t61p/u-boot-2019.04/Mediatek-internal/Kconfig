@@ -41,6 +41,12 @@ config MULTIPLE_DTB_SELECTION
 	help
 	  Enabling this option will do dtb selection for multiple dtb in dtbo partition by default.
 
+config AMZ_ODMTVCONFIG_DTBO_OVERLAY
+	bool "Enable AMZ second dtbo overlay from odmtvconfig partition"
+	default n
+	help
+	  Enabling this option will overlay dtbo from odmtvconfig partition
+
 endmenu
 
     choice

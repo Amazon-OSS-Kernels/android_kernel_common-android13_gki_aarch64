@@ -9,7 +9,6 @@
 #ifndef _MTK_PNL_OUT_IF_H_
 #define _MTK_PNL_OUT_IF_H_
 
-
 #define SUPPORT_OVERDRIVE                   1
 #define SUPPORT_PCID_LINEOD                 1
 #define SUPPORT_VAC_256                     1
@@ -48,6 +47,8 @@ void mtk_pnl_set_panel_SCDISP_Path_Sel(struct udevice *dev);
 void efuse_set_lpllsetting(uint32_t hwVersion);
 void Init_TCON_Panel(struct udevice *dev);
 void Init_TCON_Path(struct udevice *dev, bool dlg_mode);
+void Init_TCON_Pq(struct udevice *dev);
+void Init_TCON_Pq_Path(struct udevice *dev, struct st_tcon_pq_force_en force_en);
 bool mtk_pnl_autodownload_init(struct udevice *dev);
 void mtk_panelgamma_setting(struct udevice *dev, bool dlg_mode);
 void mtk_overdrive_setting(struct udevice *dev);

@@ -28,10 +28,11 @@ EN_TCON_LOG_LEVEL g_enTconLogLevel = DEFAULT_TCON_LOG_LEVEL;
 
 //use BOE HV500QUB-F20 panel as the default tcon related file
 #define FILE_CUS_PARTITION          "CusFilePart"
-#define FILE_DEFAULT_PARTITION_1    "bootdata"
-#define FILE_DEFAULT_PARTITION_2    "tvconfig"
+#define FILE_DEFAULT_PARTITION_1    "tvconfig"
+#define FILE_DEFAULT_PARTITION_2    "bootdata"
 #define FILE_FIXED_FOLDER           ""
 #define TCON_FILE_PATH              "4k60/TCON20.bin"
+
 #define PANELGAMMA_FILE_PATH        "4k60/gamma.bin"
 #define TCON_HFR_FILE_PATH          "4k120/TCON20_HFR.bin"
 #define TCON_HPC_FILE_PATH          "4k120/TCON20_HPC.bin"
@@ -380,8 +381,21 @@ bool load_tcon_files(struct udevice *dev)
     {
         TCON_DEBUG("Not support panel gamma function.\n");
     }
-
     return TRUE;
+}
+
+bool load_tcon_pq_files(struct udevice *dev, struct st_tcon_pq_force_en force_en)
+{
+	if (force_en.force_enable && force_en.tcon_pq_bin_path) {
+		TCON_DEBUG("Load default tcon pq = %s.\n", force_en.tcon_pq_bin_path);
+		_get_file_data(force_en.tcon_pq_bin_path, force_en.tcon_pq_bin_path, &g_tcon_data_buf, &g_tcon_data_size);
+		TCON_DEBUG("tcon pq buffer size=%lld\n", g_tcon_data_size);
+	}
+	if (force_en.force_enable && force_en.pga_bin_path) {
+		_get_file_data(force_en.pga_bin_path, force_en.pga_bin_path, &g_pnlgamma_data_buf, &g_pnlgamma_data_size);
+		TCON_DEBUG("panel gamma data buffer size=%lld\n", g_pnlgamma_data_size);
+	}
+	return true;
 }
 
 bool is_tcon_data_exist(unsigned char **ppdata, loff_t *plen)
@@ -564,3 +578,50 @@ bool is_tcon_force_disable(void)
 
     return bDisable;
 }
+
+bool is_tcon_pq_force_enable(struct st_tcon_pq_force_en *tcon_pq_en)
+{
+	char *env_val = env_get("tcon_pq_en");
+
+	if (env_val && tcon_pq_en) {
+		tcon_pq_en->force_enable = (uint)_my_atoi(env_val);
+		tcon_pq_en->tcon_pq_bin_path = env_get("tcon_pq_bin");
+		tcon_pq_en->eva_bin_path = env_get("tcon_eva_bin");
+		tcon_pq_en->pga_bin_path = env_get("tcon_pga_bin");
+		TCON_DEBUG("force_enable=%d\n", tcon_pq_en->force_enable);
+	} else {
+		return false;
+	}
+	if (tcon_pq_en->force_enable &&
+	    (tcon_pq_en->tcon_pq_bin_path ||
+	     tcon_pq_en->eva_bin_path ||
+	     tcon_pq_en->pga_bin_path))
+		return true;
+	else
+		return false;
+}
+
+void print_look_up_table(int rows, int columns, u16 *table, bool is_byte)
+{
+	int i, j;
+	u8 *table_is_byte = NULL;
+
+	if (!table)
+		return;
+	if (is_byte)
+		table_is_byte = (u8 *)table;
+
+	TCON_INFO("LUT %d * %d start:\n", rows, columns);
+	for (i = 0; i < rows; i++) {
+		for (j = 0; j < columns; j++) {
+		if (is_byte)
+			TCON_INFO("%d\t", table_is_byte[i * columns + j]);
+		else
+			TCON_INFO("%d\t", table[i * columns + j]);
+	}
+		TCON_INFO("\n");
+	}
+	TCON_INFO("\n");
+	TCON_INFO("LUT end.\n");
+}
+

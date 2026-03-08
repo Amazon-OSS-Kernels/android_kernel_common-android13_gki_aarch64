@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <utility.h>
@@ -18,27 +18,73 @@
 
 #define NODE_ODM_PATH                   "/odm"
 #define KEY_SCREEN_STATE_FILE           "screen_state_file"
+#define KEY_STOREMODE_SCREEN            "storemode_screen"
+#define KEY_SCREEN_STATE_DEFAULT_NAME   "screen_state"
 #define KEY_BYPASS_SECONDARY_STANDBY    "bypass_secondary_standby"
 #define SCREEN_STATE_PARTITION          "uenv"
 
 static bool already_init = false;
+static bool pre_screen_state = false;
 static struct standby_qhb_info standby_info;
 
 extern bool IsPowerButtonPressed(void);
 
-static bool standby_check_devicetree(void)
+static bool standby_check_devicetree(const char *entry)
 {
     bool ret = false;
     ofnode node;
 
     node = ofnode_path(NODE_ODM_PATH);
     if (ofnode_valid(node)) {
-        ret = ofnode_read_bool(node, KEY_BYPASS_SECONDARY_STANDBY);
+        ret = ofnode_read_bool(node, entry);
     }
     else {
-        UBOOT_DEBUG("ofnode_path %s failed.\n", NODE_ODM_PATH);
+        UBOOT_ERROR("ofnode_path %s failed.\n", NODE_ODM_PATH);
+    }
+    if (ret)
+        UBOOT_TRACE("%s is defined.\n", entry);
+    else
+        UBOOT_TRACE("%s is not defined.\n", entry);
+    return ret;
+}
+
+static const char *standby_check_devicetree_str(const char *entry)
+{
+    static const char *str = NULL;
+    ofnode node;
+
+    node = ofnode_path(NODE_ODM_PATH);
+    if (ofnode_valid(node)) {
+        str = ofnode_read_string(node, entry);
+    }
+    else {
+        UBOOT_ERROR("ofnode_path %s failed.\n", NODE_ODM_PATH);
     }
 
+    if (str)
+        UBOOT_TRACE("screen state node is %s, and screen file is %s.\n", entry, str);
+    else
+        UBOOT_TRACE("screen state node is %s, but screen file is null.\n", entry);
+    return str;
+}
+
+static bool standby_read_screen_state(const char *name)
+{
+    unsigned char *file_buf = NULL;
+    bool ret = false;
+
+    loff_t size;
+
+    file_buf = read_storage_file_to_memory(SCREEN_STATE_PARTITION, name,  &size);
+    if (file_buf && !strncmp((const char*)file_buf, "off", 3)) {
+        UBOOT_TRACE("last screen state is off, set pre_screen_state to false.\n");
+    }
+    else {
+        ret = true;
+        UBOOT_TRACE("last screen state is on, set pre_screen_state to true.\n");
+    }
+    if (file_buf)
+	free(file_buf);
     return ret;
 }
 
@@ -49,8 +95,15 @@ static bool standby_check_idme(void)
     UBOOT_TRACE("check idme flags start\n");
     if (env_get("usr_flags") && (simple_strtoul(env_get("usr_flags"), NULL, 16) & USR_FLAGS_STOREDEMO_MODE))
     {
-        UBOOT_INFO("usr_flags set to store dome mode, bypass standby mode\n");
-        ret =  false;
+	if (standby_check_devicetree(KEY_STOREMODE_SCREEN)){
+            UBOOT_TRACE("store mode enabled, check the prescreen state.\n");
+            if (pre_screen_state){
+                UBOOT_TRACE("store mode screen state is on, bypass standby mode\n");
+	        ret = false;
+	   }
+	}
+	else
+		ret = false; //all other TV will bypass standby mode.
     }
     if (env_get("dev_flags") && (simple_strtoul(env_get("dev_flags"), NULL, 16) & DEV_FLAGS_BYPASS_SECONDARY_BOOT))
     {
@@ -62,16 +115,15 @@ static bool standby_check_idme(void)
 }
 int standby_init(void)
 {
-    int ret=0;
-#ifdef CONFIG_DATA_SEPARATION
-    char filepath[FILE_PATH_SIZE],part[PART_NAME_SIZE];
-    const char *relpath;
     const char *str = NULL;
-    unsigned char *file_buf = NULL;
-    loff_t size;
-    ofnode node;
     int bootreason;
     bool bypass_standby = false;
+
+#ifdef CONFIG_DATA_SEPARATION
+    int ret = 0;
+    char filepath[FILE_PATH_SIZE];
+    char part[PART_NAME_SIZE];
+    const char *relpath;
 
     memset(part, 0, sizeof(part));
     memset(filepath, 0, sizeof(filepath));
@@ -106,45 +158,41 @@ int standby_init(void)
         return -1;
     }
 #endif
-
     // check if set qhb mode based on last screen state.
     bootreason = pm_get_boot_reason();
     // reuse bypass_secondary_standby key to determine if set qhb mode or not.
     // the device bypassing secondary standby boots quiescently when last screen state is off.
-    bypass_standby = standby_check_devicetree();
+    bypass_standby = standby_check_devicetree(KEY_BYPASS_SECONDARY_STANDBY);
+    //get screen state file name
+    str = standby_check_devicetree_str(KEY_SCREEN_STATE_FILE);
+    // update the sreeen state if the file name is not default
+    if (str)
+       pre_screen_state = standby_read_screen_state(str);
+    else
+       //get previous screen status using default name
+       pre_screen_state = standby_read_screen_state(KEY_SCREEN_STATE_DEFAULT_NAME);
+
+    /* dev_flags has the highest priority to enable bypass standby mode*/
     if (env_get("dev_flags") && (simple_strtoul(env_get("dev_flags"), NULL, 16) & DEV_FLAGS_BYPASS_SECONDARY_BOOT)) {
-        printf("dev_flag set to bypass standby mode. don't set qhb mode based on last screen state\n");
+        UBOOT_TRACE("dev_flag set to bypass standby mode. don't set qhb mode based on last screen state\n");
+	return 0;
     }
-    else if (bootreason == PM_BR_PANIC || bootreason == PM_BR_WATCHDOG ||
-             bootreason == PM_BR_SW_WATCHDOG ||
-             (bypass_standby == true && bootreason == PM_BR_AC)) {
-        node = ofnode_path(NODE_ODM_PATH);
-        if (ofnode_valid(node)) {
-            str = ofnode_read_string(node, KEY_SCREEN_STATE_FILE);
-            if (str) {
-                file_buf = read_storage_file_to_memory(SCREEN_STATE_PARTITION, str, &size);
-                if (file_buf && !strncmp((const char*)file_buf, "off", 3)) {
-                    printf("last screen state is off. set qhb_mode to 2. boot quiescent mode.\n");
-                    standby_info.qhb_mode = 2;
-                }
-                if (file_buf)
-                    free(file_buf);
-            }
-            else {
-                UBOOT_INFO("ofnode_read_string %s failed.\n", KEY_SCREEN_STATE_FILE);
-            }
-        }
-        else {
-            UBOOT_INFO("ofnode_path %s failed.\n", NODE_ODM_PATH);
-        }
+
+    if (bootreason == PM_BR_PANIC ||
+        bootreason == PM_BR_WATCHDOG ||
+        bootreason == PM_BR_SW_WATCHDOG ||
+        (bypass_standby && bootreason == PM_BR_AC)) {
+        if ( !pre_screen_state ) {
+             UBOOT_TRACE("last screen state is off, enter quiescent mode!\n");
+             standby_info.qhb_mode = 2;
+	}
     }
 
     //disable qhb mode, or will no backlight when system last screen state is off.
-    if ((standby_check_devicetree() == false) && (true == IsPowerButtonPressed() || PM_BR_SECONDARY == pm_get_boot_reason())) {
-        UBOOT_INFO("last screen statte is off, bypass enter quiescent mode!\n");
-        standby_info.qhb_mode = 0;
+    if ((!bypass_standby && IsPowerButtonPressed())||PM_BR_SECONDARY == bootreason) {
+       UBOOT_INFO("bypass standby is not set in device tree, boot into standby mode!\n");
+       standby_info.qhb_mode = 0;
     }
-
     return 0;
 }
 
@@ -199,7 +247,7 @@ int standby_mode_enter_standby(void)
         already_init = true;
     }
 
-    if (standby_check_devicetree()) {
+    if (standby_check_devicetree(KEY_BYPASS_SECONDARY_STANDBY)) {
         standby_mode_pm_status = 0;
         return(standby_mode_pm_status);
     }

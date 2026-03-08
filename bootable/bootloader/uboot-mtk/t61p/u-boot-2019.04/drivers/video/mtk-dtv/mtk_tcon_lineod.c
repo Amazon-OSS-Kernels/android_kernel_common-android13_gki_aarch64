@@ -16,6 +16,7 @@
 #include "coda/DEMURA_BKA377_V004.h"
 #include "coda/LINEOD_BKA3A8_V004.h"
 #include "coda/PAT_DET_BKA37F_V004.h"
+#include "coda/SCTCON_BKA4F7_V004.h"
 #include "mtk_pnl_utility.h"
 #include "mtk_tv_pnl.h"
 #include "mtk_tcon_lineod.h"
@@ -74,12 +75,31 @@
 #define SELECT_SRAM3                    (0x0200)
 #define SELECT_SRAM4                    (0x0300)
 #define W_RGB_MASK                      (0x230C)
+#define R_RGB_MASK                      (0x430C)
 #define PNL_LINEOD_SHARE_SRAM           (TRUE)
+
+#define LINEOD_INDEX_2			(2)
+#define LINEOD_ROW_4			(4)
+#define LINEOD_COL_4			(4)
+#define LINEOD_ROW_17			(17)
+#define LINEOD_COL_17			(17)
+#define LINEOD_ROW_19			(19)
+#define LINEOD_COL_19			(19)
+#define LINEOD_ROW_9			(9)
+#define LINEOD_COL_13			(13)
 
 typedef enum
 {
-    E_PCID_LUT0 = 0,
-    E_PCID_LUT1 = 1,
+	E_PCID_LUT0 = 0,
+	E_PCID_LUT1 = 1,
+	E_PCID_LUT2 = 2,
+	E_PCID_LUT3 = 3,
+	E_PCID_LUT4 = 4,
+	E_PCID_LUT5 = 5,
+	E_PCID_LUT6 = 6,
+	E_PCID_LUT7 = 7,
+	E_PCID_LUT8 = 8,
+	E_PCID_LUT9 = 9,
 } EN_PCID_LUT_TYPE;
 
 typedef struct __attribute__((packed))
@@ -141,8 +161,45 @@ typedef struct __attribute__((packed))
     uint16_t u16Dummy1 : 8;      //[255:248]
 }ST_PCID_12BIT_DRAM_FORMAT;
 
+struct ST_PCID_8BIT_DRAM_FORMAT {
+	uint8_t u16SRAM1_lut0 : 8; //[7:0]
+	uint8_t u16SRAM1_lut1 : 8; //[15:8]
+	uint8_t u16SRAM1_lut2 : 8; //[9:23]
+	uint8_t u16SRAM1_lut3 : 8; //[241:]
+	uint8_t u16SRAM1_lut4 : 8; //[25:32]
+	uint8_t u16SRAM1_lut5 : 8; //[33:]
+	uint8_t u16SRAM1_lut6 : 8; //[83:72]
+	uint8_t u16SRAM1_lut7 : 8; //[95:84]
+	uint8_t u16SRAM1_lut8 : 8; //[107:96]
+	uint8_t u16SRAM1_lut9 : 8; //[119:108]
+	uint8_t u16DUMMY_0 : 8;    //[127:120]
+	uint8_t u16DUMMY_1 : 8;    //[127:120]
+	uint8_t u16DUMMY_2 : 8;    //[127:120]
+	uint8_t u16DUMMY_3 : 8;    //[127:120]
+	uint8_t u16DUMMY_4 : 8;    //[127:120]
+	uint8_t u16DUMMY_5 : 8;    //[127:120]
+	uint8_t u16SRAM2_lut0 : 8; //[7:0]
+	uint8_t u16SRAM2_lut1 : 8; //[15:8]
+	uint8_t u16SRAM2_lut2 : 8; //[9:23]
+	uint8_t u16SRAM2_lut3 : 8; //[241:]
+	uint8_t u16SRAM2_lut4 : 8; //[25:32]
+	uint8_t u16SRAM2_lut5 : 8; //[33:]
+	uint8_t u16SRAM2_lut6 : 8; //[83:72]
+	uint8_t u16SRAM2_lut7 : 8; //[95:84]
+	uint8_t u16SRAM2_lut8 : 8; //[107:96]
+	uint8_t u16SRAM2_lut9 : 8; //[119:108]
+	uint8_t u16DUMMY_6  : 8;    //[127:120]
+	uint8_t u16DUMMY_7  : 8;    //[127:120]
+	uint8_t u16DUMMY_8  : 8;    //[127:120]
+	uint8_t u16DUMMY_9  : 8;    //[127:120]
+	uint8_t u16DUMMY_10 : 8;    //[127:120]
+	uint8_t u16DUMMY_11 : 8;    //[127:120]
+};
+
 typedef struct{
-    ST_PCID_12BIT_DRAM_FORMAT *pstData;
+	void *pstData;
+	ST_PCID_12BIT_DRAM_FORMAT *p_st_data12;
+	struct ST_PCID_8BIT_DRAM_FORMAT *psData_8;
     uint16_t u8TableIdx;
     uint16_t u16RIndex;
     uint16_t u16GIndex;
@@ -154,6 +211,16 @@ typedef struct{
 
 void _pcid_init(uint8_t* pu8Tbl,bool bPixelOverdriveEn,bool bXTREn)
 {
+	W2BYTEMSK(REG_00A0_SCTCON_BKA4F7_V004, _BIT(2),
+			REG_00A0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_EN_0_00A0);
+	W2BYTEMSK(REG_00C0_SCTCON_BKA4F7_V004, _BIT(2),
+			REG_00C0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_SW_MD_EN_0_00C0);
+	W2BYTEMSK(REG_00A0_SCTCON_BKA4F7_V004, _BIT(2),
+			REG_00A0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_EN_0_00A0);
+	W2BYTEMSK(REG_00C0_SCTCON_BKA4F7_V004, _BIT(2),
+			REG_00C0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_SW_MD_EN_0_00C0);
+	udelay(3);
+
     W2BYTEMSK(REG_0140_DEMURA_BKA377_V004,
                 (bPixelOverdriveEn ? 1 : 0),
                 REG_0140_DEMURA_BKA377_V004_REG_PCID_PIXELOD_EN_0140);
@@ -173,6 +240,7 @@ void _set_pcid_enable(bool bEnable)
 
 bool _is_pcid_enable(void)
 {
+
     return (bool)R2BYTEMSK(REG_003C_DEMURA_BKA377_V004, REG_003C_DEMURA_BKA377_V004_REG_PCID_EN_003C);
 }
 
@@ -714,6 +782,47 @@ bool _write_lineod_tbl(
     return TRUE;
 }
 
+bool _read_lineod_single_tbl_sram1(u16 *read_r_table, u16 *read_g_table, u16 *read_b_table)
+{
+	u16 axis_x = 0;
+	u16 axis_y = 0;
+	u16 timeout = 0, idx = 0;
+
+	/* sram1 */
+	for (axis_y = 0; axis_y < LINE_OD_TABLE_ROW_10; axis_y++) {
+		for (axis_x = 0; axis_x < LINE_OD_TABLE_COL_10; axis_x++) {
+			idx = axis_x * LINEOD_INDEX_2 + axis_y * (LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9) * LINEOD_INDEX_2;
+
+		if (idx >= LINE_OD_TABLE_SIZE_19X19) {
+			TCON_DEBUG("lutIndex error=%d\n", idx);
+			return false;
+		}
+		W2BYTEMSK(REG_0004_DEMURA_BKA377_V004,
+			  axis_x + (axis_y * LINE_OD_TABLE_COL_10),
+			  REG_0004_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_ADDR_0004); //sram address
+		TCON_W2BYTEMSK(REG_003C_DEMURA_BKA377_V004 >> 1,
+			       TRIG_READ_SRAM | SELECT_SRAM1 | SELECT_ALL_CHANNEL_RGB,
+			       R_RGB_MASK); //sel RGB
+
+		while (R2BYTEMSK(REG_003C_DEMURA_BKA377_V004,
+				 REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_003C) &&
+				 (timeout < MAX_DELAY_TIME)) {
+			mdelay(1);
+			timeout++;
+		}
+		read_r_table[idx] = R2BYTEMSK(REG_0014_DEMURA_BKA377_V004,
+					      REG_0014_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_R_DATA_0014);
+		read_g_table[idx] = R2BYTEMSK(REG_0018_DEMURA_BKA377_V004,
+					      REG_0018_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_G_DATA_0018);
+		read_b_table[idx] = R2BYTEMSK(REG_001C_DEMURA_BKA377_V004,
+					      REG_001C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_B_DATA_001C);
+
+		timeout = 0;
+		}
+	}
+	return TRUE;
+}
+
 bool _write_lineod_single_tbl_sram1(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl)
 {
     uint16_t u16CodeTableX = 0;
@@ -763,6 +872,47 @@ bool _write_lineod_single_tbl_sram1(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint
         }
     }
     return TRUE;
+}
+
+bool _read_lineod_single_tbl_sram2(u16 *read_r_table, u16 *read_g_table, u16 *read_b_table)
+{
+	u16 axis_x = 0;
+	u16 axis_y = 0;
+	u16 timeout = 0, idx = 0;
+
+	/* sram1 */
+	for (axis_y = 0; axis_y < LINE_OD_TABLE_ROW_10; axis_y++) {
+		for (axis_x = 0; axis_x < LINE_OD_TABLE_COL_9; axis_x++) {
+			idx = axis_x * LINEOD_INDEX_2 + axis_y * (LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9) * LINEOD_INDEX_2 + 1;
+
+		if (idx >= LINE_OD_TABLE_SIZE_19X19) {
+			TCON_DEBUG("lutIndex error=%d\n", idx);
+			return FALSE;
+		}
+		W2BYTEMSK(REG_0004_DEMURA_BKA377_V004,
+			  axis_x + (axis_y * LINE_OD_TABLE_COL_9),
+			  REG_0004_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_ADDR_0004); //sram address
+		TCON_W2BYTEMSK(REG_003C_DEMURA_BKA377_V004 >> 1,
+			       TRIG_READ_SRAM | SELECT_SRAM2 | SELECT_ALL_CHANNEL_RGB,
+			       R_RGB_MASK); //sel RGB
+
+		while (R2BYTEMSK(REG_003C_DEMURA_BKA377_V004,
+				 REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_003C) &&
+				 (timeout < MAX_DELAY_TIME)) {
+			mdelay(1);
+			timeout++;
+		}
+		read_r_table[idx] = R2BYTEMSK(REG_0014_DEMURA_BKA377_V004,
+					      REG_0014_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_R_DATA_0014);
+		read_g_table[idx] = R2BYTEMSK(REG_0018_DEMURA_BKA377_V004,
+					      REG_0018_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_G_DATA_0018);
+		read_b_table[idx] = R2BYTEMSK(REG_001C_DEMURA_BKA377_V004,
+					      REG_001C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_B_DATA_001C);
+
+		timeout = 0;
+		}
+	}
+	return TRUE;
 }
 
 bool _write_lineod_single_tbl_sram2(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl)
@@ -818,6 +968,48 @@ bool _write_lineod_single_tbl_sram2(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint
     return TRUE;
 }
 
+bool _read_lineod_single_tbl_sram3(u16 *read_r_table, u16 *read_g_table, u16 *read_b_table)
+{
+	u16 axis_x = 0;
+	u16 axis_y = 0;
+	u16 timeout = 0, idx = 0;
+
+	/* sram3 */
+	for (axis_y = 0; axis_y < LINE_OD_TABLE_ROW_9; axis_y++) {
+		for (axis_x = 0; axis_x < LINE_OD_TABLE_COL_10; axis_x++) {
+			idx = axis_x * LINEOD_INDEX_2 + (axis_y) * (LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9) * LINEOD_INDEX_2 +
+					(LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9);
+
+		if (idx >= LINE_OD_TABLE_SIZE_19X19) {
+			TCON_DEBUG("lutIndex error=%d\n", idx);
+			return FALSE;
+		}
+		W2BYTEMSK(REG_0004_DEMURA_BKA377_V004,
+			  axis_x + (axis_y * LINE_OD_TABLE_COL_10),
+			  REG_0004_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_ADDR_0004); //sram address
+		TCON_W2BYTEMSK(REG_003C_DEMURA_BKA377_V004 >> 1,
+			       TRIG_READ_SRAM | SELECT_SRAM3 | SELECT_ALL_CHANNEL_RGB,
+			       R_RGB_MASK); //sel RGB
+
+		while (R2BYTEMSK(REG_003C_DEMURA_BKA377_V004,
+				 REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_003C) &&
+				 (timeout < MAX_DELAY_TIME)) {
+			mdelay(1);
+			timeout++;
+		}
+		read_r_table[idx] = R2BYTEMSK(REG_0014_DEMURA_BKA377_V004,
+					      REG_0014_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_R_DATA_0014);
+		read_g_table[idx] = R2BYTEMSK(REG_0018_DEMURA_BKA377_V004,
+					      REG_0018_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_G_DATA_0018);
+		read_b_table[idx] = R2BYTEMSK(REG_001C_DEMURA_BKA377_V004,
+					      REG_001C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_B_DATA_001C);
+
+		timeout = 0;
+		}
+	}
+	return TRUE;
+}
+
 bool _write_lineod_single_tbl_sram3(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl)
 {
     uint16_t u16CodeTableX = 0;
@@ -867,6 +1059,48 @@ bool _write_lineod_single_tbl_sram3(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint
         }
     }
     return TRUE;
+}
+
+bool _read_lineod_single_tbl_sram4(u16 *read_r_table, u16 *read_g_table, u16 *read_b_table)
+{
+	u16 axis_x = 0;
+	u16 axis_y = 0;
+	u16 timeout = 0, idx = 0;
+
+	/* sram4 */
+	for (axis_y = 0; axis_y < LINE_OD_TABLE_ROW_9; axis_y++) {
+		for (axis_x = 0; axis_x < LINE_OD_TABLE_ROW_9; axis_x++) {
+			idx = axis_x * LINEOD_INDEX_2 + axis_y * (LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9) * LINEOD_INDEX_2 +
+						(LINE_OD_TABLE_COL_10 + LINE_OD_TABLE_COL_9) + 1;
+
+		if (idx >= LINE_OD_TABLE_SIZE_19X19) {
+			TCON_DEBUG("lutIndex error=%d\n", idx);
+			return FALSE;
+		}
+		W2BYTEMSK(REG_0004_DEMURA_BKA377_V004,
+			  axis_x + (axis_y * LINE_OD_TABLE_COL_9),
+			  REG_0004_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_ADDR_0004); //sram address
+		TCON_W2BYTEMSK(REG_003C_DEMURA_BKA377_V004 >> 1,
+			       TRIG_READ_SRAM | SELECT_SRAM4 | SELECT_ALL_CHANNEL_RGB,
+			       R_RGB_MASK); //sel RGB
+
+		while (R2BYTEMSK(REG_003C_DEMURA_BKA377_V004,
+				 REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_003C) &&
+				 (timeout < MAX_DELAY_TIME)) {
+			mdelay(1);
+			timeout++;
+		}
+		read_r_table[idx] = R2BYTEMSK(REG_0014_DEMURA_BKA377_V004,
+					      REG_0014_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_R_DATA_0014);
+		read_g_table[idx] = R2BYTEMSK(REG_0018_DEMURA_BKA377_V004,
+					      REG_0018_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_G_DATA_0018);
+		read_b_table[idx] = R2BYTEMSK(REG_001C_DEMURA_BKA377_V004,
+					      REG_001C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_RD_B_DATA_001C);
+
+		timeout = 0;
+		}
+	}
+	return TRUE;
 }
 
 bool _write_lineod_single_tbl_sram4(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl)
@@ -921,6 +1155,48 @@ bool _write_lineod_single_tbl_sram4(uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint
     return TRUE;
 }
 
+bool _read_lineod_single_tbl(u16 *read_r_table, u16 *read_g_table, u16 *read_b_table, u8 sram_sel)
+{
+	bool pcid_en = false, lineod_en = false;
+
+	TCON_CHECK_PARAMETER_NULL(read_r_table);
+	TCON_CHECK_PARAMETER_NULL(read_g_table);
+	TCON_CHECK_PARAMETER_NULL(read_b_table);
+
+	pcid_en = _is_pcid_enable();
+	lineod_en = _is_lineod_enable();
+
+	if (!pcid_en || !lineod_en)	{
+		TCON_ERROR("Pcid enable=%d lineOD enable=%d\n", pcid_en, lineod_en);
+		return false;
+	}
+
+	_set_pcid_enable(false);
+	_set_lineod_enable(false);
+
+	W2BYTEMSK(REG_00A0_SCTCON_BKA4F7_V004, _BIT(LINEOD_INDEX_2),
+		  REG_00A0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_EN_0_00A0);
+	W2BYTEMSK(REG_00C0_SCTCON_BKA4F7_V004, _BIT(LINEOD_INDEX_2),
+		  REG_00C0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_SW_MD_EN_0_00C0);
+
+	W2BYTEMSK(REG_0004_DEMURA_BKA377_V004,
+		  sram_sel,
+		  REG_0004_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_SEG_0004); //sel PCID lut sram segment
+
+	_read_lineod_single_tbl_sram1(read_r_table, read_g_table, read_b_table);
+	_read_lineod_single_tbl_sram2(read_r_table, read_g_table, read_b_table);
+	_read_lineod_single_tbl_sram3(read_r_table, read_g_table, read_b_table);
+	_read_lineod_single_tbl_sram4(read_r_table, read_g_table, read_b_table);
+
+	W2BYTEMSK(REG_003C_DEMURA_BKA377_V004, 0, REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_CH_SEL_003C);
+	W2BYTEMSK(REG_003C_DEMURA_BKA377_V004, 0, REG_003C_DEMURA_BKA377_V004_REG_PCID_LUT_SRAM_SEL_003C);
+
+	_set_pcid_enable(pcid_en);
+	_set_lineod_enable(lineod_en);
+
+	return false;
+}
+
 bool _write_lineod_single_tbl(
                             uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl,
                             uint8_t u8LutSramSeg)
@@ -942,6 +1218,13 @@ bool _write_lineod_single_tbl(
 
     _set_pcid_enable(false);        // PCID Disable
     _set_lineod_enable(false);      // LINE OD Disable
+
+	W2BYTEMSK(REG_00A0_SCTCON_BKA4F7_V004,
+		  _BIT(LINEOD_INDEX_2),
+		  REG_00A0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_EN_0_00A0);
+	W2BYTEMSK(REG_00C0_SCTCON_BKA4F7_V004,
+		  _BIT(LINEOD_INDEX_2),
+		  REG_00C0_SCTCON_BKA4F7_V004_REG_SCTCON_AUTO_CLK_SW_MD_EN_0_00C0);
 
     if (PNL_LINEOD_SHARE_SRAM == TRUE)
     {
@@ -966,6 +1249,75 @@ bool _write_lineod_single_tbl(
     _set_lineod_enable(bLineODEnable);  // LINE OD recover
 
     return TRUE;
+}
+
+bool _read_lineod_gain_tbl(u8 *gain_tbl, u16 gain_tbl_size)
+{
+	bool gain_enable = FALSE;
+	u16 tbl_idx = 0, timeout = 0;
+	u16 hw_gain_size = LINE_OD_HW_GAIN_SIZE_13X9;//hw size
+	u16 hw_gain_idx = 0;
+
+	TCON_CHECK_PARAMETER_NULL(gain_tbl);
+
+	gain_enable = R2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_EN_0004);
+
+	TCON_INFO("Gain table size=%d\n", gain_tbl_size);
+
+	if (gain_tbl_size == LINE_OD_GAIN_TABLE_SIZE_13X9) {
+		/* read the 13x9 data from 13x9 hw address */
+		W2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, 0, REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_EN_0004);
+		for (tbl_idx = 0; tbl_idx < LINE_OD_GAIN_TABLE_SIZE_13X9; tbl_idx++) {
+			/* [6:0]lineOD gain address */
+			W2BYTEMSK(REG_0008_LINEOD_BKA3A8_V004, tbl_idx,	REG_0008_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_ADR_0008);
+			/* [4]rd enable */
+			W2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, 1, REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_EN_0004);
+			while (R2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004,
+					 REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_EN_0004) &&
+					 (timeout < MAX_DELAY_TIME)) {
+				mdelay(1);
+				timeout++;
+			}
+			/* [7:0]lineOD read data3.5 */
+			gain_tbl[tbl_idx] = R2BYTEMSK(REG_0010_LINEOD_BKA3A8_V004,
+						      REG_0010_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_DATA_0010);
+			timeout = 0;
+		}
+	} else if (gain_tbl_size == LINE_OD_GAIN_TABLE_SIZE_4X4) {
+		/* read the 4x4 data on 13x9 hw address(other ignore) */
+		W2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, 0, REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_EN_0004);
+		for (tbl_idx = 0; tbl_idx < LINE_OD_GAIN_TABLE_SIZE_4X4; tbl_idx++)	{
+			hw_gain_idx = ((tbl_idx / LINE_OD_GAIN_TABLE_COL_4) * LINE_OD_GAIN_TABLE_COL_13) +
+						  (tbl_idx % LINE_OD_GAIN_TABLE_COL_4);
+
+			if (hw_gain_idx < hw_gain_size)
+				/*[6:0]lineOD gain address */
+				W2BYTEMSK(REG_0008_LINEOD_BKA3A8_V004, hw_gain_idx,
+					  REG_0008_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_ADR_0008);
+
+			/* [4]rd enable */
+			W2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, 1,
+				  REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_EN_0004);
+
+			while (R2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004,
+					 REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_EN_0004) &&
+			      (timeout < MAX_DELAY_TIME)) {
+				mdelay(1);
+				timeout++;
+			}
+			/* [7:0]lineOD read data3.5 */
+			gain_tbl[tbl_idx] = R2BYTEMSK(REG_0010_LINEOD_BKA3A8_V004,
+						      REG_0010_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_RD_DATA_0010);
+			timeout = 0;
+			}
+	} else {
+		TCON_DEBUG("Table size=%d not correct\n", gain_tbl_size);
+	}
+
+	/* gain enable status recovery */
+	W2BYTEMSK(REG_0004_LINEOD_BKA3A8_V004, (gain_enable ? 1 : 0),
+		  REG_0004_LINEOD_BKA3A8_V004_REG_PCID_LINEOD_GAIN_EN_0004);
+	return TRUE;
 }
 
 bool _dump_lineod_gain_tbl(uint8_t* pu8ODGainTbl, uint16_t u16GainTableSize)
@@ -1088,158 +1440,286 @@ bool _dump_lineod_gain_tbl(uint8_t* pu8ODGainTbl, uint16_t u16GainTableSize)
 //                       ---------------
 //180 340 ....   340       x ....  x
 //--------------------------------------
-bool _fill_to_adl_sram14_data(PST_SRAM_DATA_FORMAT_INFO pstInfo)
+
+bool _fill_to_adl_sram14_data_8bit(PST_SRAM_DATA_FORMAT_INFO pstInfo)
 {
-    bool bRet = TRUE;
+	bool ret = TRUE;
+	struct ST_PCID_8BIT_DRAM_FORMAT *p_st_8b = NULL;
 
-    TCON_CHECK_PARAMETER_NULL(pstInfo);
+	TCON_CHECK_PARAMETER_NULL(pstInfo);
 
-    ST_PCID_12BIT_DRAM_FORMAT *pstData = pstInfo->pstData;
-    uint16_t u8TableIdx = pstInfo->u8TableIdx;
+	p_st_8b = (struct ST_PCID_8BIT_DRAM_FORMAT *)pstInfo->pstData;
 
-    if (0 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut0 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut0 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut0 = pstInfo->u16BVal;
-    }
-    else if (1 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut1 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut1 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut1 = pstInfo->u16BVal;
-    }
-    else if (2 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut2 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut2 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut2 = pstInfo->u16BVal;
-    }
-    else if (3 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut3 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut3 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut3 = pstInfo->u16BVal;
-    }
-    else if (4 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut4 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut4 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut4 = pstInfo->u16BVal;
-    }
-    else if (5 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut5 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut5 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut5 = pstInfo->u16BVal;
-    }
-    else if (6 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut6 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut6 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut6 = pstInfo->u16BVal;
-    }
-    else if (7 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut7 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut7 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut7 = pstInfo->u16BVal;
-    }
-    else if (8 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut8 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut8 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut8 = pstInfo->u16BVal;
-    }
-    else if (9 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM1_lut9 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM1_lut9 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM1_lut9 = pstInfo->u16BVal;
-    }
+	switch (pstInfo->u8TableIdx) {
+	case E_PCID_LUT0:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut0 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut0 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut0 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT1:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut1 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut1 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut1 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT2:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut2 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut2 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut2 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT3:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut3 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut3 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut3 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT4:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut4 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut4 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut4 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT5:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut5 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut5 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut5 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT6:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut6 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut6 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut6 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT7:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut7 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut7 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut7 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT8:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut8 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut8 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut8 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT9:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM1_lut9 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM1_lut9 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM1_lut9 = pstInfo->u16BVal;
+		break;
+	default:
+		UBOOT_ERROR("u8TableIdx Out of range\n");
+		ret = false;
+	}
 
-    return bRet;
+	return ret;
 }
 
-bool _fill_to_adl_sram23_data(PST_SRAM_DATA_FORMAT_INFO pstInfo)
+bool _fill_to_adl_sram14_data_12bit(PST_SRAM_DATA_FORMAT_INFO pstInfo)
 {
-    bool bRet = TRUE;
+	bool ret = TRUE;
+	ST_PCID_12BIT_DRAM_FORMAT *p_st_12b = NULL;
 
-    TCON_CHECK_PARAMETER_NULL(pstInfo);
+	TCON_CHECK_PARAMETER_NULL(pstInfo);
 
-    ST_PCID_12BIT_DRAM_FORMAT *pstData = pstInfo->pstData;
-    uint16_t u8TableIdx = pstInfo->u8TableIdx;
+	p_st_12b = (ST_PCID_12BIT_DRAM_FORMAT *)pstInfo->pstData;
 
-    if (0 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut0 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut0 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut0 = pstInfo->u16BVal;
-    }
-    else if (1 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut1 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut1 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut1 = pstInfo->u16BVal;
-    }
-    else if (2 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut2 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut2 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut2 = pstInfo->u16BVal;
-    }
-    else if (3 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut3 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut3 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut3 = pstInfo->u16BVal;
-    }
-    else if (4 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut4 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut4 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut4 = pstInfo->u16BVal;
-    }
-    else if (5 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut5 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut5 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut5 = pstInfo->u16BVal;
-    }
-    else if (6 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut6 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut6 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut6 = pstInfo->u16BVal;
-    }
-    else if (7 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut7 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut7 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut7 = pstInfo->u16BVal;
-    }
-    else if (8 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut8 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut8 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut8 = pstInfo->u16BVal;
-    }
-    else if (9 == u8TableIdx)
-    {
-        pstData[pstInfo->u16RIndex].u16SRAM2_lut9 = pstInfo->u16RVal;
-        pstData[pstInfo->u16GIndex].u16SRAM2_lut9 = pstInfo->u16GVal;
-        pstData[pstInfo->u16BIndex].u16SRAM2_lut9 = pstInfo->u16BVal;
-    }
 
-    return bRet;
+	switch (pstInfo->u8TableIdx) {
+	case E_PCID_LUT0:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut0 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut0 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut0 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT1:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut1 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut1 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut1 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT2:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut2 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut2 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut2 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT3:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut3 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut3 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut3 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT4:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut4 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut4 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut4 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT5:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut5 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut5 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut5 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT6:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut6 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut6 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut6 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT7:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut7 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut7 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut7 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT8:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut8 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut8 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut8 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT9:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM1_lut9 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM1_lut9 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM1_lut9 = pstInfo->u16BVal;
+		break;
+	default:
+		UBOOT_ERROR("u8TableIdx Out of range\n");
+		ret = false;
+	}
+
+	return ret;
+}
+
+bool _fill_to_adl_sram23_data_8bit(PST_SRAM_DATA_FORMAT_INFO pstInfo)
+{
+	bool ret = TRUE;
+	struct ST_PCID_8BIT_DRAM_FORMAT *p_st_8b = NULL;
+
+	TCON_CHECK_PARAMETER_NULL(pstInfo);
+
+	p_st_8b = (struct ST_PCID_8BIT_DRAM_FORMAT *)pstInfo->pstData;
+
+	switch (pstInfo->u8TableIdx) {
+	case E_PCID_LUT0:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut0 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut0 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut0 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT1:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut1 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut1 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut1 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT2:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut2 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut2 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut2 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT3:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut3 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut3 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut3 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT4:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut4 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut4 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut4 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT5:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut5 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut5 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut5 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT6:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut6 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut6 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut6 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT7:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut7 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut7 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut7 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT8:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut8 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut8 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut8 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT9:
+		p_st_8b[pstInfo->u16RIndex].u16SRAM2_lut9 = pstInfo->u16RVal;
+		p_st_8b[pstInfo->u16GIndex].u16SRAM2_lut9 = pstInfo->u16GVal;
+		p_st_8b[pstInfo->u16BIndex].u16SRAM2_lut9 = pstInfo->u16BVal;
+		break;
+	default:
+		UBOOT_ERROR("u8TableIdx Out of range\n");
+		ret = false;
+	}
+
+	return ret;
+}
+
+bool _fill_to_adl_sram23_data_12bit(PST_SRAM_DATA_FORMAT_INFO pstInfo)
+{
+	bool ret = TRUE;
+	ST_PCID_12BIT_DRAM_FORMAT *p_st_12b = NULL;
+
+	TCON_CHECK_PARAMETER_NULL(pstInfo);
+
+	p_st_12b = (ST_PCID_12BIT_DRAM_FORMAT *)pstInfo->pstData;
+
+	switch (pstInfo->u8TableIdx) {
+	case E_PCID_LUT0:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut0 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut0 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut0 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT1:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut1 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut1 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut1 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT2:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut2 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut2 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut2 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT3:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut3 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut3 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut3 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT4:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut4 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut4 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut4 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT5:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut5 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut5 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut5 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT6:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut6 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut6 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut6 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT7:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut7 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut7 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut7 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT8:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut8 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut8 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut8 = pstInfo->u16BVal;
+		break;
+	case E_PCID_LUT9:
+		p_st_12b[pstInfo->u16RIndex].u16SRAM2_lut9 = pstInfo->u16RVal;
+		p_st_12b[pstInfo->u16GIndex].u16SRAM2_lut9 = pstInfo->u16GVal;
+		p_st_12b[pstInfo->u16BIndex].u16SRAM2_lut9 = pstInfo->u16BVal;
+		break;
+	default:
+		UBOOT_ERROR("u8TableIdx Out of range\n");
+		ret = false;
+	}
+
+	return ret;
 }
 
 bool _arrange_adl_pcid_settbl(
-                        ST_PCID_12BIT_DRAM_FORMAT* pstPCID_ADL_CMD,
-                        uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl,
-                        uint16_t u16TableSize, uint8_t u8TableIdx)
+			PST_LINE_OD_SUB_HEADER pstHeader, void *pstPCID_ADL_CMD,
+			uint16_t *pu16RTbl, uint16_t *pu16GTbl, uint16_t *pu16BTbl,
+			uint16_t u16TableSize, uint8_t u8TableIdx)
 {
-    bool bRet = TRUE;
+	bool ret = TRUE;
     uint16_t u16CodeTableX = 0;
     uint16_t u16CodeTableY = 0;
     uint16_t u16lutIndex  = 0;
@@ -1273,7 +1753,8 @@ bool _arrange_adl_pcid_settbl(
             if (u16lutIndex >= LINE_OD_TABLE_SIZE_19X19)
             {
                 TCON_ERROR("lutIndex error=%d\n", u16lutIndex);
-                return FALSE;
+		ret = false;
+		return ret;
             }
 
             stInfo.u16RIndex = u16Sram1Idx;
@@ -1283,7 +1764,12 @@ bool _arrange_adl_pcid_settbl(
             stInfo.u16GVal = pu16GTbl[u16lutIndex];
             stInfo.u16BVal = pu16BTbl[u16lutIndex];
 
-            _fill_to_adl_sram14_data(&stInfo);
+		//8Bit or 12Bit
+		if (pstHeader->u8TableBit == LINE_OD_TABLE_UNIT_SIZE_8)
+			ret = _fill_to_adl_sram14_data_8bit(&stInfo);
+		else
+			ret = _fill_to_adl_sram14_data_12bit(&stInfo);
+
             u16Sram1Idx++;
 
             //sram2
@@ -1298,7 +1784,12 @@ bool _arrange_adl_pcid_settbl(
                 stInfo.u16GVal = pu16GTbl[u16lutIndex];
                 stInfo.u16BVal = pu16BTbl[u16lutIndex];
 
-                _fill_to_adl_sram23_data(&stInfo);
+		//8Bit or 12Bit
+		if (pstHeader->u8TableBit == LINE_OD_TABLE_UNIT_SIZE_8)
+			ret = _fill_to_adl_sram23_data_8bit(&stInfo);
+		else
+			ret = _fill_to_adl_sram23_data_12bit(&stInfo);
+
                 u16Sram2Idx++;
             }
 
@@ -1314,7 +1805,12 @@ bool _arrange_adl_pcid_settbl(
                 stInfo.u16GVal = pu16GTbl[u16lutIndex];
                 stInfo.u16BVal = pu16BTbl[u16lutIndex];
 
-                _fill_to_adl_sram23_data(&stInfo);
+		//8Bit or 12Bit
+		if (pstHeader->u8TableBit == LINE_OD_TABLE_UNIT_SIZE_8)
+			ret = _fill_to_adl_sram23_data_8bit(&stInfo);
+		else
+			ret = _fill_to_adl_sram23_data_12bit(&stInfo);
+
                 u16Sram3Idx++;
             }
 
@@ -1330,20 +1826,25 @@ bool _arrange_adl_pcid_settbl(
                 stInfo.u16GVal = pu16GTbl[u16lutIndex];
                 stInfo.u16BVal = pu16BTbl[u16lutIndex];
 
-                _fill_to_adl_sram14_data(&stInfo);
+		//8Bit or 12Bit
+		if (pstHeader->u8TableBit == LINE_OD_TABLE_UNIT_SIZE_8)
+			ret = _fill_to_adl_sram14_data_8bit(&stInfo);
+		else
+			ret = _fill_to_adl_sram14_data_12bit(&stInfo);
+
                 u16Sram4Idx++;
             }
 
         }
     }
 
-    return bRet;
+	return ret;
 }
 
 bool _prepare_adl_data_format(
-                                ST_PCID_12BIT_DRAM_FORMAT* pstPCID_ADL_CMD,
-                                uint16_t* pu16RTbl, uint16_t* pu16GTbl, uint16_t* pu16BTbl,
-                                uint16_t u16TableSize, uint8_t u8TableNum)
+				PST_LINE_OD_SUB_HEADER pstHeader, void *pstPCID_ADL_CMD,
+				uint16_t *pu16RTbl, uint16_t *pu16GTbl, uint16_t *pu16BTbl,
+				uint16_t u16TableSize, uint8_t u8TableNum)
 {
     bool bRet = TRUE;
 
@@ -1354,7 +1855,8 @@ bool _prepare_adl_data_format(
 
     if (u8TableNum < LINE_OD_TOTAL_LUT_NUM)
     {
-        _arrange_adl_pcid_settbl(pstPCID_ADL_CMD, pu16RTbl, pu16GTbl, pu16BTbl, u16TableSize, u8TableNum);
+	_arrange_adl_pcid_settbl(pstHeader, pstPCID_ADL_CMD,
+			pu16RTbl, pu16GTbl, pu16BTbl, u16TableSize, u8TableNum);
     }
     else
     {
@@ -1434,6 +1936,15 @@ bool _gain_table_setting(
     bool bRet = TRUE;
     uint8_t *pu8Gain = NULL;
     uint16_t u16GainTableSize = 0;
+	u8 *read_tbl = NULL;
+	int i = 0, j = 0, idx = 0;
+	bool check_ret = true;
+	struct st_tcon_pq_force_en tcon_enable;
+	bool ret_val = 0;
+	u16 gain_tbl_size = 0;
+
+	memset(&tcon_enable, 0x00, sizeof(tcon_enable));
+	is_tcon_pq_force_enable(&tcon_enable);
 
     TCON_CHECK_PARAMETER_NULL(pstHeader);
     TCON_CHECK_PARAMETER_NULL(pu8TconTab);
@@ -1443,26 +1954,117 @@ bool _gain_table_setting(
         if (pstHeader->u8GainMatrix == 0)
         {
             u16GainTableSize = LINE_OD_GAIN_TABLE_SIZE_4X4;
+			gain_tbl_size = LINE_OD_GAIN_TABLE_SIZE_4X4;
+			i = LINEOD_COL_4;
+			j = LINEOD_ROW_4;
         }
         else if (pstHeader->u8GainMatrix == 1)
         {
             u16GainTableSize = LINE_OD_GAIN_TABLE_SIZE_13X9;
+			gain_tbl_size = LINE_OD_GAIN_TABLE_SIZE_13X9;
+			i = LINEOD_COL_13;
+			j = LINEOD_ROW_9;
         }
         else
         {
             u16GainTableSize = LINE_OD_GAIN_TABLE_SIZE_13X9;
+			gain_tbl_size = LINE_OD_GAIN_TABLE_SIZE_13X9;
+			i = LINEOD_COL_13;
+			j = LINEOD_ROW_9;
         }
 
         PNL_MALLOC_MEM(pu8Gain, u16GainTableSize*sizeof(uint8_t), bRet);
+		PNL_MALLOC_MEM(read_tbl, gain_tbl_size * sizeof(u8), ret_val);
         if (bRet)
         {
             memcpy(pu8Gain, (pu8TconTab + u16TargetIndex), sizeof(uint8_t)*u16GainTableSize);
             bRet = _dump_lineod_gain_tbl(pu8Gain, u16GainTableSize);
         }
-        PNL_FREE_MEM(pu8Gain);
+
+		if (tcon_enable.force_enable) {
+			memcpy(read_tbl, pu8Gain, sizeof(uint8_t) * gain_tbl_size);
+			TCON_INFO("LineOD gain table:\n");
+			print_look_up_table(j, i, (u16 *)pu8Gain, true);
+			_read_lineod_gain_tbl(read_tbl, gain_tbl_size);
+			TCON_INFO("LineOD gain table read back:\n");
+			print_look_up_table(j, i, (u16 *)read_tbl, true);
+			for (idx = 0; idx < gain_tbl_size; idx++) {
+				if (pu8Gain[idx] != read_tbl[idx]) {
+					TCON_INFO("LineOD gain Table check FAIL[%d]!!\n", idx);
+					check_ret = false;
+					break;
+				}
+			}
+			if (check_ret)
+				TCON_INFO("LineOD gain Table check PASS!!!\n");
+		}
+
+		PNL_FREE_MEM(pu8Gain);
+		PNL_FREE_MEM(read_tbl);
     }
 
     return bRet;
+}
+
+bool _verify_lineod_lut(u16 *write_r_tbl, u16 *write_g_tbl, u16 *write_b_tbl,
+			       u16 *read_r_tbl, u16 *read_g_tbl, u16 *read_b_tbl,
+			       int i, int j,
+			       u8 table_num, u16 table_size)
+{
+	bool check_ret = true;
+	int  idx = 0;
+	u8 table_idx = 0;
+	struct st_tcon_pq_force_en tcon_enable;
+
+	memset(&tcon_enable, 0x00, sizeof(tcon_enable));
+	TCON_CHECK_PARAMETER_NULL(write_r_tbl);
+	TCON_CHECK_PARAMETER_NULL(write_g_tbl);
+	TCON_CHECK_PARAMETER_NULL(write_b_tbl);
+	TCON_CHECK_PARAMETER_NULL(read_r_tbl);
+	TCON_CHECK_PARAMETER_NULL(read_g_tbl);
+	TCON_CHECK_PARAMETER_NULL(read_b_tbl);
+
+	is_tcon_pq_force_enable(&tcon_enable);
+	if (tcon_enable.force_enable) {
+		TCON_INFO("LineOD R:\n");
+		print_look_up_table(i, j, (u16 *)write_r_tbl, false);
+		TCON_INFO("LineOD G:\n");
+		print_look_up_table(i, j, (u16 *)write_g_tbl, false);
+		TCON_INFO("LineOD B:\n");
+		print_look_up_table(i, j, (u16 *)write_b_tbl, false);
+		table_idx = 0;
+		while (table_idx < table_num) {
+			_read_lineod_single_tbl(read_r_tbl, read_g_tbl, read_b_tbl, table_idx);
+			table_idx += 1;
+		}
+		TCON_INFO("LineOD read back R:\n");
+		print_look_up_table(i, j, (u16 *)read_r_tbl, false);
+		TCON_INFO("LineOD read back G:\n");
+		print_look_up_table(i, j, (u16 *)read_g_tbl, false);
+		TCON_INFO("LineOD read back B:\n");
+		print_look_up_table(i, j, (u16 *)read_b_tbl, false);
+
+		for (idx = 0; idx < table_size; idx++) {
+			if (write_r_tbl[idx] != read_r_tbl[idx]) {
+				check_ret = false;
+				TCON_INFO("LineOD LUT check FAIL!!!\n");
+				break;
+			}
+			if (write_g_tbl[idx] != read_g_tbl[idx]) {
+				check_ret = false;
+				TCON_INFO("LineOD LUT check FAIL!!!\n");
+				break;
+			}
+			if (write_b_tbl[idx] != read_b_tbl[idx]) {
+				check_ret = false;
+				TCON_INFO("LineOD LUT check FAIL!!!\n");
+				break;
+			}
+		}
+		if (check_ret)
+			TCON_INFO("LineOD LUT check PASS!!!\n");
+	}
+	return check_ret;
 }
 
 bool _lineod_table_setting_ver2(
@@ -1472,14 +2074,20 @@ bool _lineod_table_setting_ver2(
                             uint16_t u16TableSize)
 {
     bool bRet = TRUE;
+	int index = 0;
     uint16_t u16TargetIndex = 0;
     uint8_t u8TabIndex, u8TableNum;
     uint16_t *pu16RLut = NULL;
     uint16_t *pu16GLut = NULL;
     uint16_t *pu16BLut = NULL;
+	u16 *read_r_tbl = NULL;
+	u16 *read_g_tbl = NULL;
+	u16 *read_b_tbl = NULL;
+	int i = 0, j = 0;
+
 #if (defined(UFO_XC_AUTO_DOWNLOAD) && ENABLE_PCID_AUTODOWNLOAD == TRUE)
     uint32_t u32AdlSize = 0;
-    ST_PCID_12BIT_DRAM_FORMAT *pstPCID_ADL_CMD = NULL;
+	void *pstPCID_ADL_CMD = NULL;
 #else
     uint8_t u8LutSramSeg;
 #endif
@@ -1490,6 +2098,10 @@ bool _lineod_table_setting_ver2(
     PNL_MALLOC_MEM(pu16GLut, u16TableSize*sizeof(uint16_t), bRet);
     PNL_MALLOC_MEM(pu16BLut, u16TableSize*sizeof(uint16_t), bRet);
 
+	PNL_MALLOC_MEM(read_r_tbl, u16TableSize * sizeof(u16), bRet);
+	PNL_MALLOC_MEM(read_g_tbl, u16TableSize * sizeof(u16), bRet);
+	PNL_MALLOC_MEM(read_b_tbl, u16TableSize * sizeof(u16), bRet);
+
     if (!bRet)
     {
         goto finally;
@@ -1497,7 +2109,13 @@ bool _lineod_table_setting_ver2(
 
     u16TargetIndex = sizeof(ST_LINE_OD_SUB_HEADER);
     u8TableNum = _get_table_num(pstHeader, bTableSeparate);
-
+	if (u16TableSize == LINE_OD_TABLE_SIZE_17X17) {
+		i = LINEOD_COL_17;
+		j = LINEOD_ROW_17;
+	} else {
+		i = LINEOD_COL_19;
+		j = LINEOD_ROW_19;
+	}
 #if (defined(UFO_XC_AUTO_DOWNLOAD) && ENABLE_PCID_AUTODOWNLOAD == TRUE)
     if (u16TableSize == LINE_OD_TABLE_SIZE_17X17)
     {
@@ -1508,6 +2126,8 @@ bool _lineod_table_setting_ver2(
         u32AdlSize = XC_AUTODOWNLOAD_PCID_19X19_OFFSET;// 32 bytes * 181 * 3
     }
 
+	UBOOT_DEBUG("u32AdlSize = 0x%08X\n", u32AdlSize);
+	//ST_PCID_12BIT_DRAM_FORMAT's size is equal to 8 Bit
     u32AdlSize = u32AdlSize * sizeof(ST_PCID_12BIT_DRAM_FORMAT) * PCID_RGB_CHANNEL;
 
     if (!pstPCID_ADL_CMD)
@@ -1527,25 +2147,59 @@ bool _lineod_table_setting_ver2(
     {
         if (bChannelSeparate)
         {
-            memcpy(pu16RLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //R
-            u16TargetIndex += u16TableSize*2;
-            memcpy(pu16GLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //G
-            u16TargetIndex += u16TableSize*2;
-            memcpy(pu16BLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //B
-            u16TargetIndex += u16TableSize*2;
+			switch (pstHeader->u8TableBit) {
+			case LINE_OD_TABLE_UNIT_SIZE_8:
+				while (index < u16TableSize) {
+					u16TargetIndex = sizeof(ST_LINE_OD_SUB_HEADER);
+					pu16RLut[index] = pu8TconTab[index + u16TargetIndex];
+					u16TargetIndex += u16TableSize;
+					pu16GLut[index] = pu8TconTab[index + u16TargetIndex];
+					u16TargetIndex += u16TableSize;
+					pu16BLut[index] = pu8TconTab[index + u16TargetIndex];
+					u16TargetIndex += u16TableSize;
+					index++;
+					udelay(1);
+				}
+			break;
+			case LINE_OD_TABLE_UNIT_SIZE_12:
+				memcpy(pu16RLut, (pu8TconTab + u16TargetIndex), sizeof(u16) * u16TableSize); //R
+				u16TargetIndex += u16TableSize;
+				memcpy(pu16GLut, (pu8TconTab + u16TargetIndex), sizeof(u16) * u16TableSize); //G
+				u16TargetIndex += u16TableSize;
+				memcpy(pu16BLut, (pu8TconTab + u16TargetIndex), sizeof(u16) * u16TableSize); //B
+				u16TargetIndex += u16TableSize;
+				break;
+			default:
+				break;
+			}
         }
         else
         {
-            memcpy(pu16RLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //R
-            memcpy(pu16GLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //G
-            memcpy(pu16BLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t)*u16TableSize); //B
-            u16TargetIndex += u16TableSize*2;
+            switch (pstHeader->u8TableBit) {
+            case LINE_OD_TABLE_UNIT_SIZE_8:
+                while (index < u16TableSize) {
+                    pu16RLut[index] = pu8TconTab[index + u16TargetIndex];
+                    pu16GLut[index] = pu8TconTab[index + u16TargetIndex];
+                    pu16BLut[index] = pu8TconTab[index + u16TargetIndex];
+                    index++;
+                    udelay(1);
+                }
+                u16TargetIndex += u16TableSize;
+                break;
+		case LINE_OD_TABLE_UNIT_SIZE_12:
+			memcpy(pu16RLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t) * u16TableSize); //R
+			memcpy(pu16GLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t) * u16TableSize); //G
+			memcpy(pu16BLut, (pu8TconTab+u16TargetIndex), sizeof(uint16_t) * u16TableSize); //B
+			u16TargetIndex += u16TableSize * 2;
+			break;
+		default:
+			break;
+		}
         }
-
 #if (defined(UFO_XC_AUTO_DOWNLOAD) && ENABLE_PCID_AUTODOWNLOAD == TRUE)
-        bRet = _prepare_adl_data_format(pstPCID_ADL_CMD,
-                                            pu16RLut, pu16GLut, pu16BLut,
-                                            u16TableSize, u8TabIndex);
+		bRet = _prepare_adl_data_format(pstHeader, pstPCID_ADL_CMD,
+						pu16RLut, pu16GLut, pu16BLut,
+						u16TableSize, u8TabIndex);
         if (!bRet)
         {
             TCON_ERROR("_prepare_adl_data_format u8TabIndex=%d \n.", u8TabIndex);
@@ -1581,6 +2235,10 @@ bool _lineod_table_setting_ver2(
     }
     PNL_FREE_MEM(pstPCID_ADL_CMD);
 #endif
+	_verify_lineod_lut(pu16RLut, pu16GLut, pu16BLut,
+			   read_r_tbl, read_g_tbl, read_b_tbl,
+			   i, j,
+			   u8TableNum, u16TableSize);
 
     bRet &= _gain_table_setting(pstHeader, pu8TconTab, u16TargetIndex);
 
@@ -1589,6 +2247,9 @@ finally:
     PNL_FREE_MEM(pu16RLut);
     PNL_FREE_MEM(pu16GLut);
     PNL_FREE_MEM(pu16BLut);
+	PNL_FREE_MEM(read_r_tbl);
+	PNL_FREE_MEM(read_g_tbl);
+	PNL_FREE_MEM(read_b_tbl);
 
     TCON_FUNC_EXIT(bRet);
 
@@ -1735,7 +2396,7 @@ bool _lineod_table_setting_proc(uint8_t* pu8TconTab)
     u16TableSize = (pstLineODSubHdr->u8TableMatrix ? LINE_OD_TABLE_SIZE_17X17 : LINE_OD_TABLE_SIZE_19X19);
     TCON_DEBUG("table size=%d\n", u16TableSize);
 
-    if ((pstLineODSubHdr->u16Version > 2) && (pstLineODSubHdr->u8TableBit == LINE_OD_TABLE_UNIT_SIZE_12))
+	if (pstLineODSubHdr->u16Version > 2)
     {
         bRetLut &= _lineod_table_setting_ver2(
                                     pstLineODSubHdr,
@@ -1800,6 +2461,7 @@ bool mtk_tcon_lineod_setting(struct udevice *dev)
       which is mainly used to compensate for insufficient charging of CELL MAPPING,
       thereby reducing the crosstalk phenomenon
     ***/
+
     if (is_tcon_data_exist(&pdata_buf, &data_len))
     {
         stInfo.pu8Table = pdata_buf;

@@ -30,6 +30,7 @@ typedef enum
 }APIPNL_TCON_TAB_TYPE;
 
 bool mtk_tcon_preinit(struct udevice *dev);
+bool mtk_tcon_pq_init(struct udevice *dev, struct st_tcon_pq_force_en force_en);
 bool mtk_tcon_init(struct udevice *dev);
 bool mtk_tcon_enable(struct udevice *dev, bool bEn);
 

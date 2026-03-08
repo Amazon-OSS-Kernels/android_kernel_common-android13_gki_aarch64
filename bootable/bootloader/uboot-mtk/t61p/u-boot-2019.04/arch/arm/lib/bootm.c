@@ -460,6 +460,10 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 	if (flag & BOOTM_STATE_OS_BD_T || flag & BOOTM_STATE_OS_CMDLINE)
 		return -1;
 
+#if defined(UFBL_FEATURE_IDME)
+	amzn_diag_uartport_change();
+#endif
+
 	if (flag & BOOTM_STATE_OS_PREP) {
 		boot_prep_linux(images);
 		return 0;

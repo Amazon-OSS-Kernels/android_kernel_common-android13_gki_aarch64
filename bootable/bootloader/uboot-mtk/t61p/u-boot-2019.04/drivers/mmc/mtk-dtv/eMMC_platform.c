@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
- * Copyright (c) 2023 MediaTek Inc.
-*/
+ * Copyright (C) 2023 MediaTek Inc.
+ */
 
 #include "eMMC.h"
 #if defined(UNIFIED_eMMC_DRIVER) && UNIFIED_eMMC_DRIVER

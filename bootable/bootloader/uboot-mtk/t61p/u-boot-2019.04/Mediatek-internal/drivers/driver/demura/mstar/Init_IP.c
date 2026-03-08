@@ -193,7 +193,7 @@ MS_BOOL MsDemura_LoadBin(MS_U8 *pData, MS_U8 *mmap_buf, MS_U8 *unzip_buf)
     MS_BOOL bRet = FALSE;
 #ifdef CONFIG_MTK_DEMURA_UFC_BIN
     ST_DEMURA_UFC_HEADER *pHdr = (ST_DEMURA_UFC_HEADER *)pData;
-    u32fileSize = UFC_HEADER_GET_LUT_SIZE(pHdr) + UFC_HEADER_GET_HEADER_SIZE(pHdr); 
+    u32fileSize = UFC_HEADER_GET_LUT_SIZE(pHdr) + UFC_HEADER_GET_HEADER_SIZE(pHdr);
     buf = mmap_buf;
     UBOOT_TRACE("Load data on mmap_buffer : %p\n", mmap_buf);
 #else
@@ -296,49 +296,51 @@ static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_D
         return 0x00;
     }
 
+    #ifdef CONFIG_MTK_DEMURA_UFC_BIN
+    memcpy(pHdr, bin_info.bin_buf, sizeof(ST_DEMURA_UFC_HEADER));  // Copy Demura Header;
+    #else
+    memcpy(pHdr, bin_info.bin_buf, sizeof(DeMuraBinHeader));  // Copy Demura Header;
+    #endif
+
+    if (MDrv_DEMURA_Check_HeaderCRC(pHdr) == FALSE)
+    {
+        UBOOT_ERROR("Calculate Demura Bin header CRC fail\n");
+        dfree(bin_info.bin_buf);
+        return 0x00;
+    }
+    if (MDrv_DEMURA_Is_Support(pHdr, panel_data) == FALSE)
+    {
+        UBOOT_ERROR("This Demura Bin do Not Support this panel\n");
+        dfree(bin_info.bin_buf);
+        return 0x00;
+    }
+    if (Alloc_Load_Buf(pHdr, &bin_buf, &tbuf_addr, 0) != TRUE)
+    {
+        UBOOT_ERROR("Alloc_Load_Buf Error!\n");
+        dfree(bin_info.bin_buf);
+        return 0x00;
+    }
+
+    #ifdef CONFIG_MTK_DEMURA_UFC_BIN
+    memcpy(bin_buf,   bin_info.bin_buf, bin_info.bin_size);
+    #else
+    if (((DeMuraBinHeader *)pHdr)->u8LayerDataFomrat == E_DEMURA_COMPRESS_FORMAT)
+        memcpy(tbuf_addr, bin_info.bin_buf, bin_info.bin_size);
+    else
+        memcpy(bin_buf,   bin_info.bin_buf, bin_info.bin_size);
+    #endif
+
+    if (MDrv_DEMURA_Check_AllBinCRC(bin_buf) == FALSE)
+    {
+        UBOOT_ERROR("Calculate All Demura Bin CRC fail\n");
+        dfree(tbuf_addr);
+        dfree(bin_info.bin_buf);
+        return 0x00;
+    }
+
     if(get_demura_env_bypass_write_fs())
     {
-        #ifdef CONFIG_MTK_DEMURA_UFC_BIN
-        memcpy(pHdr, bin_info.bin_buf, sizeof(ST_DEMURA_UFC_HEADER));  // Copy Demura Header;
-        #else
-        memcpy(pHdr, bin_info.bin_buf, sizeof(DeMuraBinHeader));  // Copy Demura Header;
-        #endif
-
-        if (MDrv_DEMURA_Check_HeaderCRC(pHdr) == FALSE)
-        {
-            UBOOT_ERROR("Calculate Demura Bin header CRC fail\n");
-            dfree(bin_info.bin_buf);
-            return 0x00;
-        }
-        if (MDrv_DEMURA_Is_Support(pHdr, panel_data) == FALSE)
-        {
-            UBOOT_ERROR("This Demura Bin do Not Support this panel\n");
-            dfree(bin_info.bin_buf);
-            return 0x00;
-        }
-        if (Alloc_Load_Buf(pHdr, &bin_buf, &tbuf_addr, 0) != TRUE)
-        {
-            UBOOT_ERROR("Alloc_Load_Buf Error!\n");
-            dfree(bin_info.bin_buf);
-            return 0x00;
-        }
-
-        #ifdef CONFIG_MTK_DEMURA_UFC_BIN
-        memcpy(bin_buf,   bin_info.bin_buf, bin_info.bin_size);
-        #else
-        if (((DeMuraBinHeader *)pHdr)->u8LayerDataFomrat == E_DEMURA_COMPRESS_FORMAT)
-            memcpy(tbuf_addr, bin_info.bin_buf, bin_info.bin_size);
-        else
-            memcpy(bin_buf,   bin_info.bin_buf, bin_info.bin_size);
-        #endif
-
-        if (MDrv_DEMURA_Check_AllBinCRC(bin_buf) == FALSE)
-        {
-            UBOOT_ERROR("Calculate All Demura Bin CRC fail\n");
-            dfree(tbuf_addr);
-            dfree(bin_info.bin_buf);
-            return 0x00;
-        }
+        UBOOT_INFO("Demura bypass write to fs\n");
         dfree(tbuf_addr);
         dfree(bin_info.bin_buf);
         return (MS_U32)((uintptr_t)bin_buf);
@@ -356,6 +358,8 @@ static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_D
     if (write_raw_data(bin_info.bin_buf, 0, bin_info.bin_size) != TRUE)
     {
         UBOOT_ERROR("write_raw_data to Demura(Partition) Failed\n");
+        dfree(tbuf_addr);
+        dfree(bin_info.bin_buf);
         return FALSE;
     }
     UBOOT_INFO("Convert %s to Mstar Demura Success!\n", CONFIG_DEMURA_VENDOR_STRING);
@@ -363,6 +367,7 @@ static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_D
     if (MsDemura_LoadHeader(pHdr, panel_data) != TRUE)
     {
         UBOOT_ERROR("MsDemura_LoadHeader Error Again!\n");
+        dfree(tbuf_addr);
         dfree(bin_info.bin_buf);
         return 0x00;
     }

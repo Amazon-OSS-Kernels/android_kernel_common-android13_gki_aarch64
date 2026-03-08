@@ -212,7 +212,8 @@ int env_append_backslash(char* cmd_in, char* cmd_out)
 		if(*(cmd_in+i) == ';')
 		{
 			memcpy(cmd+start1, cmd_in+start2, i-start2);
-			strcat(cmd, cat);
+			cmd[start1 + i-start2] = '\0';
+			strncat(cmd, cat, strlen(cat));
 			start1 = i + count;
 			start2 = i;
 			count++;
@@ -223,6 +224,7 @@ int env_append_backslash(char* cmd_in, char* cmd_out)
 		}
 		i++;
 	}
+	cmd[STRING_MAX_LENGTH-1] = '\0';
 	memset(cmd_out, '\0', STRING_MAX_LENGTH);
 	memcpy(cmd_out, cmd, strlen(cmd));
 
@@ -241,12 +243,14 @@ int env_cus_load(void)
 	#endif
 	bool use_default_dtbo = 1;
 	bool use_default_dataindex = 1;
+	int ret = 0;
 
 	run_command("env default -a", 0);
 
 	run_command("setenv bootargs console=ttyS0,115200 androidboot.console=ttyS0 init=/init CORE_DUMP_PATH=/data/core_dump.%%p.gz KDebug=1 delaylogo=true security=selinux SD_CONFIG=2 loop.max_part=7", 0);
 	run_command("setenv verify n", 0);
 	run_command("setenv devicestate unlock", 0);
+	run_command("avb set-devicestate 0", 0);
 	run_command("setenv usb_auto_upgrade disable", 0);
 	run_command("setenv force_boot_recovery false", 0);
 	run_command("setenv autoload 0", 0);
@@ -259,7 +263,12 @@ int env_cus_load(void)
 	run_command("addbootargs vmalloc 550M", 0);
 	run_command("addbootargs kasan_multi_shot 1", 0);
 	run_command("addbootargs transparent_hugepage never", 0);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+	run_command("addbootargs firmware_class.path /vendor/odmtvconfig/,/vendor/tvconfig/,/vendor/firmware/", 0);
+	run_command("setenv CusFilePart odmtvconfig", 0);
+#else
 	run_command("addbootargs firmware_class.path /vendor/tvconfig/,/vendor/firmware/", 0);
+#endif
 	run_command("setenv dataindex_cfg_name default", 0);
 	run_command("setenv bootconfig 0", 0);
 
@@ -270,7 +279,9 @@ int env_cus_load(void)
 	env_cmd = malloc(STRING_MAX_LENGTH);
 	if(env_cmd)
 	{
-		snprintf(env_cmd, STRING_MAX_LENGTH, "setenv android_product %s; setenv board %s", ubootmodel, ubootmodel);
+		ret = snprintf(env_cmd, STRING_MAX_LENGTH, "setenv android_product %s; setenv board %s", ubootmodel, ubootmodel);
+		if(ret < 0)
+			return -ENODEV;
 		run_command(env_cmd, 0);
 
 		// load dtbo_cfg_sel from idme model_name
@@ -288,12 +299,14 @@ int env_cus_load(void)
 		if ( use_default_dtbo == 0)
 		{
 			printf("update dtbo_cfg_sel based on model name in idme %s \n", model_name);
-			snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dtbo_cfg_sel dtb/%s", model_name);
+			ret = snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dtbo_cfg_sel dtb/%s", model_name);
 		} 
 		else
 		{
-			snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dtbo_cfg_sel dtb/%s", dtb_sel_file_default);
+			ret = snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dtbo_cfg_sel dtb/%s", dtb_sel_file_default);
 		}
+		if(ret < 0)
+			return -ENODEV;
 		run_command(env_cmd, 0);
 
 		// load dataindex_cfg_name from idme config_name
@@ -311,18 +324,24 @@ int env_cus_load(void)
 		if ( use_default_dataindex == 0)
 		{
 			printf("update dataindex_cfg_name based on config_name in idme %s \n", config_name);
-			snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dataindex_cfg_name %s", config_name);
+			ret = snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dataindex_cfg_name %s", config_name);
 		}
 		else
 		{
-			snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dataindex_cfg_name default");
+			ret = snprintf(env_cmd, STRING_MAX_LENGTH, "setenv dataindex_cfg_name default");
 		}
+		if(ret < 0)
+			return -ENODEV;
 		run_command(env_cmd, 0);
 
-		snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv bootcmd %s", UBOOT_BOOTCMD);
+		ret = snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv bootcmd %s", UBOOT_BOOTCMD);
+		if(ret < 0)
+			return -ENODEV;
 		env_append_backslash(env_cmd_temp, env_cmd);
 		run_command(env_cmd, 0);
-		snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv recoverycmd %s", UBOOT_REVOCERYCMD);
+		ret = snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv recoverycmd %s", UBOOT_REVOCERYCMD);
+		if(ret < 0)
+			return -ENODEV;
 		env_append_backslash(env_cmd_temp, env_cmd);
 		run_command(env_cmd, 0);
 		free(env_cmd);

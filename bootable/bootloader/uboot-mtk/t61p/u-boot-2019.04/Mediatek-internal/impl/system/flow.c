@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <debug_impl.h>
@@ -154,11 +154,13 @@ int do_before_boot_kernel(void)
 /*
  * read fos_flags from idme
  */
+#define FOS_BUF_LEN	16
 unsigned long get_fos_flags(void)
 {
     unsigned long flags = 0;
 
-    char fos_buf[16];
+    char fos_buf[FOS_BUF_LEN] = "\0";
+    char fos_buf2[FOS_BUF_LEN] = "\0";
     int ret = 0;
 #ifdef UFBL_FEATURE_IDME
     ret = idme_get_var_external("fos_flags", fos_buf, sizeof(fos_buf));
@@ -169,6 +171,16 @@ unsigned long get_fos_flags(void)
         return 0;
     }
     flags = simple_strtoul(fos_buf, NULL, 16);
+
+    /* protection from invalid fos_flags value */
+    snprintf(fos_buf2, sizeof(fos_buf2), "%lx", flags);
+    if(strncmp(fos_buf, fos_buf2, FOS_BUF_LEN) != 0) {
+        if(idme_update_var_ex("fos_flags", fos_buf2, FOS_BUF_LEN) >= 0) {
+            printf("Warn: updated converted fos_flags=%s\n", fos_buf2);
+        } else {
+            printf("Err: fail to update converted fos_flags=%s\n", fos_buf2);
+        }
+    }
 
     printf("fos_flags=%lx\n", flags);
     return flags;

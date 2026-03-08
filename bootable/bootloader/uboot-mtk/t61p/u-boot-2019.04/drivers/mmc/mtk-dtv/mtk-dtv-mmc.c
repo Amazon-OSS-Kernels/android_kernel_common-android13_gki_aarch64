@@ -599,6 +599,9 @@ static int mtk_fcie_start_data(struct mtk_fcie_host *host, struct mmc_data *data
 		else
 			time_wait_n_block_end = data->blocks * HW_TIMER_DELAY_1S;
 
+		if (data->blocks == 1)
+			time_wait_n_block_end = WRITE_SINGLE_BLK_TIMEOUT;
+
 		ret = emmc_fcie_wait_events((unsigned long)(&host->base->fcie_mie_event),
 					    BIT_DMA_END, time_wait_n_block_end);
 		if(ret) {
@@ -627,10 +630,8 @@ static int mtk_fcie_start_data(struct mtk_fcie_host *host, struct mmc_data *data
 	}
 	else { //read invalidate cache
 		#ifdef ENABLE_FCIE_MIU_CHECKSUM
-		if ((emmc_drv.u8_partition_config & PART_ACCESS_MASK) == 0) {
-			emmc_drv.host->blks = data->blocks;
-			emmc_drv.host->dst_buf = (char *)data->dest;
-		}
+		emmc_drv.host->blks = data->blocks;
+		emmc_drv.host->dst_buf = (char *)data->dest;
 		#endif
 		mtk_fcie_dma_address_trans_post((dmaaddr_t)data->dest, data->blocks << 9);
 		#ifdef ENABLE_FCIE_MIU_CHECKSUM

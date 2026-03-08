@@ -934,8 +934,7 @@ void _set_od_enable(struct udevice *dev, bool bEnable)
     // OD mode
     // OD used user weight to output blending directly
     // OD Enable
-    if (bEnable)
-    {
+
 		u16Taget_BR = (u8PixBitNum * DEC_64) + DEC_3;//Formula = 64*bits_per_pixel + 3
         //Target bit rate of compression engine output for 4 bit compression
         W2BYTEMSK(REG_00B4_OD_1ST_BKA336_V004, u16Taget_BR, REG_00B4_OD_1ST_BKA336_V004_REG_TARGET_BR_00B4);
@@ -968,6 +967,8 @@ void _set_od_enable(struct udevice *dev, bool bEnable)
 #endif
 		_overdriver_set_od_mode(u8OdModeType);
         // rd suggest enable od at last
+    if (bEnable)
+    {
         //OD enable
         W2BYTEMSK(REG_0040_OD_1ST_BKA336_V004, 0x1, REG_0040_OD_1ST_BKA336_V004_REG_OD_EN_0040);
     }

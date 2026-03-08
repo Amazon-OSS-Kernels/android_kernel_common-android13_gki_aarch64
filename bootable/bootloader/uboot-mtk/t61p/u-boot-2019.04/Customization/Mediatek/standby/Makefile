@@ -3,6 +3,7 @@
 # Copyright (c) 2023 MediaTek Inc.
 #
 
+
 UBOOTINCLUDE += -I$(srctree)/Customization/$(CUSTOMER)/standby/include/ \
                 -I$(srctree)/Mediatek-internal/impl/led/
 

@@ -200,6 +200,18 @@ __weak void sha256_process(sha256_context *ctx, const unsigned char *data,
 	}
 }
 
+__weak void sha256_process_armv8(sha256_context *ctx, const unsigned char *data,
+			   unsigned int blocks)
+{
+	if (!blocks)
+		return;
+
+	while (blocks--) {
+		sha256_process_one(ctx, data);
+		data += 64;
+	}
+}
+
 void sha256_update(sha256_context *ctx, const uint8_t *input, uint32_t length)
 {
 	uint32_t left, fill;
@@ -218,13 +230,13 @@ void sha256_update(sha256_context *ctx, const uint8_t *input, uint32_t length)
 
 	if (left && length >= fill) {
 		memcpy((void *) (ctx->buffer + left), (void *) input, fill);
-		sha256_process(ctx, ctx->buffer, 1);
+		sha256_process_armv8(ctx, ctx->buffer, 1);
 		length -= fill;
 		input += fill;
 		left = 0;
 	}
 
-	sha256_process(ctx, input, length / 64);
+	sha256_process_armv8(ctx, input, length / 64);
 	input += length / 64 * 64;
 	length = length % 64;
 

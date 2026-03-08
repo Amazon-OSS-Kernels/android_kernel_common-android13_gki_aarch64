@@ -61,7 +61,6 @@
 #include "coda/SCTCON_BKA4F7_V004.h"
 #include "mtk_pnl_utility.h"
 #include "mtk_tv_pnl.h"
-#include "mtk_pnl_out_if.h"
 #include "mtk_pnl_out_if_v006.h"
 #include "coda/MODV11_V004.h"
 #include "coda/MODV12_V004.h"
@@ -89,8 +88,9 @@
 #include "coda/MODA4_V005.h"
 #include "coda/LPLL_V005.h"
 #include "coda/disp_misc.h"
-#include "mtk_tcon_out_if.h"
 #include "mtk_tcon_common.h"
+#include "mtk_pnl_out_if.h"
+#include "mtk_tcon_out_if.h"
 //#include "mtk_pnl_clk_ctrl.h"
 #include "coda/FRCPLL.h"
 #include "coda/SCTCON_MISC_BKA3E0_V005.h"
@@ -99,6 +99,7 @@
 #include "coda/CKGEN01_V006.h"
 #include "coda/XCPLL_V006.h"
 #include "coda/BLEND_TOP_BKA36B.h"
+#include "coda/OSDB_COLOV_BKA3ED.h"
 
 //Only for HAPS
 #define REG_HFRC_HAPS_BASE	(0x147F400)
@@ -1918,6 +1919,8 @@ int mtk_tgen_init_v006(struct udevice *dev)
 
 	// for video mute, enable render blending
 	W2BYTEMSK(REG_0004_BLEND_TOP_BKA36B, 1, REG_0004_BLEND_TOP_BKA36B_REG_LAYER0_OFF);
+	W2BYTEMSK(REG_000C_OSDB_COLOV_BKA3ED, 1, REG_000C_OSDB_COLOV_BKA3ED_REG_COLOV_SET_BLACK_DBF_EN);
+	W2BYTEMSK(REG_0010_OSDB_COLOV_BKA3ED, 1, REG_0010_OSDB_COLOV_BKA3ED_REG_COLOV_SET_BLACK_MAIN_EN);
 
 	//Patch for enable xc mcu clk.
 	_PATCH_INIT_XC_CLK_v006();

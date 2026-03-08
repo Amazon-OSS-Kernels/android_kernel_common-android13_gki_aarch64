@@ -275,9 +275,9 @@ static int breath_led_set_tv_status(struct udevice *dev, char * const argv[])
 
 static int generate_set_pwm_gpio_cmd(struct led_breath_priv *priv)
 {
-	int i = 0, idx = 0, ret = 0;
+	int i = 0, ret = 0;
 	u8 send_box[PM51_MAILBOX_SIZE] = {0};
-	u8 u8GpioHigh = 0, u8GpioLow = 0;
+	u8 u8GpioHigh = 0, u8GpioLow = 0, idx = 0;
 
 	send_box[idx++] = LED_MODE_PWMGPIO_SET;
 	send_box[idx++] = priv->led_is_pwm;

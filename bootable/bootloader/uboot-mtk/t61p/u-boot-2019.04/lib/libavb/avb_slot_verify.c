@@ -1248,15 +1248,14 @@ static AvbSlotVerifyResult load_and_verify_vbmeta(
     }
   }
 
-  if (rollback_index_location < 0 ||
-      rollback_index_location >= AVB_MAX_NUMBER_OF_ROLLBACK_INDEX_LOCATIONS) {
+  if (rollback_index_location_to_use >= AVB_MAX_NUMBER_OF_ROLLBACK_INDEX_LOCATIONS) {
     avb_errorv(
         full_partition_name, ": Invalid rollback_index_location.\n", NULL);
     ret = AVB_SLOT_VERIFY_RESULT_ERROR_INVALID_METADATA;
     goto out;
   }
 
-  slot_data->rollback_indexes[rollback_index_location] =
+  slot_data->rollback_indexes[rollback_index_location_to_use] =
       vbmeta_header.rollback_index;
 
   if (out_algorithm_type != NULL) {
@@ -1271,7 +1270,7 @@ static AvbSlotVerifyResult load_and_verify_vbmeta(
     if (is_update_rollback_index_needed(&b_update_rollback_index_needed) == AVB_IO_RESULT_OK) {
       if (b_update_rollback_index_needed) {
         printf("Update rollback index\n");
-        io_ret = ops->write_rollback_index(ops, rollback_index_location, vbmeta_header.rollback_index);
+        io_ret = ops->write_rollback_index(ops, rollback_index_location_to_use, vbmeta_header.rollback_index);
         if (io_ret != AVB_IO_RESULT_OK) {
           printf("Update rollback index failed\n");
           ret = AVB_SLOT_VERIFY_RESULT_ERROR_IO;

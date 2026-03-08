@@ -594,6 +594,12 @@ avb_slot_verify_done:
 			{
 				unsigned long bootmode = simple_strtoul(env_get("bootmode"), NULL, 10);
 				if (bootmode == IDME_BOOTMODE_DIAG) {
+					if (run_command("partition read mmc 0 dkernel 0x2F300000 0x1", 0) != 0) {
+						printf("system force reset, don't exist dkernel partition\n\n");
+						run_command("reset", 0);
+					} else {
+						printf("no error for read dkernel partition\n\n");
+					}
 					diag_bootcmd = avb_replace(UBOOT_BOOTCMD," boot ", " dkernel ");
 					bootcmd = diag_bootcmd;
 				}

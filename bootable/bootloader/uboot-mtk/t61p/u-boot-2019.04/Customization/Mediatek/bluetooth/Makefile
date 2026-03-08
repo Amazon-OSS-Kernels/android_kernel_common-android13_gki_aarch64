@@ -1,7 +1,7 @@
-# SPDX-License-Identifier: GPL-2.0+
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 #
-# Copyright 2000-2008
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# Copyright (c) 2023 MediaTek Inc.
+#
 
 obj-$(CONFIG_LD_BTMTK_USB) += ./src/LD_btmtk_usb.o
 obj-$(CONFIG_LD_USBBT) += ./src/LD_usbbt.o

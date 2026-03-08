@@ -1204,6 +1204,7 @@ static int init_idme(void)
 	char *key_pairs[][2] = {
 		{"serial",   "serialno"},
 		{"dev_flags","dev_flags"},
+		{"usr_flags","usr_flags"},
 		{"bootmode", "bootmode"},
 	};
 

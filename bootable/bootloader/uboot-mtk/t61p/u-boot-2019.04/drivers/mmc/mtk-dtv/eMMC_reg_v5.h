@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef __eMMC_FCIE_V5_REG_H__
 #define __eMMC_FCIE_V5_REG_H__

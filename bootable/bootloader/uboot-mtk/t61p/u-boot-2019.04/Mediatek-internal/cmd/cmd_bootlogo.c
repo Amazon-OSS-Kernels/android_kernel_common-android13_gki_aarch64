@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <exports.h>
@@ -241,8 +241,10 @@ int do_showlogo (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
     UBOOT_TRACE("IN\n");
 
     const char *avb_state = NULL;
-    if(argc == ARGV_AVB_STATE)
+    if (argc == ARGV_AVB_STATE)
+    {
         avb_state = argv[1];
+    }
 
     if(pm_check_back_ground_active() == 1)
     {

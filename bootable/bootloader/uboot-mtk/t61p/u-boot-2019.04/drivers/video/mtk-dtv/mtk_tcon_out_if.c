@@ -24,8 +24,8 @@
 #include "coda/TCON_4K.h"
 #include "mtk_pnl_utility.h"
 #include "mtk_tv_pnl.h"
-#include "mtk_tcon_out_if.h"
 #include "mtk_tcon_common.h"
+#include "mtk_tcon_out_if.h"
 #include "mtk_tcon_dga.h"
 #include "mtk_tcon_od.h"
 #include "mtk_tcon_lineod.h"
@@ -807,6 +807,38 @@ bool mtk_tcon_preinit(struct udevice *dev)
     UBOOT_BOOTTIME("[tcon preinit][total time: %llu]\n", get_timer(0) - u64Start);
 
     return data_exist;
+}
+
+bool mtk_tcon_pq_init(struct udevice *dev, struct st_tcon_pq_force_en force_en)
+{
+	u8 tcon_version = 0;
+	loff_t data_len = 0;
+	bool data_exist = FALSE;
+	unsigned char *pdata_buf = NULL;
+	bool ret_val = TRUE;
+
+	_mtk_tcon_setup();
+	load_tcon_pq_files(dev, force_en);
+	data_exist = is_tcon_data_exist(&pdata_buf, &data_len);
+	if (data_exist) {
+		if (!get_tcon_version(pdata_buf, &tcon_version)) {
+			TCON_ERROR("get tcon version return failed\n");
+			return FALSE;
+		}
+		if (mtk_pnl_autodownload_init(dev) == FALSE)
+			TCON_ERROR("autodownload init failed\n");
+
+		ret_val &= _tcon_dump_table(dev, pdata_buf, E_TCON_TAB_TYPE_VAC_REG);
+		if (tcon_version > TCON20_VERSION)
+			ret_val &= mtk_tcon_lineod_setting(dev);
+	}
+
+	ret_val &= mtk_tcon_od_setting(dev);
+	ret_val &= mtk_tcon_vac_setting(dev);
+	ret_val &= mtk_tcon_panelgamma_setting(dev);
+
+	free_resource();
+	return ret_val;
 }
 
 bool mtk_tcon_init(struct udevice *dev)

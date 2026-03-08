@@ -15,6 +15,10 @@
 #include "halCHIP.h"
 #include "drvSYS.h"
 #include <dts_parser.h>
+#include <utility.h>
+#ifdef CONFIG_DATA_SEPARATION
+#include <mtk_dataindex.h>
+#endif
 
 //------------------------------------------------------------------------------
 //  Driver Compiler Options
@@ -55,6 +59,36 @@ MS_U8 GOPCursor = INVAILD_GOP_NUM;
 // Critical, system crash. (ex. assert)
 #define GOP_H_FATAL(x, args...)
 #endif
+
+// OSD PQ
+#define PQBIN_SECTION               "PQ_OSD"
+#define PQBIN_KEY_MAIN              "m_pBinOsdPqMainMboot"
+#define PQBIN_KEY_EX                "m_pBinOsdPqExMboot"
+#define PQBIN_HEADER                "IP_COMM_HEADER  "
+
+#define PQBIN_IP_NUM_OFST           1
+#define PQBIN_IP_TBL_OFST           3
+
+#define PQBIN_IP_TBL_SIZE           16
+#define PQBIN_IP_TBL_REG_NUM_OFST   2
+#define PQBIN_IP_TBL_PTR_OFST       8
+
+#define PQBIN_IP_DATA_OFST          16
+#define PQBIN_REG_DATA_SIZE         5
+#define PQBIN_REG_BANK_OFST         0
+#define PQBIN_REG_BKOFT_OFST        2
+#define PQBIN_REG_MASK_OFST         3
+#define PQBIN_REG_VALUE_OFST        4
+
+#define READ_BUF_CHECK(buf, bufsize, start, size) \
+    do { \
+        if (start + size > bufsize) \
+        { \
+            GOP_H_ERR("read exceeds buffer size\n"); \
+            free(buf); \
+            return; \
+        } \
+    } while (0);
 
 //------------------------------------------------------------------------------
 //  Local Var
@@ -222,6 +256,13 @@ void HAL_GOP_Write2bytemask(
 			writel(tmp, (volatile void *)((uintptr_t)(u32P_Addr + REG_BASE)));
 }
 
+void HAL_GOP_Writebyte(
+    uint32_t u32P_Addr,
+    uint8_t u8Value)
+{
+    writeb(u8Value, (volatile void *)((uintptr_t)(u32P_Addr + REG_BASE)));
+}
+
 uint32_t HAL_GOP_Read2bytemask(
 	uint32_t u32P_Addr,
 	uint32_t fld)
@@ -241,6 +282,13 @@ uint32_t HAL_GOP_Read2byte(
 {
 	return readl((const volatile void *)((uintptr_t)(u32P_Addr + REG_BASE)));
 }
+
+uint8_t HAL_GOP_Readbyte(
+    uint32_t u32P_Addr)
+{
+    return readb((const volatile void *)((uintptr_t)(u32P_Addr + REG_BASE)));
+}
+
 
 MS_BOOL _HAL_GOP_SetTgen(MS_BOOL bIsByPassMode)
 {
@@ -320,6 +368,116 @@ MS_BOOL _HAL_GOP_SetTgen(MS_BOOL bIsByPassMode)
 
 
 	return TRUE;
+}
+
+void _HAL_GOP_PQ_LoadBin(const char *filekey)
+{
+#ifdef CONFIG_DATA_SEPARATION
+    char filepath[FILE_PATH_SIZE] = {0};
+    char part[PART_NAME_SIZE] = {0};
+    const char *relpath;
+    unsigned char *buf = NULL;
+    MS_U16 ip_num = 0;          /* 2 bytes */
+    MS_U16 reg_num = 0;         /* 2 bytes */
+    MS_U32 ip_ptr = 0;          /* 4 bytes */
+    MS_U16 reg_bank = 0;        /* 2 bytes */
+    MS_U8 reg_offset = 0;       /* 1 bytes */
+    MS_U8 reg_mask = 0;         /* 1 bytes */
+    MS_U8 reg_value = 0;        /* 1 bytes */
+    MS_U32 reg_addr = 0;
+    MS_U16 i = 0, j = 0;
+    loff_t file_size = 0, file_idx = 0;
+    loff_t ip_tbl_offset = 0;
+
+    if (dataindex_get_key(filepath, FILE_PATH_SIZE, PQBIN_SECTION, filekey, NULL) != 0)
+    {
+        GOP_H_ERR("cannot get %s:%s from dataindex file\n", PQBIN_SECTION, filekey);
+        return;
+    }
+    GOP_H_DBUG("get file path success: %s\n", filepath);
+
+    if (dataindex_resolve_path(part, PART_NAME_SIZE, &relpath, filepath) != 0)
+    {
+        GOP_H_ERR("resolve path failed: %s\n", filepath);
+        return;
+    }
+
+    buf = read_storage_file_to_memory(part, relpath, &file_size);
+    if (buf == NULL)
+    {
+        GOP_H_ERR("read file to DRAM failed\n");
+        return;
+    }
+
+    // find starting header
+    j = 0;
+    for (file_idx = 0; file_idx < file_size; file_idx++)
+    {
+        if (buf[file_idx] == PQBIN_HEADER[j])
+        {
+            if (j == (strlen(PQBIN_HEADER)-1))
+            {
+                break;
+            }
+            else
+            {
+                j++;
+            }
+        }
+        else
+        {
+            j = 0;
+        }
+    }
+    if (file_idx >= file_size)
+    {
+        GOP_H_ERR("find starting header failed\n");
+        free(buf);
+        return;
+    }
+    ip_tbl_offset = file_idx + PQBIN_IP_TBL_OFST;
+
+    file_idx = file_idx + PQBIN_IP_NUM_OFST;
+    READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U16));
+    ip_num = *(MS_U16 *)(buf + file_idx);
+
+    for (i = 0; i < ip_num; i++)
+    {
+        file_idx = ip_tbl_offset + i * PQBIN_IP_TBL_SIZE + PQBIN_IP_TBL_REG_NUM_OFST;
+        READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U16));
+        reg_num = *(MS_U16 *)(buf + file_idx);
+
+        file_idx = ip_tbl_offset + i * PQBIN_IP_TBL_SIZE + PQBIN_IP_TBL_PTR_OFST;
+        READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U32));
+        ip_ptr = *(MS_U32 *)(buf + file_idx);
+
+        for (j = 0; j < reg_num; j++)
+        {
+            file_idx = ip_ptr + PQBIN_IP_DATA_OFST + j * PQBIN_REG_DATA_SIZE + PQBIN_REG_BANK_OFST;
+            READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U16));
+            reg_bank = *(MS_U16 *)(buf + file_idx);
+
+            file_idx = ip_ptr + PQBIN_IP_DATA_OFST + j * PQBIN_REG_DATA_SIZE + PQBIN_REG_BKOFT_OFST;
+            READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U8));
+            reg_offset = *(MS_U8 *)(buf + file_idx);
+
+            file_idx = ip_ptr + PQBIN_IP_DATA_OFST + j * PQBIN_REG_DATA_SIZE + PQBIN_REG_MASK_OFST;
+            READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U8));
+            reg_mask = *(MS_U8 *)(buf + file_idx);
+
+            file_idx = ip_ptr + PQBIN_IP_DATA_OFST + j * PQBIN_REG_DATA_SIZE + PQBIN_REG_VALUE_OFST;
+            READ_BUF_CHECK(buf, file_size, file_idx, sizeof(MS_U8));
+            reg_value = *(MS_U8 *)(buf + file_idx);
+
+            reg_addr = (MS_U32)(((reg_bank * 0x100 + reg_offset) << 1) - (reg_offset & 1));
+            HAL_GOP_Writebyte(reg_addr, (HAL_GOP_Readbyte(reg_addr) & (~reg_mask)) | (reg_value & reg_mask));
+        }
+    }
+
+    free(buf);
+#else
+    GOP_H_DBUG("not support data separation\n");
+#endif
 }
 
 void HAL_GOP_GetGOPEnum(GOP_CTX_HAL_LOCAL *pGOPHalLocal, GOP_TYPE_DEF* GOP_TYPE)
@@ -572,6 +730,9 @@ void HAL_GOP_Init(GOP_CTX_HAL_LOCAL *pGOPHalLocal, MS_U8 u8GOPNum)
 	HAL_GOP_Write2bytemask(REG_0E34_CKGEN01, 0x0, REG_0E34_CKGEN01_REG_CKG_XC_GOP0_DST_SCTCON);
 	HAL_GOP_Write2bytemask(REG_0E40_CKGEN01, 0x0, REG_0E40_CKGEN01_REG_CKG_XC_GOPC_DST_SCTCON);
 	HAL_GOP_Write2bytemask(REG_0E44_CKGEN01, 0x0, REG_0E44_CKGEN01_REG_CKG_XC_GOPG_DST_SCTCON);
+
+    _HAL_GOP_PQ_LoadBin(PQBIN_KEY_MAIN);
+    _HAL_GOP_PQ_LoadBin(PQBIN_KEY_EX);
 
 	if (ChipMajor >= GOP_MOKONA_SERIES_MAJOR) {
 		HAL_GOP_Write2bytemask(REG_01E0_GOPG_BKA4D9, 1, REG_01E0_GOPG_BKA4D9_REG_OSDB_VIDEO_DE_SEL);

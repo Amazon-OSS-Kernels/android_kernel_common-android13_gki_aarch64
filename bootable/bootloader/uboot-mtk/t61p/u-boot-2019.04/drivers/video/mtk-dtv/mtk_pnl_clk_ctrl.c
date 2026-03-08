@@ -20,6 +20,7 @@
 #include "mtk_tv_lpll_tbl.h"
 #include "mtk_pnl_clk_ctrl.h"
 #include "mtk_tv_pnl.h"
+#include "mtk_tcon_common.h"
 #include "mtk_pnl_out_if.h"
 #include "coda/MODV11_V004.h"
 #include "coda/MODV12_V004.h"

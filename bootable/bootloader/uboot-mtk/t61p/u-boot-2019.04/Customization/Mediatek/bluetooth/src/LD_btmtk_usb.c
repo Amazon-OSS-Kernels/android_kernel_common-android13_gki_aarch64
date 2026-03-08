@@ -1,68 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
-*  Copyright (c) 2014 MediaTek Inc.
-*
-*  This program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License version 2 as
-*  published by the Free Software Foundation.
-*
-*  This program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*/
+ * Copyright (c) 2023 MediaTek Inc.
+ */
 
 //---------------------------------------------------------------------------
 #include <LD_usbbt.h>
@@ -2480,6 +2419,12 @@ static int btmtk_usb_set_radio_off_cmd(struct fw_cfg_struct *radiooff,
 					usb_debug("%s: Re-allocate size(%d/%d) for mod", __func__,
 							radiooff->length, new_len);
 					radiooff->content = os_kzalloc(new_len, MTK_GFP_ATOMIC);
+					if (radiooff->content == NULL) {
+						usb_debug("%s: Allocate memory fail!", __func__);
+						os_kfree(tmp);
+						tmp = NULL;
+						return -ENOMEM;
+					}
 					memcpy(radiooff->content, tmp, radiooff->length);
 					os_kfree(tmp);
 					tmp = NULL;
@@ -2513,6 +2458,12 @@ static int btmtk_usb_set_radio_off_cmd(struct fw_cfg_struct *radiooff,
 
 		usb_debug("%s: Re-allocate size(%d/%d) for mod", __func__,radiooff->length, new_len);
 		radiooff->content = os_kzalloc(new_len, MTK_GFP_ATOMIC);
+		if (radiooff->content == NULL) {
+			usb_debug("%s: Allocate memory fail!", __func__);
+			os_kfree(tmp);
+			tmp = NULL;
+			return -ENOMEM;
+		}
 		memcpy(radiooff->content, tmp, radiooff->length);
 		os_kfree(tmp);
 		tmp = NULL;
@@ -2565,7 +2516,7 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 	for (i = 0; ((mark >> i) & 0x0001) && i < 1; i++) {
 		usb_debug("%s: The following is radiooff[%d]", __func__, i);
 		/* IR protocol parsing */
-		snprintf(ir_proto, sizeof(ir_proto), "%s%02d:", IR_PROTOCOL, i);
+		(void)snprintf(ir_proto, sizeof(ir_proto), "%s%02d:", IR_PROTOCOL, i);
 		head = strstr((const char*)setting, (const char*)ir_proto);
 		if (head) {
 			head = strstr((const char*)head, "0x");	/* should be 0xAA */
@@ -2584,7 +2535,7 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 					btmtk_usb_set_radio_off_cmd(&radiooff[i], WOBX_TYPE_IR,
 							(void *)&ir_value, 2, 1);
 				} else {
-					usb_debug("%s: %s convert fail", __func__, ir);
+					//usb_debug("%s: %s convert fail", __func__, ir);
 					return -EPERM;
 				}
 			} else {
@@ -2598,7 +2549,7 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 		}
 
 		/* Keymap parsing */
-		snprintf(ir_km_g, sizeof(ir_km_g), "%s%02d", IR_KEYMAP_G, i);
+		(void)snprintf(ir_km_g, sizeof(ir_km_g), "%s%02d", IR_KEYMAP_G, i);
 		head = strstr((const char*)setting, ir_km_g);
 		if (head) {
 			head = strstr((const char*)head, ":");
@@ -2610,6 +2561,7 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 					return -EINVAL;
 				}
 				memcpy(group, head + 1, CHAR2DEC_SIZE);
+				group[CHAR2DEC_SIZE] = '\0';
 				usb_debug("%s: group: %s", __func__, group);
 				group_value = simple_strtoul(group, ptr, 0);
 				if (group_value) {
@@ -2621,7 +2573,7 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 						group_value = MAX_IRKMG; /* FW limitation */
 					}
 					for (j = 1; j <= group_value; j++) {
-						snprintf(ir_km, sizeof(ir_km), "%s%02d:", IR_KEYMAP, j);
+						(void)snprintf(ir_km, sizeof(ir_km), "%s%02d:", IR_KEYMAP, j);
 						head = strstr((const char*)setting, (const char*)ir_km);
 						if (head) {
 							/* should be 0x027D5FA0 for NEC */
@@ -2634,10 +2586,10 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 									break;
 								}
 								memcpy(map[j - 1].nec, head, CHAR42HEX_SIZE);
-								usb_debug("%s: %d:nec: %s", __func__, j, map[j - 1].nec);
+								//usb_debug("%s: %d:nec: %s", __func__, j, map[j - 1].nec);
 								*(u32 *)map_value[j - 1].nec = simple_strtoul(map[j - 1].nec, ptr, 0);
 								if (*(u32 *)map_value[j - 1].nec == 0) {
-									usb_debug("%s: %s convert fail", __func__, map[j - 1].nec);
+									usb_debug("%s: %s convert fail", __func__, head);
 									break;
 								}
 							} else {
@@ -2653,10 +2605,10 @@ static int btmtk_usb_load_woble_ir_setting(struct fw_cfg_struct *radiooff,
 									break;
 								}
 								memcpy(map[j - 1].rc5, head, CHAR42HEX_SIZE);
-								usb_debug("%s: %d:rc5: %s", __func__, j, map[j - 1].rc5);
+								usb_debug("%s: %d:rc5: %s", __func__, j, head);
 								*(u32 *)map_value[j - 1].rc5 = simple_strtoul(map[j - 1].rc5, ptr, 0);
 								if (*(u32 *)map_value[j - 1].rc5 == 0) {
-									usb_debug("%s: %s convert fail", __func__, map[j - 1].rc5);
+									usb_debug("%s: %s convert fail", __func__, head);
 									break;
 								}
 							} else {

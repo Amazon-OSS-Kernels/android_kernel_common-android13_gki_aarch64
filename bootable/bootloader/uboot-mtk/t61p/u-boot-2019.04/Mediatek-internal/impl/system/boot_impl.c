@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <string.h>
 #include <common.h>
@@ -465,6 +465,11 @@ static int get_boot_mode_from_partition(void)
         printf("Boot reason is %s, 0x%02X\n", #r, r); \
     }while(0)
 
+#define PRT_WAKEUPREASON(r)\
+    do{\
+        printf("Wakeup from PM_BR_SECONDARY, reason is %s\n", r); \
+    }while(0)
+
 void print_bootreason(int boot_reason)
 {
     switch (boot_reason) {
@@ -506,6 +511,7 @@ void print_bootreason(int boot_reason)
         break;
     case PM_BR_SECONDARY:
         PRT_BOOTREASON(PM_BR_SECONDARY);
+        PRT_WAKEUPREASON(pm_get_wakeup_reason_str());
         break;
     case PM_BR_DC:
         PRT_BOOTREASON(PM_BR_DC);
@@ -932,7 +938,7 @@ int wipe_user_data_in_uboot(void)
     char *addr = NULL;
     int ret = -1;
 
-    UBOOT_ERROR("wipe metadata and userdata\n");
+    printf("wipe metadata and userdata\n");
 
     addr = (char *)CLEAN_BUFFER_ADDR;
     memset(addr, 0, CLEAN_BUFFER_SIZE);
@@ -991,7 +997,12 @@ bool is_fastboot_bootloader_mode(void)
     if(run_command(cmd, 0) == CMD_RET_SUCCESS)
     {
         memset(cmd, 0, sizeof(cmd));
-        snprintf(cmd, sizeof(cmd)-1, "bcb test %s = %s", "command", BOOT_MODE_BOOTLOADER_STR);
+        snprintf_len = snprintf(cmd, sizeof(cmd)-1, "bcb test %s = %s", "command", BOOT_MODE_BOOTLOADER_STR);
+        if(snprintf_len < 0 || (unsigned)snprintf_len >= (sizeof(cmd)-1))
+        {
+            UBOOT_ERROR("The array size is too small(%lu), snprintf fail 'bcb test %s = %s'.\n", sizeof(cmd), "command", BOOT_MODE_BOOTLOADER_STR);
+            return false;
+        }
         if(run_command(cmd, 0) == CMD_RET_SUCCESS)
         {
             UBOOT_ERROR("boot mode: reboot bootloader\n");

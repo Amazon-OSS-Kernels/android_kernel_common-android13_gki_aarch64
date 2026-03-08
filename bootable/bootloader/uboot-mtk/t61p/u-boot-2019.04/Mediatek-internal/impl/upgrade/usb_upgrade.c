@@ -210,7 +210,12 @@ int usb_upgrade_pkg(void)
 
 #if (CONFIG_LED == 1)
     char cmd[COMMAND_BUF_SIZE] = {0};
-    snprintf(cmd, COMMAND_BUF_SIZE, "led %s %d %d", "mtk-tv:breath-led-1", LED_MODE, LED_TV_STATUS_UPGRADE);
+    snprintf_len = snprintf(cmd, COMMAND_BUF_SIZE, "led %s %d %d", "mtk-tv:breath-led-1", LED_MODE, LED_TV_STATUS_UPGRADE);
+    if(snprintf_len<0)
+    {
+        UBOOT_ERROR("snprintf Error !!!\n");
+        return -1;
+    }
     run_command(cmd, 0);  // LED upgrade mode
 #endif
 

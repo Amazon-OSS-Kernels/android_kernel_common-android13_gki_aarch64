@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <fs.h>
@@ -367,6 +367,32 @@ int add_bootargs(char *key, char *set_cfg, bool save)
     return 0;
 }
 
+int find_bootargs(char *key)
+{
+    int ret = 0;
+    char *bootarg = NULL;
+    UBOOT_TRACE("IN\n");
+    if (key == NULL)
+    {
+        UBOOT_ERROR("The input parameter 'key' is a null pointer\n");
+        return ret;
+    }
+#if (CONFIG_MTK_ANDROID_HEADER_VERSION > 3)
+    if (strstr(key, "androidboot") != NULL)
+        bootarg = env_get("bootconfig");
+    else
+#endif
+        bootarg = env_get("bootargs");
+    if (bootarg == NULL)
+    {
+        UBOOT_ERROR("No env 'bootargs'\n");
+        return ret;
+    }
+    if (strstr(bootarg, key))
+	    ret = 1;
+    return ret;
+}
+
 int del_bootargs(char *key, bool save)
 {
     int ret = 0;
@@ -507,6 +533,36 @@ char* para_replace(char *str,int argc,char * const argv[])
 #define QHB_MODE_Linux_Control               2
 
 
+/* Interrupted OTA is only applicable to non-AB */
+#ifndef CONFIG_ANDROID_AB
+bool is_qhb_interrupted_ota(void)
+{
+    char *qhb_recovery = env_get("qhb_recovery");
+    int qhb = 0;
+    if (!qhb_recovery) {
+        return false;
+    }
+
+    qhb = simple_strtol(qhb_recovery, NULL, 10);
+
+    /* QHB OTA was interrupted when recovery mode and env flag set */
+    if (is_recovery_mode()) {
+        return qhb == 1;
+    }
+
+    /* Always clear the flag is we are not going to recovery */
+    if (qhb == 1) {
+        env_set("qhb_recovery", "0");
+        env_save();
+    }
+
+    return false;
+}
+#else
+static inline bool is_qhb_interrupted_ota(void) { return false; }
+#endif
+
+
 int is_qhb_boot_mode(void)
 {
     int flag, standby;
@@ -517,6 +573,15 @@ int is_qhb_boot_mode(void)
     int i4Ret = 0;
 #endif
 #endif
+
+    /* Check if we are interrupted OTA with screen off */
+    if(is_qhb_interrupted_ota())
+    {
+        printf("QHB: OTA Interrupted with screen off\n");
+        return 1;
+    }
+
+
     if(pm_get_boot_reason()==PM_BR_REBOOT_SHELL)
     {
         printf("QHB boot_reason:reboot shell Normal boot  \n");
@@ -529,7 +594,16 @@ int is_qhb_boot_mode(void)
     }
     if(pm_get_boot_reason()==PM_BR_RECOVERY_QUIESCENT)
     {
+        static bool set_done = false;
+
+        if (!set_done) {
+            env_set("qhb_recovery", "1");
+            env_save();
+            set_done = true;
+        }
+
         printf("QHB boot_reason:reboot recovery quiescent Normal boot  \n");
+
         return 1;
     }
 

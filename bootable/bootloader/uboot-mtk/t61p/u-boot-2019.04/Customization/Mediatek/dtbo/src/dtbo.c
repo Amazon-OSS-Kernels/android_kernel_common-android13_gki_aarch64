@@ -150,7 +150,6 @@ static int get_customization_config_element(char *type, char *setting)
 {
     struct section *section_entry;
     struct keyval_pair *keyval_entry;
-    char *ptr;
 
     UBOOT_TRACE("IN\n");
     UBOOT_DEBUG("type=%s", type);
@@ -164,25 +163,13 @@ static int get_customization_config_element(char *type, char *setting)
             {
                 if (strlen(keyval_entry->value) < DTBO_CFG_BUFFER_SIZE)
                 {
-                    ptr = strncpy(setting, keyval_entry->value, strlen(keyval_entry->value));
-                    setting[DTBO_CFG_BUFFER_SIZE - 1] = '\0';
-                    if (ptr == NULL)
-                    {
-                        UBOOT_ERROR("Error: Copy setting failure.\n");
-                        UBOOT_TRACE("OUT\n");
-                        return -1;
-                    }
+                    strncpy(setting, keyval_entry->value, strlen(keyval_entry->value));
+                    setting[strlen(keyval_entry->value)] = '\0';
                 }
                 else
                 {
-                    ptr = strncpy(setting, keyval_entry->value, DTBO_CFG_BUFFER_SIZE - 1);
+                    strncpy(setting, keyval_entry->value, DTBO_CFG_BUFFER_SIZE - 1);
                     setting[DTBO_CFG_BUFFER_SIZE - 1] = '\0';
-                    if (ptr == NULL)
-                    {
-                        UBOOT_ERROR("Error: Copy setting failure.\n");
-                        UBOOT_TRACE("OUT\n");
-                        return -1;
-                    }
                 }
                 UBOOT_TRACE("OUT\n");
                 return 0;

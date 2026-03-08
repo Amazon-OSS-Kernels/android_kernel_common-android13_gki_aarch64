@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <command.h>
@@ -1490,7 +1490,8 @@ void mtk_osd_create(u8 u8logo_gop_index, GFX_Block* p_blk, size_t gop_buffer)
     u16* u16temp_addr = NULL;
     size_t u16temp_addr_phyical=0;
     GFX_BufferInfo dst_info;
-    unsigned char gbPnlModMirrorMode = FALSE;
+    bool panel_mirror_mode = FALSE;
+    int mirror_mode = GOP_NONE_MIRROR;
     int ret;
 
     gfx_init();
@@ -1552,48 +1553,44 @@ void mtk_osd_create(u8 u8logo_gop_index, GFX_Block* p_blk, size_t gop_buffer)
     mtk_draw_rect(&dst_blk, color);
     // end - draw background all black
 
-    st_sys_misc_setting misc_setting;
-    memset(&misc_setting, 0, sizeof(misc_setting));
-#if (CONFIG_LOGO_STORE_IN_MBOOT)
-    GetOSDMirrorMode(&misc_setting);
-#else
-    ret = parse_dt("/video_out",misc_dt_parser,(void*)&misc_setting,NULL);
-    if(ret != 0)
-        UBOOT_ERROR("misc_setting data can not get correct from dts!\n");
-#endif
+    ret = parse_dt("/video_out", integer_dt_parser, (void*)&mirror_mode, "PanelMirrorMode");
 
-    int mirror_mode=misc_setting.m_u8MirrorMode;
-    if(1==mirror_mode)
+    if ( ret < 0 )
     {
-        UBOOT_DEBUG("<<set_mirror V & H ON!!>> \n");
+        UBOOT_ERROR("Error: PanelMirrorMode information parse error in DTS\n");
+    }
+
+    if ( GOP_V_H_MIRROR == mirror_mode )
+    {
+        UBOOT_INFO("<<set_mirror V & H ON!!>> \n");
         MApi_GOP_GWIN_SetVMirror(TRUE);
-        if(gbPnlModMirrorMode==FALSE)
+        if ( panel_mirror_mode == FALSE )
         {
             MApi_GOP_GWIN_SetHMirror(TRUE);
         }
         else
         {
-          UBOOT_DEBUG("<<Skip H ON!!>> \n");
+            UBOOT_DEBUG("<<Skip H ON!!>> \n");
         }
     }
-    else if(2==mirror_mode)
+    else if ( GOP_V_MIRROR == mirror_mode )
     {
-        UBOOT_DEBUG("<<set_mirror V ON!!>> \n");
+        UBOOT_INFO("<<set_mirror V ON!!>> \n");
         MApi_GOP_GWIN_SetVMirror(TRUE);
     }
-    else if(3==mirror_mode)
+    else if ( GOP_H_MIRROR == mirror_mode )
     {
-        if(gbPnlModMirrorMode==FALSE)
+        if ( panel_mirror_mode == FALSE )
         {
             UBOOT_DEBUG("<<set_mirror H ON!!>> \n");
             MApi_GOP_GWIN_SetHMirror(TRUE);
         }
         else
         {
-            UBOOT_DEBUG("<<MOD H_Mirror Enable !!>> \n");
+            UBOOT_DEBUG("<<MOD H_Mirror Enable !!>>\n");
         }
     }
-    gop_show(u8logo_gop_index, &dst_info,TRUE,TRUE,p_blk->x,p_blk->y);
+    gop_show(u8logo_gop_index, &dst_info, TRUE, TRUE, p_blk->x, p_blk->y);
 }
 
 void mtk_draw_rect(GFX_Block* p_blk, GFX_RgbColor color)

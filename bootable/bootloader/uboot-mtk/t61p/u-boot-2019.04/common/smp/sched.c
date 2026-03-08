@@ -21,6 +21,8 @@ cond_t g_sub_cond[NR_CPUS];
 static smp_spin_lock_t g_thread_lock = INIT_SPIN_LOCK;
 smp_spin_lock_t g_release_lock = INIT_SPIN_LOCK;
 smp_spin_lock_t g_sched_lock = INIT_SPIN_LOCK;
+//workaround for emmc cmd sequence broken issue
+smp_spin_lock_t g_amzn_lock = INIT_SPIN_LOCK;
 scheduler_t g_scheduler;
 thread_t *current_thread[NR_CPUS];  /* Current thread */
 int active_count;       /* Active thread count */

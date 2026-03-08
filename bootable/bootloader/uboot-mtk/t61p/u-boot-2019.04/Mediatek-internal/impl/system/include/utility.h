@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _INIT_UTILITY_H_
 #define _INIT_UTILITY_H_
@@ -61,6 +61,14 @@ int add_bootargs(char * key, char *set_cfg, bool save);
 //-------------------------------------------------------------------------------------------------
 
 char* para_replace(char *str,int argc,char * const argv[]);
+
+//-------------------------------------------------------------------------------------------------
+/// Find a member in current bootargs
+/// For example: find_bootargs("autotest");
+/// @param key                                     \b IN: the member's prefix
+/// @return  int                                   \b OUT: 0, not exist , non-Zero , exist
+//-------------------------------------------------------------------------------------------------
+int find_bootargs(char *key);
 
 //-------------------------------------------------------------------------------------------------
 /// Parameters N/A

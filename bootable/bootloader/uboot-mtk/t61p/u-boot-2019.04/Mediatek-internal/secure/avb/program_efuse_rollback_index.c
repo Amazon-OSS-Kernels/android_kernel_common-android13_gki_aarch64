@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
+
 
 #include <debug_impl.h>
 #include <program_efuse_rollback_index.h>

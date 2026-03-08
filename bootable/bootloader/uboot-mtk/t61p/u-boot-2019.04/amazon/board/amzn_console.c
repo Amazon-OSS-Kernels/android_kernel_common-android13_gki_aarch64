@@ -8,8 +8,12 @@
 #include <common.h>
 #include <idme.h>
 #include <idme_utilities.h>
+#if defined(UFBL_FEATURE_IDME)
+#include <utility.h>
+#endif
 #include <amzn_console.h>
 #include <amzn_tv_secure_boot.h>
+#include <amzn_tv_common.h>
 
 /* save uboot log and pass it kernel for access */
 static char *amzn_log_buf = NULL;
@@ -95,3 +99,31 @@ int amzn_uart_disable(void)
 	}
 	return 0;
 }
+
+#if defined(UFBL_FEATURE_IDME)
+int amzn_diag_uartport_change(void)
+{
+	#define DIAG_UART_VAR_SIZE 32
+	#define DIAG_BOOT_CONSOLE_VAR_SIZE 32
+	unsigned int bootmode;
+	unsigned int tty_port_num;
+	char diag_console_tty_port[DIAG_UART_VAR_SIZE] = "\0";
+	char androidboot_console[DIAG_BOOT_CONSOLE_VAR_SIZE] = "\0";
+
+	bootmode = simple_strtoul(env_get("bootmode"), NULL, 10);
+	idme_get_oem_data_field("diag_c_tty=", diag_console_tty_port, DIAG_UART_VAR_SIZE);
+
+	if (diag_console_tty_port[0] != 0 && bootmode == IDME_BOOTMODE_DIAG) {
+		tty_port_num = simple_strtoul(diag_console_tty_port, NULL, 0);
+		snprintf(androidboot_console, sizeof (androidboot_console),
+				"androidboot.console=ttyS%d", tty_port_num);
+		do {
+			printf("[Diag]Delete androidboot.console\n");
+			del_bootargs("androidboot.console", 0);
+		} while(find_bootargs("androidboot.console"));
+		printf("[Diag]Set %s\n", androidboot_console);
+		add_bootargs("androidboot.console", androidboot_console, 0);
+	}
+	return 0;
+}
+#endif

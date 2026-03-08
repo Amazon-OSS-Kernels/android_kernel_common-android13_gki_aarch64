@@ -9,10 +9,12 @@
 #include <unlock_pub_key.h>
 #include <amzn_tv_secure_boot.h>
 #include <program_efuse_rollback_index.h>
-
+#include <spinlock.h>
 extern int secure_is_tee_fail(void);
 extern unsigned int CountBitsFromU32(unsigned int val);
 extern unsigned int EFuseBitsToVersion(unsigned int val, unsigned int *Is_Inconsistent);
+//workaround for emmc cmd sequence broken issue
+extern smp_spin_lock_t g_amzn_lock;
 
 int anti_rollback_enabled(void)
 {
@@ -80,11 +82,20 @@ int amzn_target_is_unlocked(void)
 // 0: locked, otherwise: unlocked
 int amzn_device_is_unlocked(void)
 {
-	return amzn_target_is_unlocked()
+	int ret = 0;
+	unsigned long irq_flag = 0;
+
+	//protect by spin_lock to avoid OPTEE(secure world)
+	//and mboot multicore(normal world) access emmc h/w at the same time
+	smp_spin_lock_save(&g_amzn_lock, irq_flag);
+	ret = amzn_target_is_unlocked()
 #if defined(UFBL_FEATURE_REPLAY_PROTECTED_UNLOCK)
 			|| amzn_target_is_replay_protected_unlocked()
 #endif
 	;
+	smp_spin_unlock_restore(&g_amzn_lock, irq_flag);
+
+	return ret;
 }
 
 // 0: success, otherwise: failed
@@ -169,7 +180,7 @@ int chk_cmd_lockdown(const char* command)
 const unsigned char *amzn_get_unlock_key(unsigned int *key_len)
 {
 	static const unsigned char unlock_key[] =
-#if (defined(SBOOT_WYOMING_BOARD)||defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABC_BOARD))
+#if (defined(SBOOT_WYOMING_BOARD)||defined(SBOOT_GOLDFINCH_BOARD)||defined(SBOOT_LASSEN_BOARD))
 	{ MT9025_3P_UNLOCK_PUBKEY };
 #elif (defined(SBOOT_ABCEU_BOARD))
         { MT9025_1P_ABCEU_UNLOCK_PUBKEY };
@@ -445,12 +456,12 @@ int amzn_yk_get_pub_key_list(const amzn_yk_pub_key_t **key_list)
 {
 	// keys must end with {NULL, NULL, 0}
 	static const amzn_yk_pub_key_t keys[] = {
-#if defined(UFBL_PROJ_ABC)
-		{YUBIKEY_PUB_KEY_TAG_ABC_LP, g_yubikey_unlock_public_key_ABC_lp,
-				sizeof(g_yubikey_unlock_public_key_ABC_lp)},
-#elif defined(UFBL_PROJ_ABC)
-		{YUBIKEY_PUB_KEY_TAG_ABC_GP, g_yubikey_unlock_public_key_ABC_gp,
-				sizeof(g_yubikey_unlock_public_key_ABC_gp)},
+#if defined(UFBL_PROJ_LASSEN)
+		{YUBIKEY_PUB_KEY_TAG_LASSEN_LP, g_yubikey_unlock_public_key_lassen_lp,
+				sizeof(g_yubikey_unlock_public_key_lassen_lp)},
+#elif defined(UFBL_PROJ_GOLDFINCH)
+		{YUBIKEY_PUB_KEY_TAG_GOLDFINCH_GP, g_yubikey_unlock_public_key_goldfinch_gp,
+				sizeof(g_yubikey_unlock_public_key_goldfinch_gp)},
 #elif defined(UFBL_PROJ_WYOMING)
 		{YUBIKEY_PUB_KEY_TAG_WYOMING_WP, g_yubikey_unlock_public_key_wyoming_wp,
 				sizeof(g_yubikey_unlock_public_key_wyoming_wp)},
@@ -460,6 +471,9 @@ int amzn_yk_get_pub_key_list(const amzn_yk_pub_key_t **key_list)
 #elif defined(UFBL_PROJ_ABCEU)
 		{YUBIKEY_PUB_KEY_TAG_ABCEU_GM, g_yubikey_unlock_public_key_ABCeu_gm,
 				sizeof(g_yubikey_unlock_public_key_ABCeu_gm)},
+#elif defined(UFBL_PROJ_ABCEU)
+		{YUBIKEY_PUB_KEY_TAG_ABCEU_PV, g_yubikey_unlock_public_key_ABCeu_pv,
+				sizeof(g_yubikey_unlock_public_key_ABCeu_pv)},
 #endif
 		{NULL, NULL, 0},
 	};

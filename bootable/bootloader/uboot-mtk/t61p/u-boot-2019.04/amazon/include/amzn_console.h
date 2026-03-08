@@ -14,4 +14,8 @@ void amzn_get_log(char *log_buf);    /* get the content of the log buffer */
 
 int amzn_uart_disable(void);
 
+#if defined(UFBL_FEATURE_IDME)
+int amzn_diag_uartport_change(void);
+#endif
+
 #endif

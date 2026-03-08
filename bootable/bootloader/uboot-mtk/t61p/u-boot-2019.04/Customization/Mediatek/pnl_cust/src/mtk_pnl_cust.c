@@ -26,9 +26,9 @@
 #define FALSE                       0
 #endif
 
-#define FILE_CUS_PARTITION          ""
-#define FILE_DEFAULT_PARTITION_1    "bootdata" /* STI flow usage*/
-#define FILE_DEFAULT_PARTITION_2    "tvconfig" /* Mixed mode flow usage*/
+#define FILE_CUS_PARTITION          "CusFilePart"
+#define FILE_DEFAULT_PARTITION_1    "tvconfig"
+#define FILE_DEFAULT_PARTITION_2    "bootdata"
 #define FILE_FIXED_FOLDER           ""
 #define FILE_PATH_LENGTH            (128)
 #define PANEL_DLG_PARTITION_PATH    "persist"

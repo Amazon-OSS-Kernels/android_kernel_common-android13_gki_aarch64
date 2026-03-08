@@ -77,13 +77,13 @@ sbvc_result sboot_version_check(char *sboot_buf, int sboot_len, int partition_nu
 	/* It should be updated whenever there's version bump for anti-rollback */
 #if defined(SBOOT_WYOMING_BOARD)
 	const char *device_name = "WYOMING";
-	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
-	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
-	const unsigned short version_bump = 0;
+	const unsigned short version_bump = 0x13;
+#elif defined(SBOOT_GOLDFINCH_BOARD)
+	const char *device_name = "GOLDFINCH";
+	const unsigned short version_bump = 0x13;
+#elif defined(SBOOT_LASSEN_BOARD)
+	const char *device_name = "LASSEN";
+	const unsigned short version_bump = 0x13;
 #elif defined(SBOOT_ABC_BOARD)
 	const char *device_name = "ABC";
 	const unsigned short version_bump = 0;
@@ -98,10 +98,10 @@ sbvc_result sboot_version_check(char *sboot_buf, int sboot_len, int partition_nu
 	const unsigned short version_bump = 0;
 #elif defined(SBOOT_ABC_BOARD)
 	const char *device_name = "ABC";
-	const unsigned short version_bump = 0;
+	const unsigned short version_bump = 0x11;
 #elif defined(SBOOT_ABCEU_BOARD)
 	const char *device_name = "GREU";
-	const unsigned short version_bump = 0;
+	const unsigned short version_bump = 0x12;
 #else
 	const char *device_name = "SANFORD";
 	const unsigned short version_bump = 0;

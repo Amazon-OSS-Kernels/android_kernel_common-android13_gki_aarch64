@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2023 MediaTek Inc.
 #
+
 UBOOTINCLUDE += -I$(srctree)/Mediatek-internal/drivers/include/ \
                 -I$(srctree)/Mediatek-internal/drivers/include/chip/ \
                 -I$(srctree)/Mediatek-internal/impl/system/include/ \

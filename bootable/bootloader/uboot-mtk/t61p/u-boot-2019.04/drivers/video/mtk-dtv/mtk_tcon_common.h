@@ -75,6 +75,13 @@ typedef enum  {
     #undef DEF_X
 }EN_TCON_TAB_TYPE;
 
+struct st_tcon_pq_force_en {
+	bool force_enable;
+	char *tcon_pq_bin_path;
+	char *eva_bin_path;
+	char *pga_bin_path;
+};
+
 typedef struct {
     uint8_t u8TconType;             //IN: tcon tab type
     uint8_t *pu8Table;              //IN & OUT: the pointer to tcon tab table
@@ -161,7 +168,9 @@ extern EN_TCON_LOG_LEVEL g_enTconLogLevel;
 
 bool init_log_level(void);
 bool load_tcon_files(struct udevice *dev);
+bool load_tcon_pq_files(struct udevice *dev, struct st_tcon_pq_force_en force_en);
 bool is_tcon_data_exist(unsigned char **ppdata, loff_t *plen);
+bool is_tcon_pq_data_exist(unsigned char **ppdata, loff_t *plen);
 bool is_tcon_power_seq_data_exist(unsigned char **ppdata, loff_t *plen);
 bool is_pnlgamma_data_exist(unsigned char **ppdata, loff_t *plen);
 bool get_tcon_dump_table(st_tcon_tab_info *pstInfo);
@@ -169,4 +178,6 @@ bool get_tcon_version(uint8_t *pu8Table, uint8_t *pu8Version);
 bool free_resource(void);
 bool is_tcon_sti_flow(void);
 bool is_tcon_force_disable(void);
+bool is_tcon_pq_force_enable(struct st_tcon_pq_force_en *tcon_pq_en);
+void print_look_up_table(int rows, int columns, u16 *table, bool is_byte);
 #endif

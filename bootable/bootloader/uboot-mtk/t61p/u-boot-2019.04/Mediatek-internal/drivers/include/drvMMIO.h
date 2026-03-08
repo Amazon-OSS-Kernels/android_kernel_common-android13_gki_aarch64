@@ -1,7 +1,14 @@
-// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// @file   drvMMIO.h
+/// @brief  MMIO SYS Driver Interface
+/// @author MStar Semiconductor Inc.
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef __DRV_MMIO_H__
 #define __DRV_MMIO_H__

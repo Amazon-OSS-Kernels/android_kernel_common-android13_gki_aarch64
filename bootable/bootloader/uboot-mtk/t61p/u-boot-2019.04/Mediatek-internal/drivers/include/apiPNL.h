@@ -1,14 +1,8 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// @file   apiPNL.h
-/// @brief  Panel Interface
-/// @author MStar Semiconductor Inc.
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*! \defgroup PNL_MODULE Panel Module
 
@@ -768,6 +762,7 @@ typedef struct __attribute__((packed))
     MS_U16 u16VRRMinRate;                    // vrr min frame rate
     MS_BOOL bCinemaVRR_en;
     MS_U16 u16M_delta;                       // change vtt every time by m_delta
+    MS_BOOL using_tcon_en;
 	MS_U32 u32panel_type;
 	//vcc and backlight
 	MS_U32 m_bVccBlCusCtrl;					 // bit control of VCC and backlight

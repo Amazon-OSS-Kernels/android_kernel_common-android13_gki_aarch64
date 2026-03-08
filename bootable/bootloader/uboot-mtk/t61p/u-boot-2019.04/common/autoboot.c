@@ -30,6 +30,7 @@
 #include "exports.h"
 #include <amzn_tv_common.h>
 #include <amzn_tv_secure_boot.h>
+#include <mtk_panel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -373,7 +374,7 @@ static void bootargs_setting(void)
 		char ammo_prop[PROD_VAR_SIZE+sizeof("androidboot.ammo.prod.var=")+2] = {0,};
 
 		idme_get_oem_data_field("ammo_var=", ammo_var, PROD_VAR_SIZE);
-		/* following if condition is only for wyoming, ABC, ABC */
+		/* following if condition is only for wyoming, goldfinch, lassen */
 		/* and ABC as AMMO is enabled in the middle of development    */
 		if (!(strcmp(ammo_var, ""))) {
 			const char *board_name = env_get("board");
@@ -381,10 +382,10 @@ static void bootargs_setting(void)
 			printf("AMMO: board_name:%s\n", board_name);
 			if (!(strcmp(board_name, "wyoming"))) {
 				sprintf(ammo_var, "wyoming-wp");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-gp");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-lp");
+			} else if (!(strcmp(board_name, "goldfinch"))) {
+				sprintf(ammo_var, "goldfinch-gp");
+			} else if (!(strcmp(board_name, "lassen"))) {
+				sprintf(ammo_var, "lassen-lp");
 			} else if (!(strcmp(board_name, "ABC"))) {
 				sprintf(ammo_var, "ABC-ca");
 			} else if (!(strcmp(board_name, "ABCeu"))) {
@@ -498,6 +499,7 @@ extern void cpu_interrupt_setting(void);
 void autoboot_command(const char *s)
 {
 	int chipid = romtbl_get_chip_id_info();
+	char bootarg[BOOTARGS_VALUE_LEN] = {0};
 
 	debug("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
@@ -522,6 +524,10 @@ void autoboot_command(const char *s)
 #endif
 		if(is_qhb_boot_mode() == 1)
 			add_bootargs("androidboot.quiescent", "androidboot.quiescent=1", 0);
+
+		snprintf(bootarg, BOOTARGS_VALUE_LEN,
+			"androidboot.panel_oled_support=%d", MApi_check_is_oled());
+		add_bootargs("androidboot.panel_oled_support", bootarg, 0);
 
 		bootargs_setting();
 		do_jump_to_kernel();

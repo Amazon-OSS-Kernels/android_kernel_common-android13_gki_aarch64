@@ -27,6 +27,7 @@
 #include "coda/ckgen01.h"
 #include "coda/CKGEN00_V004.h"
 #include "coda/CKGEN01_V004.h"
+#include "coda/TCON_VCOM_PAT_V005.h"
 #include "coda/modv11.h"
 #include "coda/modv12.h"
 #include "coda/modv13.h"
@@ -60,7 +61,6 @@
 #include "coda/SCTCON_BKA4F7_V004.h"
 #include "mtk_pnl_utility.h"
 #include "mtk_tv_pnl.h"
-#include "mtk_pnl_out_if.h"
 #include "coda/MODV11_V004.h"
 #include "coda/MODV12_V004.h"
 #include "coda/MODV13_V004.h"
@@ -87,8 +87,9 @@
 #include "coda/MODA4_V005.h"
 #include "coda/LPLL_V005.h"
 #include "coda/disp_misc.h"
-#include "mtk_tcon_out_if.h"
 #include "mtk_tcon_common.h"
+#include "mtk_tcon_out_if.h"
+#include "mtk_pnl_out_if.h"
 #include "mtk_pnl_clk_ctrl.h"
 #include "coda/FRCPLL.h"
 #include "coda/SCTCON_MISC_BKA3E0_V005.h"
@@ -99,6 +100,7 @@
 #include "coda/TCON_SET_V005.h"
 #include "coda/BLEND_TOP_BKA36B.h"
 #include "coda/TCON_4K.h"
+#include "coda/OSDB_COLOV_BKA3ED.h"
 #include <asm/io.h>
 
 //Only for HAPS
@@ -195,6 +197,11 @@
 #define CHIP_VERSION2 (2)
 #define CHIP_VERSION3 (3)
 #define CHIP_VERSION4 (4)
+
+#define FILE_CUS_PARTITION          "CusFilePart"
+#define MOD_BLOCKPATTERN_TBL_MAX_SIZE       (0x60)
+#define MOD_BLOCKPATTERN_TBL_LINE_SIZE      (0x18)
+#define MOD_BLOCKPATTERN_ADDR_STEP               (4)
 
 #ifdef MSOS_TYPE_LINUX_KERNEL
 #define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
@@ -3054,6 +3061,8 @@ int mtk_tgen_init(struct udevice *dev)
 
 	// for video mute, enable render blending
 	W2BYTEMSK(REG_0004_BLEND_TOP_BKA36B, 1, REG_0004_BLEND_TOP_BKA36B_REG_LAYER0_OFF);
+	W2BYTEMSK(REG_000C_OSDB_COLOV_BKA3ED, 1, REG_000C_OSDB_COLOV_BKA3ED_REG_COLOV_SET_BLACK_DBF_EN);
+	W2BYTEMSK(REG_0010_OSDB_COLOV_BKA3ED, 1, REG_0010_OSDB_COLOV_BKA3ED_REG_COLOV_SET_BLACK_MAIN_EN);
 
 	//Patch for enable xc mcu clk.
 	switch (priv->pnl_lib_version)  {
@@ -3760,6 +3769,80 @@ void mtk_pnl_set_panel_SCDISP_Path_Sel(struct udevice *dev)
 	W2BYTEMSK(REG_0100_SCDISP_BKA4FA, priv->cus_info.scdisp_path_sel, REG_0100_SCDISP_BKA4FA_REG_SCDISP_PATH_SEL);
 }
 
+bool _mtk_pnl_set_mod_block_pattern_enable(bool en)
+{
+	W2BYTEMSK(REG_0004_TCON_VCOM_PAT_V005, (en << 0), REG_0004_TCON_VCOM_PAT_V005_REG_BLOCK_TEST_EN_0004);
+	return true;
+}
+
+bool _mtk_pnl_set_mod_block_pattern_table(u16 *pixel_tbl, u32 table_size, bool is_epi)
+{
+	u16 vcom_tbl[table_size];
+	u32 table_addr_1 = 0;
+	u32 table_addr_2 = 0;
+	u32 table_addr = 0;
+	u16 table_temp[table_size];
+
+	memset(vcom_tbl, 0, sizeof(u16) * table_size);
+	if (!pixel_tbl)
+		return false;
+
+	memcpy(vcom_tbl, pixel_tbl, sizeof(u16) * table_size);
+	memset(table_temp, 0, sizeof(u16) * table_size);
+	memcpy(table_temp, pixel_tbl, sizeof(u16) * table_size);
+	if (is_epi) {
+		for (table_addr_1 = 0; table_addr_1 < table_size; table_addr_1++) {
+			table_addr_2 = table_addr_1 + MOD_BLOCKPATTERN_TBL_LINE_SIZE;
+			while (table_addr_2 >= table_size)
+				table_addr_2 = table_addr_2 - table_size;
+
+			vcom_tbl[table_addr_2] = table_temp[table_addr_1];
+		}
+	}
+
+	if (table_size == MOD_BLOCKPATTERN_TBL_MAX_SIZE) {
+		for (table_addr = 0; table_addr < table_size; table_addr++) {
+			// reg_detect_table, masks are same so keep
+			W2BYTEMSK(REG_0020_TCON_VCOM_PAT_V005 + table_addr * MOD_BLOCKPATTERN_ADDR_STEP,
+			vcom_tbl[table_addr],
+			REG_0020_TCON_VCOM_PAT_V005_REG_LINE0_SUBP00_0020);
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+void _mtk_pnl_vcom_pattern_en(bool en)
+{
+	u16 pixel_tbl[MOD_BLOCKPATTERN_TBL_MAX_SIZE];
+	u8 idx_num = 0;
+
+	// Vcom pattern
+	for (idx_num = 0; idx_num < MOD_BLOCKPATTERN_TBL_MAX_SIZE; idx_num++) {
+	     pixel_tbl[idx_num] = 0x00;
+	     idx_num++;
+	     pixel_tbl[idx_num] = 0x00;
+	     idx_num++;
+	     pixel_tbl[idx_num] = 0x00;
+	}
+
+	W2BYTEMSK(REG_0180_MODV11, 0x1, REG_0180_MODV11_REG_TEST_H_LINE_MODE);
+	W2BYTEMSK(REG_0184_MODV11, REG_ALL, REG_0184_MODV21_REG_TEST_H_LINE_ST);
+	W2BYTEMSK(REG_0188_MODV11, REG_ALL, REG_0188_MODV21_REG_TEST_H_LINE_END);
+
+	if (en)	{
+		if (_mtk_pnl_set_mod_block_pattern_table(pixel_tbl, MOD_BLOCKPATTERN_TBL_MAX_SIZE, false)) {
+			_mtk_pnl_set_mod_block_pattern_enable(true);
+		} else {
+			_mtk_pnl_set_mod_block_pattern_enable(false);
+			UBOOT_DEBUG("set block pattern table fail!!\n");
+		}
+	} else {
+		_mtk_pnl_set_mod_block_pattern_enable(false);
+	}
+}
+
 void mtk_pnl_mute_en(struct udevice *dev, bool en)
 {
 	struct mtk_panel_priv *priv = dev_get_priv(dev);
@@ -3814,6 +3897,10 @@ void mtk_pnl_mute_en(struct udevice *dev, bool en)
 			W2BYTEMSK(REG_01B8_PATGEN_SCALER_BKA407, 0x0, REG_01B8_PATGEN_SCALER_BKA407_REG_G_END_MSB);
 			W2BYTEMSK(REG_0184_PATGEN_SCALER_BKA407, 0x1, REG_0184_PATGEN_SCALER_BKA407_REG_BYPASS_PATGEN_SCALER);
 		}
+		break;
+	case BOOT_PNL_VERSION0400:
+	case BOOT_PNL_VERSION0500:
+		_mtk_pnl_vcom_pattern_en(en);
 		break;
 	default: // The pattern gen is lighted for V4
 		if (en) {
@@ -5115,7 +5202,6 @@ bool mtk_dump_tcon_efuse(u32 hwVersion)
 {
 	bool tcon_disable_bit = false;
 	u32 efuse_val = 0;
-
 	switch (hwVersion) {
 	case BOOT_PNL_VERSION0400:
 		efuse_val = _mtk_get_efuse_val(hwVersion, EFUSE_PPM_REG_TABLE_1);
@@ -6397,10 +6483,11 @@ u32 stTconPathVal[TCON_PATH_REG_COUNT][E_PNL_TCON_PATH_MODE_MAX-1]={
     {0x1,   0x0,   0x1,   0x1,   0x1,   0x1,},
 };
 
-static loff_t size;
+static loff_t tcon_size;
 static loff_t eva_size;
 static u8 *file_buf;
 static u8 *eva_buf;
+
 static u8 *panel_gamma_buf;
 static loff_t panel_gamma_size;
 
@@ -11025,6 +11112,15 @@ finally:
 #endif
 }
 
+bool _MHal_PNL_Free_resource(void)
+{
+	PNL_FREE_MEM(file_buf);
+	PNL_FREE_MEM(eva_buf);
+	PNL_FREE_MEM(panel_gamma_buf);
+
+	return TRUE;
+}
+
 void MHal_PNL_EnableTcon(struct udevice *dev)
 {
     if (dev == NULL) {
@@ -11032,6 +11128,8 @@ void MHal_PNL_EnableTcon(struct udevice *dev)
         return;
     }
     MApi_PNL_TCONMAP_DumpTable(dev, (uint8_t*)file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_POWER_SEQUENCE_ON);
+	//free tcon bin resource
+	_MHal_PNL_Free_resource();
     return;
 }
 
@@ -11241,6 +11339,9 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
     struct mtk_panel_priv *priv = dev_get_priv(dev);
 	char chFilePath[BIN_FILE_PATH_LENGTH];
 	bool is_dlg = dlg_mode;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    char *cus_path = NULL;
+#endif
 
     if (priv == NULL) {
         UBOOT_ERROR("Get device private fail\n");
@@ -11258,17 +11359,23 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
 				strncpy(chFilePath, priv->tcon_info.tcon_bin_path, sizeof(chFilePath) - 1);
 		}
 		UBOOT_TRACE("tcon: isDLG=%d, bin path %s\n", is_dlg, chFilePath);
-		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", chFilePath, &size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        cus_path = env_get(FILE_CUS_PARTITION);
+        if (cus_path)
+            file_buf = (u8 *)read_storage_file_to_memory(cus_path, chFilePath, &tcon_size);
+        if (!file_buf)
+#endif
+            file_buf = (u8 *)read_storage_file_to_memory("tvconfig", chFilePath, &tcon_size);
 	}
 
 	//if not found, load tcon bin from default path
 	if (!file_buf) {
 		UBOOT_TRACE("read tcon bin file from /bsp/common/TCON_BIN/TCON20.bin\n");
-		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", TCON_DEFAUL_PATH_AOSP, &size);
+		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", TCON_DEFAUL_PATH_AOSP, &tcon_size);
 	}
 	if (!file_buf) {
 		UBOOT_TRACE("read tcon bin file from tcon/TCON20.bin\n");
-		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", TCON_DEFAUL_PATH_MI, &size);
+		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", TCON_DEFAUL_PATH_MI, &tcon_size);
 	}
 	/*  The Linux Path is aligned with AOSP
 	 *  if (file_buf == NULL) {
@@ -11278,7 +11385,15 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
 	 */
 
 	if (file_buf) {
-	    eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_MI, &eva_size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        if (cus_path) {
+                eva_buf = (u8 *)read_storage_file_to_memory(cus_path, EVA_DEFAUL_PATH_MI, &eva_size);
+            if (!eva_buf)
+                eva_buf = (u8 *)read_storage_file_to_memory(cus_path, EVA_DEFAUL_PATH_AOSP, &eva_size);
+        }
+        if (!eva_buf)
+#endif
+            eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_MI, &eva_size);
 		if (!eva_buf)
 			eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_AOSP, &eva_size);
 		/*  The Linux Path is aligned with AOSP
@@ -11287,10 +11402,10 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
 		 */
 	}
 
-    UBOOT_DEBUG("tcon size=%lld \n", size);
+	UBOOT_DEBUG("tcon size=%lld\n", tcon_size);
     //debug("\033[0;32;31m [%s][%s][%d] 0x%X\n\033[m", __FILE__, __FUNCTION__, __LINE__, file_buf[0]);
     //debug("\033[0;32;31m [%s][%s][%d] 0x%X\n\033[m", __FILE__, __FUNCTION__, __LINE__, file_buf[1]);
-    UBOOT_DEBUG("eva size=%lld \n", eva_size);
+	UBOOT_DEBUG("eva size=%lld\n", eva_size);
     //debug("\033[0;32;31m [%s][%s][%d] eva_buf[0] 0x%X\n\033[m", __FILE__, __FUNCTION__, __LINE__, eva_buf[0]);
     //debug("\033[0;32;31m [%s][%s][%d] eva_buf[1] 0x%X\n\033[m", __FILE__, __FUNCTION__, __LINE__, eva_buf[1]);
 
@@ -11302,11 +11417,41 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
     }
     else
     {
-        if(size>0)
-        {
-            MApi_PNL_TCONMAP_DumpTable(dev, file_buf,NULL,E_APIPNL_TCON_TAB_TYPE_PANEL_INFO); // verison 2 new panel table
-        }
+		if (tcon_size > 0)
+			MApi_PNL_TCONMAP_DumpTable(dev, file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_PANEL_INFO);
     }
+}
+
+void Init_TCON_Pq(struct udevice *dev)
+{
+	if (eva_buf && eva_size > 0) {
+		MApi_PNL_TCONMAP_DumpTable(dev, file_buf, eva_buf, E_APIPNL_TCON_TAB_TYPE_EVA_TABLE);
+		MApi_PNL_TCONMAP_DumpTable(dev, file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_EVA_REG);
+	}
+	if (file_buf && tcon_size > 0) {
+		MApi_PNL_TCONMAP_DumpTable(dev, file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_EVA_REG);
+		MApi_PNL_TCONMAP_DumpTable(dev, file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_LINE_OD_REG);
+		MApi_PNL_TCONMAP_DumpTable(dev, file_buf, NULL, E_APIPNL_TCON_TAB_TYPE_LINE_OD_TABLE);
+	}
+
+	_MHal_PNL_Free_resource();
+}
+
+void Init_TCON_Pq_Path(struct udevice *dev, struct st_tcon_pq_force_en force_en)
+{
+	struct mtk_panel_priv *priv = dev_get_priv(dev);
+
+	if (!priv) {
+		UBOOT_ERROR("Get device private fail\n");
+		return;
+	}
+	if (!file_buf && force_en.force_enable && force_en.tcon_pq_bin_path)
+		file_buf = (uint8_t *)read_storage_file_to_memory("tvconfig", force_en.tcon_pq_bin_path, &tcon_size);
+
+	if (!eva_buf && force_en.force_enable && force_en.eva_bin_path)
+		eva_buf = (uint8_t *)read_storage_file_to_memory("tvconfig", force_en.eva_bin_path, &eva_size);
+	UBOOT_DEBUG("tcon pq size=%lld\n", tcon_size);
+	UBOOT_DEBUG("eva size=%lld\n", eva_size);
 }
 
 #if (CONFIG_HAPS == 1)
@@ -11317,9 +11462,20 @@ static void _mtk_panelgamma_verify(struct udevice *dev)
     loff_t size;
     unsigned char* file_buf;
     bool bret = FALSE;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    char *cus_path = NULL;
+#endif
 
     UBOOT_DEBUG("read panel_gamma bin file from config/gamma/panel_gamma.bin\n");
-    file_buf = read_storage_file_to_memory("tvconfig", "gamma/panel_gamma.bin", &size);
+
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    cus_path = env_get(FILE_CUS_PARTITION);
+    if (cus_path)
+        file_buf = read_storage_file_to_memory(cus_path, "gamma/panel_gamma.bin", &size);
+    if (!file_buf)
+#endif
+        file_buf = read_storage_file_to_memory("tvconfig", "gamma/panel_gamma.bin", &size);
+
     if(file_buf == NULL)
     {
 		UBOOT_ERROR("Error: Read raw data file failure\n");
@@ -11417,6 +11573,9 @@ void mtk_panelgamma_setting(struct udevice *dev, bool dlg_mode)
 		bool is_dlg = dlg_mode;
 		char chPanelGammaPath[BIN_FILE_PATH_LENGTH];
 		bool bret = FALSE;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        char *cus_path = NULL;
+#endif
 
 		if (priv->tcon_info.panelgamma_bin_path || priv->tcon_info.panelgamma_dlg_bin_path)	{
 			if (is_dlg)	{
@@ -11427,7 +11586,13 @@ void mtk_panelgamma_setting(struct udevice *dev, bool dlg_mode)
 					strncpy(chPanelGammaPath, priv->tcon_info.panelgamma_bin_path, sizeof(chPanelGammaPath) - 1);
 			}
 			debug("panel gamma is_dlg=%d, bin path %s\n", is_dlg, chPanelGammaPath);
-			panel_gamma_buf = (u8 *)read_storage_file_to_memory("tvconfig", chPanelGammaPath, &panel_gamma_size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+            cus_path = env_get(FILE_CUS_PARTITION);
+            if (cus_path)
+                panel_gamma_buf = (u8 *)read_storage_file_to_memory(cus_path, chPanelGammaPath, &panel_gamma_size);
+            if (!panel_gamma_buf)
+#endif
+                panel_gamma_buf = (u8 *)read_storage_file_to_memory("tvconfig", chPanelGammaPath, &panel_gamma_size);
 		}
 
 		//if not found, load tcon bin from default path

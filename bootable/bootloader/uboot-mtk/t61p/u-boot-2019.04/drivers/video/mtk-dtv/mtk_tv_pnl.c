@@ -8,13 +8,14 @@
 //#define DEBUG //for open this file debug("xxx") log
 #include "mtk_tv_pnl.h"
 #include "mtk_pnl_dts_st.h"
-#include "mtk_pnl_out_if.h"
 #include "mtk_pnl_out_if_v006.h"
 
-#include "mtk_tcon_out_if.h"
 #include "mtk_tcon_common.h"
+#include "mtk_pnl_out_if.h"
+#include "mtk_tcon_out_if.h"
 #include "mtk_pnl_clk_ctrl.h"
 #include "mtk_pnl_clk_ctrl_v006.h"
+#include "mtk_pnl_version.h"
 #include <common.h>
 #include <backlight.h>
 #include <dm.h>
@@ -942,11 +943,11 @@ static int mtk_gfx_ofdata_to_platdata(struct udevice *dev)
 	return ret;
 }
 
-
 static int mtk_panel_probe(struct udevice *dev)
 {
 	//read dts table and init clk
 	struct mtk_panel_priv *priv = dev_get_priv(dev);
+	struct st_tcon_pq_force_en tcon_enable;
 
 	if (priv == NULL) {
 		UBOOT_ERROR("Get device private fail\n");
@@ -954,7 +955,11 @@ static int mtk_panel_probe(struct udevice *dev)
 	}
     	UBOOT_TRACE("IN\n");
 	PUBIF_HWREG_RENDER_VIDEO_PNL hwreg_render_video_pnl;
-	printf("[wei] %s %d, PANEL LIB VER %d\n",__FUNCTION__,__LINE__, priv->pnl_lib_version);
+	UBOOT_DEBUG("[PNL] PANEL LIB VER %d\n", priv->pnl_lib_version);
+	UBOOT_DEBUG("[PNL] SW Ver:%d.%d.%d\n",
+		    MTK_PNL_MAJOR_VERSION,
+		    MTK_PNL_MINOR_VERSION,
+		    MTK_PNL_PATCH_VERSION);
 	memset(&hwreg_render_video_pnl, 0, sizeof(PUBIF_HWREG_RENDER_VIDEO_PNL));
 #if (CONFIG_HAPS == 0)
 	if (priv->pnl_lib_version == BOOT_PNL_VERSION0600)
@@ -1074,6 +1079,17 @@ static int mtk_panel_probe(struct udevice *dev)
 			mtk_tcon_init(dev); //tcon initialize
 	}
 
+	memset(&tcon_enable, 0x00, sizeof(tcon_enable));
+	if (is_tcon_pq_force_enable(&tcon_enable)) {
+		UBOOT_DEBUG("Force init tcon PQ %d\n", tcon_enable.force_enable);
+		if (!is_tcon_sti_flow()) {
+			Init_TCON_Pq_Path(dev, tcon_enable);
+			Init_TCON_Pq(dev);
+		} else {
+			UBOOT_DEBUG("Force init sti tcon PQ\n");
+			mtk_tcon_pq_init(dev, tcon_enable);
+		}
+	}
     UBOOT_TRACE("OUT\n");
 	return 0;
 }
