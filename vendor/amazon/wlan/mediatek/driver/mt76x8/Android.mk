@@ -1,0 +1,117 @@
+# Copyright Statement:
+#
+
+LOCAL_PATH := $(call my-dir)
+
+ifeq ($(TARGET_DEVICE),)
+TARGET_DEVICE := $(TARGET_PRODUCT)
+endif
+
+# if WIFI_DRIVER_MODULE_PATH is set empty by device.mk,
+# driver module will be loaded by rc file, not by framework
+# in this case, driver makefile will refer to WIFI_DRIVER_MODULE_PATH_FOR_DRV
+# for driver path location
+ifeq ($(BOARD_MTK_ONE_IMAGE),true)
+
+ifeq ($(WIFI_DRIVER_MODULE_PATH_76x8),)
+WIFI_DRIVER_MODULE_PATH_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_PATH_FOR_DRV_76x8)
+else
+WIFI_DRIVER_MODULE_PATH_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_PATH_76x8)
+endif
+
+ifeq ($(WIFI_DRIVER_MODULE_NAME_76x8),)
+WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_NAME_FOR_DRV_76x8)
+else
+WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_NAME_76x8)
+endif
+
+else # BOARD_MTK_ONE_IMAGE
+
+ifeq ($(WIFI_DRIVER_MODULE_PATH),)
+WIFI_DRIVER_MODULE_PATH_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_PATH_FOR_DRV)
+else
+WIFI_DRIVER_MODULE_PATH_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_PATH)
+endif
+
+ifeq ($(WIFI_DRIVER_MODULE_NAME),)
+WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_NAME_FOR_DRV)
+else
+WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8 := $(WIFI_DRIVER_MODULE_NAME)
+endif
+
+endif # BOARD_MTK_ONE_IMAGE
+
+include $(CLEAR_VARS)
+WIFI_PROJ_CONFIG_FILE_76x8 := $(LOCAL_PATH)/config/$(TARGET_DEVICE).config
+
+local_path_full := $(shell pwd)/$(LOCAL_PATH)
+PRIVATE_DRIVER_OUT_DIR := $(PRODUCT_OUT)$(WIFI_DRIVER_MODULE_DIR)
+
+#Default enable prealloc memory
+CFG_MTK_PREALLOC_DRIVER := y
+
+MTK_STRIP_DRIVER := y
+
+#LOCAL_KERNEL_CROSS_COMPILE_76x8 := $(KERNEL_CROSS_COMPILE)
+ifeq ($(CLANG_PREBUILT_BIN),)
+ifneq ($(filter merak, $(TARGET_BOARD_PLATFORM)),)
+LOCAL_KERNEL_CROSS_COMPILE_76x8 := vendor/mediatek/kernel/prebuilts-master/clang/host/linux-x86/clang-r416183b/bin
+else
+LOCAL_KERNEL_CROSS_COMPILE_76x8 := prebuilts/clang/host/linux-x86/clang-r383902/bin
+endif
+else
+LOCAL_KERNEL_CROSS_COMPILE_76x8 := $(CLANG_PREBUILT_BIN)
+endif
+$(info LOCAL_KERNEL_CROSS_COMPILE_76x8 = $(LOCAL_KERNEL_CROSS_COMPILE_76x8))
+
+#current parameter name for target arch on VSB is $(TARGET_ARCH)
+ifeq ($(TARGET_KERNEL_ARCH),)
+TARGET_KERNEL_ARCH_76x8 := $(KERNEL_ARCH)
+else
+TARGET_KERNEL_ARCH_76x8 := $(TARGET_KERNEL_ARCH)
+endif
+$(info TARGET_KERNEL_ARCH_76x8 = $(TARGET_KERNEL_ARCH_76x8))
+
+#avoid $(KERNEL_OUT)is not defined
+ifeq ($(KERNEL_OUT),)
+KERNEL_OUT := $(PRODUCT_OUT)/obj/KERNEL_OBJ
+endif
+ifeq ($(TARGET_CUSTOM_KERNEL_OUT),)
+TARGET_CUSTOM_KERNEL_OUT := $(KERNEL_OUT)
+endif
+$(info TARGET_CUSTOM_KERNEL_OUT = $(TARGET_CUSTOM_KERNEL_OUT))
+
+LOCAL_MODULE := $(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8).ko
+LOCAL_PROPRIETARY_MODULE := true
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR)/lib/modules
+
+include $(BUILD_SYSTEM)/base_rules.mk
+
+wifi_module_target := $(LOCAL_BUILT_MODULE)
+ifneq ($(filter sdio, $(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8)),)
+LOCAL_INIT_RC := init.wlan_sdio.rc
+else ifneq ($(filter usb, $(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8)),)
+LOCAL_INIT_RC := init.wlan_usb.rc
+endif
+
+$(wifi_module_target): PRIVATE_DRIVER_LOCAL_DIR_76x8 := $(local_path_full)
+$(wifi_module_target): PRIVATE_DRIVER_OUT := $(wifi_module_target)
+$(wifi_module_target): $(PRODUCT_OUT)/kernel
+	$(hide) rm -rf $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/.config
+	$(hide) cp -f $(WIFI_PROJ_CONFIG_FILE_76x8) $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/.config
+	$(PREBUILT_MAKE_PREFIX)$(MAKE) -C $(TARGET_CUSTOM_KERNEL_OUT) $(TARGET_KERNEL_MAKE_OPTION) M=$(PRIVATE_DRIVER_LOCAL_DIR_76x8) CFG_MTK_PREALLOC_DRIVER=$(CFG_MTK_PREALLOC_DRIVER) modules
+ifeq ($(MTK_STRIP_DRIVER), y)
+	$(LOCAL_KERNEL_CROSS_COMPILE_76x8)/llvm-strip -g $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/$(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8).ko
+	$(LOCAL_KERNEL_CROSS_COMPILE_76x8)/llvm-strip -g $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/$(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8)_prealloc.ko
+endif
+	$(hide) mkdir -p $(PRIVATE_DRIVER_OUT_DIR)
+	$(hide) cp -f $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/$(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8).ko $(PRIVATE_DRIVER_OUT)
+ifeq ($(CFG_MTK_PREALLOC_DRIVER), y)
+	$(hide) cp -f $(PRIVATE_DRIVER_LOCAL_DIR_76x8)/$(WIFI_DRIVER_MODULE_NAME_IN_DRV_76x8)_prealloc.ko $(PRIVATE_DRIVER_OUT_DIR)
+endif
+	$(PREBUILT_MAKE_PREFIX)$(MAKE) -C $(TARGET_CUSTOM_KERNEL_OUT) $(TARGET_KERNEL_MAKE_OPTION) M=$(PRIVATE_DRIVER_LOCAL_DIR_76x8) clean
+
+local_path_full :=
+wifi_module_target :=
