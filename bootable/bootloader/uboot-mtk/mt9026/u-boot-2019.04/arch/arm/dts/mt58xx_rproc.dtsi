@@ -1,0 +1,274 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+/ {
+	pmu_rproc: pmu_rproc {
+		unique-id=<4001>;
+		capability=<0x00000000>;
+		compatible = "mediatek,merak-pmu-cm4-rproc";
+		remoteproc-name = "mtk-pmu-cm4";
+		firmware-prefix = "/pmu/pmu_mt5896_";
+		dtbo-path = "/pmu/pmu_mt5896_h2v1_b6_s.dtbo";
+		/*TODO: need to apply reserved-memory in the future*/
+		mmap-start = <0x2FF00000>;
+		mmap-size = <0x200000>;
+		reg = <0x0 0x1C086400 0x0 0x200>,
+			  <0x0 0x1C020200 0x0 0x200>,
+			  <0x0 0x1C021000 0x0 0x200>,
+			  <0x0 0x1C021200 0x0 0x200>,
+			  <0x0 0x1C620080 0x0 0x2>,
+			  <0x0 0x1C620880 0x0 0x2>,
+			  <0x0 0x1D206000 0x0 0x200>,
+			  <0x0 0x1D2A0800 0x0 0x200>,
+			  <0x0 0x1C087000 0x0 0x200>,
+			  <0x0 0x1D2A0400 0x0 0x200>,
+			  <0x0 0x1C606000 0x0 0x200>,
+			  <0x0 0x1C001800 0x0 0x200>,
+			  <0x0 0x1C001A00 0x0 0x200>,
+			  <0x0 0x1C086000 0x0 0x200>,
+			  <0x0 0x1C086200 0x0 0x200>,
+			  <0x0 0x1C087200 0x0 0x200>,
+			  <0x0 0x1D280000 0x0 0x200>,
+			  <0x0 0x1C025200 0x0 0x200>;
+		reg-names = "paganini",
+					"pm_sleep",
+					"pm_top",
+					"pm_misc",
+					"cpu_int",
+					"inturrpt",
+					"viv_bdma",
+					"vivaldi4",
+					"pm_imi",
+					"vivaldi2",
+					"MALIBOX",
+					"ckgen00_pm",
+					"ckgen01_pm",
+					"vad_0",
+					"vrec",
+					"coin_cpu",
+					"vad_1",
+					"efuse_0";
+		status = "okay";
+	};
+
+	pmu_rpmsg: pmu_rpmsg {
+	};
+
+	pmu_mcs51_rproc: pmu_mcs51_rproc {
+		compatible = "mediatek,merak-pmu-mcs51-rproc";
+		sram_size = <0x10000>;
+		reg =   <0x0 0x1C021200 0x0 0x200>,
+				<0x0 0x1C020200 0x0 0x200>,
+				<0x0 0x1C061600 0x0 0x200>,
+				<0x0 0x1C061800 0x0 0x200>,
+				<0x0 0x1C603000 0x0 0x200>,
+				<0x0 0x1C001A00 0x0 0x200>,
+				<0x0 0x1C020000 0x0 0x200>,
+				<0x0 0x1C204000 0x0 0x200>,
+				<0x0 0x1C204200 0x0 0x200>,
+				<0x0 0x1C205400 0x0 0x200>,
+				<0x0 0x1C207000 0x0 0x200>,
+				<0x0 0x1C207A00 0x0 0x200>;
+		reg-names = "pm_misc",
+					"pm_sleep",
+					"mcu",
+					"cache",
+					"bdma",
+					"ckgen01_pm",
+					"pm_por_status",
+					"ckgen00_0",
+					"ckgen00_1",
+					"ckgen00_A",
+					"ckgen01_D",
+					"ckgen01_8";
+		status = "disabled";
+	};
+
+	pmu_ini: pmu_ini {
+		compatible = "mediatek,pmu_ini";
+		reg = <0 0x1C020200 0 0x200>;
+		status = "disabled";
+		ir_wake: ir {
+			// protocol            : 1 byte ,ex 1=NEC 
+			// headcode            : 4 byte
+			// scan code           : 2 byte
+			// key code            : 2 byte
+			// wakeup reason(TBD)  : 1 byte 
+			key =<0x01>, <0x00>,<0x00>,<0x80>,<0x7f>,<0x00>,<0x46>,<0x00>,<0x74>,<0x00>,
+			     //pageup                                                               
+			     <0x01>, <0x00>,<0x00>,<0x80>,<0x7f>,<0x00>,<0x03>,<0x00>,<0x68>,<0x00>,
+			     //Home key                                                             
+			     <0x01>, <0x00>,<0x00>,<0x80>,<0x7f>,<0x00>,<0x17>,<0x00>,<0x66>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     //SONY IR POWER KEY                                                    
+			     <0x0e>, <0x00>,<0x00>,<0x00>,<0x01>,<0x00>,<0x15>,<0x00>,<0x74>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,
+			     <0x00>, <0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>,<0x00>;
+		};
+		ir_sar: sar {
+			wakeup-ch = <1>;
+			wakeup-lb = <255>;
+			wake-adc = <0x5>,<0x3FF>,<0x3FF>,<0x3FF>,<0x3FF>;
+			upgrade-ch = <1>;
+			upgrade-lb = <0>;
+			upgrade-adc = <0x3FF>,<0x3FF>,<0x3FF>,<0x3FF>,<0x3FF>;
+		};
+		mic_mute: mute-gpio  {
+			wakeup-gpio-num = <0xFFFF>;
+		};
+		wifi_gpio: wifi-gpio {
+			/* gpio number for wakeup */
+			wakeup-gpio-num = <222>;
+			/* virq */
+			wakeup-virq = <1302>;
+			/* polarity:
+			 *			  0	  1
+			 * fiq   edge   rising falling
+			 * irq  level   high   low
+			 */
+			wakeup-virq-polar = <1>;
+			/* status: must be okay or disable */
+			status = "okay";
+		};
+		bt_gpio: bt-gpio {
+			/* gpio number for wakeup */
+			wakeup-gpio-num = <221>;
+			/* virq */
+			wakeup-virq = <1301>;
+			/* polarity:
+			 *			  0	  1
+			 * fiq   edge   rising falling
+			 * irq  level   high   low
+			 */
+			wakeup-virq-polar = <1>;
+			/* status: must be okay or disable */
+			status = "okay";
+		};
+		wifi_reset: wifi-reset {
+			/* gpio number for reset */
+			reset-gpio-num = <220>;
+			/* gpio default, default gpio high */
+			default-gpio-val = <1>;
+			/* delay interval ms */
+			invert-ms = <5>;
+			/* status: must be okay or disable */
+			status = "okay";
+		};
+		emer_gpio: emer-gpio {
+			/* gpio number for wakeup */
+			/* wakeup-gpio-num = <>; */
+			/* virq */
+			/* wakeup-virq = <>; */
+			/* polarity:
+			 *			  0	  1
+			 * fiq   edge   rising falling
+			 * irq  level   high   low
+			 */
+			/* wakeup-virq-polar = <>; */
+			/* status: must be okay or disable */
+			status = "disabled";
+		};
+		gpio_control: gpio-control {
+			/* nonpm gpio number start from */
+			nonpm-gpio-nbase = <0>;
+			/* nonpm gpio count */
+			nonpm-gpio-ngpio = <139>;
+			/* pm gpio number start from */
+			pm-gpio-nbase = <200>;
+			/* pm gpio count */
+			pm-gpio-ngpio = <97>;
+			/* status: must be okay or disable */
+			status = "okay";
+		};
+	};
+
+	mtk_pqu: mtk-pqu {
+		compatible = "mediatek,mt5896-pqu";
+		remoteproc-name = "mtk-pqu";
+		firmware-partition = "bootdata";
+		firmware-path = "/pqu/pqu_mt5896_2048.bin.raw";
+		/*TODO: need to apply reserved-memory in the future*/
+		/* MI_PQU_FW_MEM 0x67640000 */
+		mmap-start = <0xc7640000>;
+		mmap-size = <0x1400000>;
+		reg =   <0x0 0x1d024200 0x0 0x200>,
+			<0x0 0x1d024400 0x0 0x200>;
+		reg-names = "rv55intg",
+				"rv55hwdbg";
+	};
+
+	memcu: mtk-frc {
+		compatible = "mediatek,mt5896-frc";
+		remoteproc-name = "mtk-frc";
+		firmware-partition = "bootdata";
+		firmware-path = "/frc/frc_mt5896_2048.bin.raw";
+		/*TODO: need to apply reserved-memory in the future*/
+		/* MI_FRC_FW_MEM 0x6c17d000 */
+		mmap-start = <0xcc17d000>;
+		mmap-size = <0xa00000>;
+		reg =   <0x0 0x1d020200 0x0 0x200>,
+			<0x0 0x1d020400 0x0 0x200>;
+		reg-names = "rv55intg",
+				"rv55hwdbg";
+	};
+
+	vad_rproc: vad_rproc {
+		capability=<0x00000000>;
+		compatible = "mediatek,merak-vad-cm4-rproc";
+		remoteproc-name = "mtk-vad-cm4";
+		firmware-prefix = "/vad/vad_mt5896_";
+		dtbo-path = "/vad/vad_mt5896_h2v1_b6_s.dtbo";
+		dtb-size = <0x1C00>;
+		/*TODO: need to apply reserved-memory in the future*/
+		mmap-start = <0x2FF00000>;
+		mmap-size = <0x200000>;
+		reg =   <0x0 0x1C086400 0x0 0x200>,
+			<0x0 0x1C020200 0x0 0x200>,
+			<0x0 0x1C021000 0x0 0x200>,
+			<0x0 0x1C021200 0x0 0x200>,
+			<0x0 0x1C620080 0x0 0x2>,
+			<0x0 0x1C620880 0x0 0x2>,
+			<0x0 0x1D206000 0x0 0x200>,
+			<0x0 0x1D2A0800 0x0 0x200>,
+			<0x0 0x1C087000 0x0 0x200>,
+			<0x0 0x1D2A0400 0x0 0x200>,
+			<0x0 0x1C606000 0x0 0x200>,
+			<0x0 0x1C001800 0x0 0x200>,
+			<0x0 0x1C001A00 0x0 0x200>,
+			<0x0 0x1C086000 0x0 0x200>,
+			<0x0 0x1C086200 0x0 0x200>,
+			<0x0 0x1C087200 0x0 0x200>,
+			<0x0 0x1D280000 0x0 0x200>,
+			<0x0 0x1C025200 0x0 0x200>;
+		reg-names = "paganini",
+					"pm_sleep",
+					"pm_top",
+					"pm_misc",
+					"cpu_int",
+					"inturrpt",
+					"viv_bdma",
+					"vivaldi4",
+					"pm_imi",
+					"vivaldi2",
+					"MALIBOX",
+					"ckgen00_pm",
+					"ckgen01_pm",
+					"vad_0",
+					"vrec",
+					"coin_cpu",
+					"vad_1",
+					"efuse_0";
+		status = "disabled";
+	};
+};

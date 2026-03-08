@@ -1,0 +1,13 @@
+#
+# infrastructure and common function
+#
+
+menu "Mediatek Second Standby Mode Support"
+
+config SECOND_STANDBY
+	bool "Enable Second Standby Mode"
+	default n
+	help
+	  Enable Second Standby Mode.
+
+endmenu

@@ -1,0 +1,20 @@
+#
+# infrastructure and common function
+#
+
+menu "Mediatek LED Setting"
+
+config MTK_LED_SETTING
+	bool "Enable LED Setting"
+	default n
+	help
+	  Enabling this option will enable LED setting.
+
+config MTK_LED_IN_STANDBY
+	bool "Enable LED Setting in Bootloader Standby"
+	default n
+	help
+	  Enabling this option will enable the LED setting
+	  when entering the bootloader standby.
+
+endmenu

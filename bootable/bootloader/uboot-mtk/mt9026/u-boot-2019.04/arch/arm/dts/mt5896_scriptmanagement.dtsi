@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	script_management: scriptmanagement {
+		script_str_ldr: str_ldr {
+		};
+		script_adl_gop_0: adl_gop_0 {
+		};
+		script_adl_gop_1: adl_gop_1 {
+		};
+		script_adl_gop_2: adl_gop_2 {
+		};
+		script_adl_gop_3: adl_gop_3 {
+		};
+		script_adl_nr_reserved_0: adl_nr_reserved_0 {
+		};
+		script_adl_dv_0: adl_dv_0 {
+		};
+		script_adl_dv_lut_c1: adl_dv_lut_c1 {
+		};
+		script_adl_dv_lut_r_v2: adl_dv_lut_r_v2 {
+		};
+		script_adl_vip_1: adl_vip_1 {
+		};
+		script_adl_sr_0: adl_sr_0 {
+		};
+		script_adl_ce_1: adl_ce_1 {
+		};
+		script_adl_vip_0: adl_vip_0 {
+		};
+		script_adl_hvsp_1: adl_hvsp_1 {
+		};
+		script_adl_panel_gamma_0 {
+		};
+		script_adl_demura_0: adl_demura_0 {
+		};
+		script_adl_ld_3: adl_ld_3 {
+		};
+		script_adl_ld_1: adl_ld_1 {
+		};
+		script_adl_ld_2: adl_ld_2 {
+		};
+		script_adl_ld_0: adl_ld_0 {
+		};
+		script_adl_film_grain_0: adl_film_grain_0 {
+		};
+		script_adl_ucd_0: adl_ucd_0 {
+		};
+		script_adl_hdr_0: adl_hdr_0 {
+		};
+		script_adl_mpeg_nr_0: adl_mpeg_nr_0 {
+		};
+		script_adl_mpeg_nr_1: adl_mpeg_nr_1 {
+		};
+		script_adl_hvsp_0: adl_hvsp_0 {
+		};
+		script_adl_vop_0: adl_vop_0 {
+		};
+		script_adl_vop_1: adl_vop_1 {
+		};
+		script_adl_pq_gamma_0: adl_pq_gamma_0 {
+		};
+		script_adl_ce_0: adl_ce_0 {
+		};
+		script_adl_ucd_2: adl_ucd_2 {
+		};
+		script_adl_ucd_3: adl_ucd_3 {
+		};
+		script_adl_ucd_1: adl_ucd_1 {
+		};
+		script_adl_lce_0: adl_lce_0 {
+		};
+		script_adl_hdr_3d: adl_hdr_3d {
+		};
+		script_adl_od: adl_od {
+		};
+		script_adl_pcid: adl_pcid {
+		};
+		script_adl_vac: adl_vac {
+		};
+		script_aul_yhsl: aul_yhsl {
+		};
+		script_aul_obj_hist: aul_obj_hist {
+		};
+		script_aul_mnc_stat: aul_mnc_stat {
+		};
+		script_aul_dbk_hw_sp: aul_dbk_hw_sp {
+		};
+		script_aul_dbk: aul_dbk {
+		};
+		script_aul_res_det: aul_res_det {
+		};
+		script_aul_3d_hist: aul_3d_hist {
+		};
+		script_adl_pq_gamma_1: adl_pq_gamma_1 {
+		};
+		script_aul_logo_det: aul_logo_det {
+		};
+		script_ds: ds {
+		};
+	};
+};

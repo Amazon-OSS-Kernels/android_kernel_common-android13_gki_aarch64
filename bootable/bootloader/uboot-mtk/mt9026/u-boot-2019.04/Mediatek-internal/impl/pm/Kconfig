@@ -1,0 +1,14 @@
+#
+# infrastructure and common function
+#
+
+menu "Mediatek PM Support"
+
+config MTK_PM
+	tristate "MediaTek PM Support"
+	help
+	  Say yes here to add support for Mediatek PM driver.
+	  MTK_PM is a physical H/W which consists PWR_CTL and dummy register.
+	  The driver does provide boot reason, wakeup reason and wakeup config.
+
+endmenu
