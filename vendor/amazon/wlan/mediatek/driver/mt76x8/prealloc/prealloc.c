@@ -169,12 +169,12 @@ PVOID preallocGetMem(enum ENUM_MEM_ID memId)
 }
 #ifdef CFG_SUPPORT_DUAL_CARD_DUAL_DRIVER
 #if defined(_HIF_USB)
-EXPORT_SYMBOL(preallocGetMemUSB);
+EXPORT_SYMBOL_GPL(preallocGetMemUSB);
 #else
-EXPORT_SYMBOL(preallocGetMem);
+EXPORT_SYMBOL_GPL(preallocGetMem);
 #endif
 #else
-EXPORT_SYMBOL(preallocGetMem);
+EXPORT_SYMBOL_GPL(preallocGetMem);
 #endif
 static void preallocFree(void)
 {

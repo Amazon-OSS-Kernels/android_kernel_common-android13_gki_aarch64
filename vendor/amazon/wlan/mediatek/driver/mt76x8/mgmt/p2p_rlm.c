@@ -330,9 +330,11 @@ VOID rlmProcessPublicAction(P_ADAPTER_T prAdapter, P_SW_RFB_T prSwRfb)
 	prRxFrame = (P_ACTION_20_40_COEXIST_FRAME) prSwRfb->pvHeader;
 	prStaRec = cnmGetStaRecByIndex(prAdapter, prSwRfb->ucStaRecIdx);
 
-	/* NULL & Unicast */
-	if (!(prSwRfb->prStaRec) && !(prSwRfb->fgIsBC || prSwRfb->fgIsMC)) {
-		DBGLOG(P2P, ERROR, "prSwRfb->prStaRec is null.\n");
+	if (!(prSwRfb->prStaRec)) {
+		/* Unicast */
+		if (!(prSwRfb->fgIsBC || prSwRfb->fgIsMC)) {
+			DBGLOG(P2P, ERROR, "prSwRfb->prStaRec is null.\n");
+		}
 		return;
 	}
 

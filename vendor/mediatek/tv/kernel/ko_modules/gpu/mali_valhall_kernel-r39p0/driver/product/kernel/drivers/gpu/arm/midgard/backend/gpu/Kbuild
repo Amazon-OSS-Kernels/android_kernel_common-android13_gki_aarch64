@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
+#
+# (C) COPYRIGHT 2014-2022 ARM Limited. All rights reserved.
+#
+# This program is free software and is provided to you under the terms of the
+# GNU General Public License version 2 as published by the Free Software
+# Foundation, and any use by you of this program is subject to the terms
+# of such GNU license.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, you can access it online at
+# http://www.gnu.org/licenses/gpl-2.0.html.
+#
+#
+
+#MTK_DTV patch : add support for OnePackage dynamic ko
+mali_kbase_$(MTK_DTV_PLATFORM_NAME)-y += \
+    ../midgard/backend/gpu/mali_kbase_cache_policy_backend.o \
+    ../midgard/backend/gpu/mali_kbase_gpuprops_backend.o \
+    ../midgard/backend/gpu/mali_kbase_irq_linux.o \
+    ../midgard/backend/gpu/mali_kbase_js_backend.o \
+    ../midgard/backend/gpu/mali_kbase_pm_backend.o \
+    ../midgard/backend/gpu/mali_kbase_pm_driver.o \
+    ../midgard/backend/gpu/mali_kbase_pm_metrics.o \
+    ../midgard/backend/gpu/mali_kbase_pm_ca.o \
+    ../midgard/backend/gpu/mali_kbase_pm_always_on.o \
+    ../midgard/backend/gpu/mali_kbase_pm_coarse_demand.o \
+    ../midgard/backend/gpu/mali_kbase_pm_policy.o \
+    ../midgard/backend/gpu/mali_kbase_time.o \
+    ../midgard/backend/gpu/mali_kbase_l2_mmu_config.o \
+    ../midgard/backend/gpu/mali_kbase_clk_rate_trace_mgr.o
+
+#MTK_DTV patch : add support for OnePackage dynamic ko
+ifeq ($(MALI_USE_CSF),0)
+    mali_kbase_$(MTK_DTV_PLATFORM_NAME)-y += \
+        ../midgard/backend/gpu/mali_kbase_instr_backend.o \
+        ../midgard/backend/gpu/mali_kbase_jm_as.o \
+        ../midgard/backend/gpu/mali_kbase_debug_job_fault_backend.o \
+        ../midgard/backend/gpu/mali_kbase_jm_hw.o \
+        ../midgard/backend/gpu/mali_kbase_jm_rb.o
+endif
+
+
+#MTK_DTV patch : add support for OnePackage dynamic ko
+mali_kbase_$(MTK_DTV_PLATFORM_NAME)-$(CONFIG_MALI_DEVFREQ) += \
+    ../midgard/backend/gpu/mali_kbase_devfreq.o
+
+# Dummy model
+mali_kbase-$(CONFIG_MALI_NO_MALI) += ../midgard/backend/gpu/mali_kbase_model_dummy.o
+mali_kbase-$(CONFIG_MALI_NO_MALI) += ../midgard/backend/gpu/mali_kbase_model_linux.o
+# HW error simulation
+mali_kbase-$(CONFIG_MALI_NO_MALI) += ../midgard/backend/gpu/mali_kbase_model_error_generator.o

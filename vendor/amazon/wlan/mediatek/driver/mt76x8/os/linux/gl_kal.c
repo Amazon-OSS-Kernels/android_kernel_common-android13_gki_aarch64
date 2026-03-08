@@ -5904,20 +5904,23 @@ void kal_sched_set(struct task_struct *p, int policy,
 	* TODO:
 	* kernel prefer modify "current" only, add sanity here?
 	*/
+
+#if KERNEL_VERSION(5, 14, 0) <= LINUX_VERSION_CODE
 	struct sched_attr attr = {
 		.sched_policy = policy,
 		.sched_priority = param->sched_priority,
 		.sched_nice = nice,
 	};
 
+	sched_setattr_nocheck(p, &attr);
+#else
 	if (policy == SCHED_NORMAL)
 		sched_set_normal(p, nice);
 	else if (policy == SCHED_FIFO)
 		sched_set_fifo(p);
 	else
 		sched_set_fifo_low(p);
-
-	sched_setattr_nocheck(p, &attr);
+#endif /* KERNEL_VERSION(5, 14, 0) <= LINUX_VERSION_CODE */
 #else
 	sched_setscheduler(p, policy, param);
 #endif

@@ -117,7 +117,7 @@ uint32_t getChipResetReasonCnt(uint32_t idx)
 	return u4ChipResetReasonCnt[idx];
 }
 
-EXPORT_SYMBOL(getChipResetReasonCnt);
+EXPORT_SYMBOL_GPL(getChipResetReasonCnt);
 
 uint32_t incChipResetReasonCnt(uint32_t idx)
 {
@@ -130,12 +130,12 @@ uint32_t incChipResetReasonCnt(uint32_t idx)
 	return 1;
 }
 
-EXPORT_SYMBOL(incChipResetReasonCnt);
+EXPORT_SYMBOL_GPL(incChipResetReasonCnt);
 
 void rstChipResetReasonCnt(void)
 {
 	memset(u4ChipResetReasonCnt, 0, sizeof(uint32_t)*RST_REASON_MAX);
 }
 
-EXPORT_SYMBOL(rstChipResetReasonCnt);
+EXPORT_SYMBOL_GPL(rstChipResetReasonCnt);
 
