@@ -12,3 +12,4 @@
 - [Amazon Fire TV Smart TV   Toshiba Class C350 Series LED 4K UHD (2025 Release)](https://github.com/Amazon-OSS-Kernels/android_kernel_common-android13_gki_aarch64/tree/toshiba_class_c350_series_led_4k_uhd_2025_release/toshiba_m550_firetv-8.1.2.9-20250213)
 - [Amazon Fire TV Smart TV   Xiaomi FX PRO QLED 4K](https://github.com/Amazon-OSS-Kernels/android_kernel_common-android13_gki_aarch64/tree/xiaomi_fx_pro_qled_4k/xiaomi_4k_firetv_in_2025-8.1.3.1-20250606)
 - [Amazon Fire TV Smart TV – JVC YX10/YS10 Series](https://github.com/Amazon-OSS-Kernels/android_kernel_common-android13_gki_aarch64/tree/jvc_yx10_ys10_series/yamada_4k_firetv_2025_jp-8.1.4.1-20250821)
+- [Fire TV Omni Mini LED Series](https://github.com/Amazon-OSS-Kernels/android_kernel_common-android13_gki_aarch64/tree/omni_mini-led_series/amazon_omni_miniled_series_qled_4k_uhd_smart_tv-8.1.4.0-20250815)
