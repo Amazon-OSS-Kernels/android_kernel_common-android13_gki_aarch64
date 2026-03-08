@@ -48,7 +48,7 @@ BUILDING THE KERNEL
 
 6.  Execute the script by running:
 
-    ./build_kernel.sh "<target output directory>"
+    ./build_kernel.sh "<path to platform.tar>" "<target output directory>"
 
 
 BUILDING BUSYBOX (if applicable)
