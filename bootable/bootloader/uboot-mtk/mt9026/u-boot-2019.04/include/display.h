@@ -1,0 +1,128 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
+/*
+ * Copyright 2014 Google Inc.
+ */
+
+#ifndef _DISPLAY_H
+#define _DISPLAY_H
+
+struct udevice;
+struct display_timing;
+
+/**
+ * Display uclass platform data for each device
+ *
+ * @source_id:	ID for the source of the display data, typically a video
+ * controller
+ * @src_dev:	Source device providing the video
+ * @in_use:	Display is being used
+ */
+struct display_plat {
+	int source_id;
+	struct udevice *src_dev;
+	bool in_use;
+};
+
+/**
+ * display_read_timing() - Read timing information
+ *
+ * @dev:	Device to read from
+ * @return 0 if OK, -ve on error
+ */
+int display_read_timing(struct udevice *dev, struct display_timing *timing);
+
+/**
+ * display_port_enable() - Enable a display port device
+ *
+ * @dev:	Device to enable
+ * @panel_bpp:	Number of bits per pixel for panel
+ * @timing:	Display timings
+ * @return 0 if OK, -ve on error
+ */
+int display_enable(struct udevice *dev, int panel_bpp,
+		   const struct display_timing *timing);
+
+/**
+ * display_get_property() - Get the display property
+ *
+ * @dev:	Device to get property
+ * @type:	Which property
+ * @value:	The pointer to property value
+ * @return 0 if OK, -ve on error
+ */
+int display_get_property(struct udevice *dev, int type, int *value);
+
+/**
+ * display_set_property() - Set the display property
+ *
+ * @dev:	Device to set property
+ * @type:	Which property
+ * @value:	The pointer to property value
+ * @return 0 if OK, -ve on error
+ */
+int display_set_property(struct udevice *dev, int type, uint8_t *value);
+
+/**
+ * display_in_use() - Check if a display is in use by any device
+ *
+ * @return true if the device is in use (display_enable() has been called
+ * successfully), else false
+ */
+bool display_in_use(struct udevice *dev);
+
+struct dm_display_ops {
+	/**
+	 * read_timing() - Read information directly
+	 *
+	 * @dev:	Device to read from
+	 * @timing:	Display timings
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*read_timing)(struct udevice *dev, struct display_timing *timing);
+
+	/**
+	 * read_edid() - Read information from EDID
+	 *
+	 * @dev:	Device to read from
+	 * @buf:	Buffer to read into (should be EDID_SIZE bytes)
+	 * @buf_size:	Buffer size (should be EDID_SIZE)
+	 * @return number of bytes read, <=0 for error
+	 */
+	int (*read_edid)(struct udevice *dev, u8 *buf, int buf_size);
+
+	/**
+	 * enable() - Enable the display port device
+	 *
+	 * @dev:	Device to enable
+	 * @panel_bpp:	Number of bits per pixel for panel
+	 * @timing:	Display timings
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*enable)(struct udevice *dev, int panel_bpp,
+		      const struct display_timing *timing);
+
+	/**
+	 * get_property() - Get the display property
+	 *
+	 * @dev:	Device to get property
+	 * @type:	Which property
+	 * @value:	The pointer to property value
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*get_property)(struct udevice *dev, int type, int *value);
+
+	/**
+	 * set_property() - Set the display property
+	 *
+	 * @dev:	Device to get property
+	 * @type:	Which property
+	 * @value:	The pointer to property value
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*set_property)(struct udevice *dev, int type, uint8_t *value);
+
+};
+
+#define display_get_ops(dev)	((struct dm_display_ops *)(dev)->driver->ops)
+
+#endif

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	nand0: mtk_fcie_nand {
+		compatible = "mediatek,nand-fcie";
+		status ="disabled";
+		reg = <0x0 0x1c660000 0x0 0x400>,
+		      <0x0 0x1c206F78 0x0 0x4>;
+		reg-names = "fcie", "clk";
+		clk-shift = <0x00>;
+		clk-bit-cnt = <0x03>;
+		freq-table-hz = <12000000 0>,
+				<24000000 6>,
+				<43200000 4>,
+				<48000000 7>,
+				<54000000 1>,
+				<62000000 2>;
+		nand-on-flash-bbt;
+	};
+};

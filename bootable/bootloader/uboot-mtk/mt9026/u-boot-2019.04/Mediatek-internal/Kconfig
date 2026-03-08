@@ -1,0 +1,121 @@
+# Mediatek-internal
+menu "Mediatek"
+
+config VERSION_NUMBER
+	string "Uboot Version Number for Anti-Rollback "
+	default 0
+	help
+	  Set Uboot version number for Anti-Rollback.
+
+config HAPS
+	bool "Target platform is HAPS"
+	default n
+	help
+	  Enabling this option will disable feature in development
+	  when target platform is HAPS.
+
+config ROLLBACK_INDEX_IN_EFUSE
+    bool "Enable EFuse read"
+    default n
+    depends on OPTEE
+    help
+        Enable EFuse read Function
+
+menu "DTB Overlay"
+
+config DTB_OVERLAY_FOR_UBOOT_DTB
+	bool "Do dtb overlay for u-boot dtb"
+	default n
+	help
+	  Enabling this option will do dtb overlay for u-boot dtb by default.
+
+config DTB_OVERLAY_FOR_KERNEL_DTB
+	bool "Do dtb overlay for kernel dtb"
+	default n
+	help
+	  Enabling this option will do dtb overlay for kernel dtb by default.
+
+config MULTIPLE_DTB_SELECTION
+	bool "Enable dtb selection for multiple dtb"
+	default n
+	help
+	  Enabling this option will do dtb selection for multiple dtb in dtbo partition by default.
+
+endmenu
+
+    choice
+        prompt "Select RSA padding mode"
+        default RSA_EMSA_PSS
+        config RSA_PKCS1_V1_5
+            bool "RSA PKCS1 v1.5"
+        config RSA_EMSA_PSS
+            bool "RSA EMSA PSS"
+    endchoice
+
+menu "IR Support"
+
+config BOOT_IR
+	bool "Enable boot ir"
+	default n
+	help
+	  Enabling this option will enable select boot mode via IR.
+endmenu
+
+menu "eMMC Self Adaption"
+
+config USERDATA_PARTITION_SELF_ADAPTION
+	bool "Enable userdata partition self-adaption"
+	default n
+	help
+	  Enabling this option will enable userdata partition self-adaption.
+	  userdata partition must be the last emmc partition.
+
+config SAMESIZE_EMMC_SELF_ADAPTION
+	bool "Skip same size emmc userdata partition self-adaption"
+	depends on USERDATA_PARTITION_SELF_ADAPTION
+	default n
+	help
+	  Enabling this option will skip same size emmc userdata partition self-adaption.
+	  userdata partition must be the last emmc partition.
+
+endmenu
+
+config DATA_SEPARATION
+	bool "Enable data separation feature"
+	default n
+	help
+	  Enabling this option will enable data separation feature.
+	  the project_id.ini and dataIndex_*.ini will be used.
+
+config BOOT_LOGO
+	bool "Enable boot logo feature"
+	default n
+	help
+	  Enabling this option will enable bootlogo feature.
+	  the project_id.ini, dataIndex_*.ini, and bootlogo.ini will be used.
+
+config DIAG_TRANSITION_DIALOG
+	bool "Enable diag to FOS transition display feature"
+	default n
+	help
+	  Enabling this option will enable the dedicated screen
+	  showing the green "OK" or red "UL" screens at the end of
+	  diag to FOS mode transition.
+
+config ENABLE_QHB
+    bool "QHB Support"
+    default n
+    help
+      Enabling this option will enable QHB feature.
+      Eeprom  must be supported.
+
+source "Mediatek-internal/drivers/Kconfig"
+source "Mediatek-internal/impl/Kconfig"
+
+config ENABLE_CUST_IC_UPDATE
+	bool "Enable cust ic update"
+	default n
+	help
+	  Enable cust ic update.
+
+endmenu		# Mediatek

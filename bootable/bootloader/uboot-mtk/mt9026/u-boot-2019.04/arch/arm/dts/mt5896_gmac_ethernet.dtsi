@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	gmac: ethernet@1c700000 {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek,mtk-dtv-gmac";
+		reg = <0x0 0x1c700000 0x0 0x200>,
+		      <0x0 0x1c700800 0x0 0x800>,
+		      <0x0 0x1c084000 0x0 0x600>,
+		      <0x0 0x1c204000 0x0 0x4000>,
+		      <0x0 0x1c022000 0x0 0x200>,
+		      <0x0 0x1c001800 0x0 0x200>,
+		      <0x0 0x1c025200 0x0 0x200>;
+		reg-names = "mac0",
+			    "mac1",
+			    "phy0",
+			    "clkgen0",
+			    "chip",
+			    "clkgen0_pm",
+			    "efuse";
+	};
+};

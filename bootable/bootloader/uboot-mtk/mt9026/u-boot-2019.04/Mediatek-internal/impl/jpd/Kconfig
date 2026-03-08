@@ -1,0 +1,13 @@
+#
+# GPIO infrastructure and common function
+#
+
+menu "Mediatek JPEG Decoder Support"
+
+config JPEG_DECODER
+	bool "Enable JPEG decoder"
+	default n
+	help
+	  Enable JPEG decoder feature.
+
+endmenu
