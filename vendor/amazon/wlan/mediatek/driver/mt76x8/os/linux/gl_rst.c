@@ -642,7 +642,7 @@ BOOLEAN check_wlan_reset_state(void)
 	return atomic_read(&g_fgBlockBTTriggerReset);
 }
 
-EXPORT_SYMBOL(check_wlan_reset_state);
+EXPORT_SYMBOL_GPL(check_wlan_reset_state);
 /*----------------------------------------------------------------------------*/
 /*!
 * \brief .
@@ -687,7 +687,7 @@ INT_32 notify_wlan_remove_start(INT_32 reserved)
 {
 	return bt_notify_wlan_remove(reserved);
 }
-EXPORT_SYMBOL(notify_wlan_remove_start);
+EXPORT_SYMBOL_GPL(notify_wlan_remove_start);
 /*----------------------------------------------------------------------------*/
 /*!
 * \brief .
@@ -717,7 +717,7 @@ INT_32 notify_wlan_toggle_rst_end(INT_32 reserved)
 
 	return NOTIFY_SUCCESS;
 }
-EXPORT_SYMBOL(notify_wlan_toggle_rst_end);
+EXPORT_SYMBOL_GPL(notify_wlan_toggle_rst_end);
 
 INT_32 __nocfi pmu_toggle(struct rst_struct *data)
 {

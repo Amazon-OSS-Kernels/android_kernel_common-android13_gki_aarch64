@@ -1121,10 +1121,11 @@
 /*------------------------------------------------------------------------------
  * Support get mac address from idme
  * CONFIG_IDME is from Kernel config
+ * CFG_AMAZON_IDME is from project config
  *------------------------------------------------------------------------------
  */
 #ifndef CONFIG_IDME
-#ifdef CONFIG_AMAZON_IDME_MODULE
+#if defined(CFG_AMAZON_IDME) && (CFG_AMAZON_IDME == 1)
 #define CONFIG_IDME 1
 #endif
 #endif
