@@ -1,0 +1,7 @@
+MTmt5896
+M:	 <@mediatek.com>
+M:	 <@mediatek.com>
+S:	Maintained
+F:	board/mediatek/mt5896
+F:	include/configs/mt5896.h
+F:	configs/mt5896_rfb_defconfig
