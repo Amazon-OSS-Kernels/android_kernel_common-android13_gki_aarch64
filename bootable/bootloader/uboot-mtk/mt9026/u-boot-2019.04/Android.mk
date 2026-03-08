@@ -1,0 +1,276 @@
+ifeq ("$(NCT5_BUILD)","true")
+
+LOCAL_PATH := $(call my-dir)
+include $(CLEAR_VARS)
+ifneq ($(findstring $(BOOTLOADER_DIR), $(LOCAL_PATH)),)
+ROOTDIR := $(abspath $(TOP))
+# To Build MTK bootloader, you need to check this tool in your build env.
+HOSTCC := /usr/bin/cc
+
+UBOOT_64BIT:=true
+
+INSTALLED_UBOOT_TARGET := $(PRODUCT_OUT)/mboot.bin
+
+UBOOT_OUT := $(PRODUCT_OUT)/obj/UBOOT_OBJ
+UBOOT_OUT_SRC := $(UBOOT_OUT)/u-boot-2019.04
+TARGET_UBOOT_CONFIG := $(UBOOT_OUT_SRC)/.config
+TARGET_BUILT_UBOOT := $(UBOOT_OUT)/out/mboot.bin
+
+ifeq ($(AVB_ENABLE), true)
+ifneq ($(LINUX_ONLY), true)
+INSTALLED_UBOOT_CUSTOMER_KEY_TARGET := $(PRODUCT_OUT)/mboot_Google_UB_A_AVB_Key.bin
+TARGET_BUILT_CUSTOMER_KEY_UBOOT := $(UBOOT_OUT)/out/mboot_Google_UB_A_AVB_Key.bin
+endif
+endif
+
+UBOOT_TOOLCHAIN_ROOT := $(TOOLCHAIN_ROOT)
+
+MAKE_UBOOT := source $(VAR_EXPORT);source $(patsubst $(ROOTDIR)/%,%,$(ENV_SCRIPT));source $(LOCAL_PATH)/env.sh $(patsubst $(ROOTDIR)/%,%,$(UBOOT_TOOLCHAIN_ROOT)) $(UBOOT_64BIT);make
+UBOOT2019_CROSS_COMPILE ?= $(UBOOT_TOOLCHAIN_ROOT)/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+UBOOT2019_CROSS_COMPILE_FILENAME = $(notdir $(UBOOT2019_CROSS_COMPILE))
+UBOOT_PYTHON3_SITE_PACKAGES ?= $(PRODUCT_OUT)/obj/MBOOT_OBJ/sboot/python3/3.6/site-packages
+
+# About UBOOT_BOOTCMD
+# For AOW, UBOOT_BOOTCMD is initialised in make/release_image_uboot2019.mk. Please refer to 5478238
+# For AOSP, UBOOT_BOOTCMD is initialised in release_image_uboot2019.mk. Please refer to 5480992
+# For MLR, UBOOT_BOOTCMD will be initialised here
+ifeq "$(AVB_PURELINUX_ENABLE)" "true"
+UBOOT_BOOTCMD := $(shell grep bootcmd= $(SYS_BUILD_DIR)/$(CUSTOMER)/$(MODEL_NAME)/data/ubootenv.txt | sed 's/bootcmd=//g' |\
+                   sed 's/DTB_PARTITION_SIZE/$(shell printf "0x%X" $(AVB_PURELINUX_DTB_PARTSIZE))/g' |\
+                   sed 's/KL_PARTITION_SIZE/$(shell printf "0x%X" $(AVB_PURELINUX_KL_PARTSIZE))/g' |\
+                   sed 's/\r//g')
+endif
+
+# we rebuild if the files are modified except Android.mk (handled by AOSP) and .git and the files contain the space (hard to handle in Linux)
+UBOOT_LOCAL_SRC_FILES := $(sort $(filter-out %/Android.mk,$(shell find $(ROOTDIR)/$(UBOOT_DIR)/arch/arm/dts -type f -not -path '*\.git*' | grep -v ' ')))
+
+UBOOT_MAIN_DTB := $(MTK_CHIP)-rfb.dtb
+UBOOT_OUT_DTS_PATH := $(UBOOT_OUT_SRC)/arch/arm/dts
+UBOOT_MAIN_DTB_FILE := $(addprefix $(UBOOT_OUT_DTS_PATH)/,$(UBOOT_MAIN_DTB))
+FORCE_BUILD_DTBO = $(UBOOT_OUT)/out/force_build_dtbo
+UBOOT_VBYONE_DTBO_CFG_NAME := $(VBYONE_DTBO_CFG_NAME)
+UBOOT_VBYONE_FLAG_NAME := $(VBYONE_FLAG_NAME)
+
+$(FORCE_BUILD_DTBO):
+
+ifeq ($(OFFLINE_UBOOT_DTB_OVERLAY), y)
+$(UBOOT_MAIN_DTB_FILE): $(VAR_EXPORT) $(UBOOT_LOCAL_SRC_FILES) $(FORCE_BUILD_DTBO)
+ifneq ($(wildcard $(UBOOT_OUT_DTS_PATH)),)
+	echo "Remove all uboot overlayed files";
+	$(Q)rm -rf $(UBOOT_OUT_DTS_PATH)
+endif
+	echo "Build uboot 2019 dtb";
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) $(UBOOT_DEFCONFIG)
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) dtbs
+
+$(BOARD_PREBUILT_DTBOIMAGE): $(UBOOT_MAIN_DTB_FILE)
+$(INSTALLED_OFFLINE_UBOOT_DTB_TARGET): $(BOARD_PREBUILT_DTBOIMAGE)
+$(TARGET_UBOOT_CONFIG): $(BOARD_PREBUILT_DTBOIMAGE) $(INSTALLED_OFFLINE_UBOOT_DTB_TARGET)
+else
+$(UBOOT_MAIN_DTB_FILE): $(TARGET_BUILT_UBOOT)
+endif
+
+
+$(TARGET_UBOOT_CONFIG):$(VAR_EXPORT)
+	echo "Produce uboot 2019 config";
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) $(UBOOT_DEFCONFIG)
+	echo "Modify uboot 2019 config";
+	mkdir -p $(UBOOT_OUT)/out
+ifeq ($(AB_UPDATE_ENABLE), true)
+	@echo "### BUILD UBOOT2019 -- Enable VAB update ###"
+	sed -i 's/# CONFIG_ANDROID_AB is not set/CONFIG_ANDROID_AB=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_CMD_AB_SELECT is not set/CONFIG_CMD_AB_SELECT=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_AB_SIDELOAD is not set/CONFIG_AB_SIDELOAD=y/g' $(TARGET_UBOOT_CONFIG)
+ifneq "$(BOOT_TYPE)" "USB"
+	sed -i 's/# CONFIG_AB_FROM_ROM is not set/CONFIG_AB_FROM_ROM=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+else
+	@echo "### BUILD UBOOT2019 -- Disable VAB update ###"
+	sed -i 's/CONFIG_ANDROID_AB=y/# CONFIG_ANDROID_AB is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_CMD_AB_SELECT=y/# CONFIG_CMD_AB_SELECT is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_AB_SIDELOAD=y/# CONFIG_AB_SIDELOAD is not set/g' $(TARGET_UBOOT_CONFIG)
+ifneq "$(BOOT_TYPE)" "USB"
+	sed -i 's/CONFIG_AB_FROM_ROM=y/# CONFIG_AB_FROM_ROM is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+endif
+ifneq ($(filter true ,$(AVB_ENABLE) $(AVB_PURELINUX_ENABLE)),)
+	@echo "### BUILD UBOOT2019 -- Enable AVB ###"
+	sed -i 's/# CONFIG_AVB_VERIFY is not set/CONFIG_AVB_VERIFY=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_CMD_AVB is not set/CONFIG_CMD_AVB=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_LIBAVB is not set/CONFIG_LIBAVB=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_LEGACY_AVB_PARTITION is not set/CONFIG_LEGACY_AVB_PARTITION=y/g' $(TARGET_UBOOT_CONFIG)
+ifeq "$(AVB_PURELINUX_ENABLE)" "true"
+	sed -i 's/# CONFIG_ANDROID_AVB_PURELINUX_ENABLE is not set/CONFIG_ANDROID_AVB_PURELINUX_ENABLE=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+ifeq "$(AVB_ANTI_ROLLBACK)" "false"
+	sed -i 's/CONFIG_OPTEE_TA_AVB=y/# CONFIG_OPTEE_TA_AVB is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_TEE=y/# CONFIG_TEE is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_OPTEE=y/# CONFIG_OPTEE is not set/g' $(TARGET_UBOOT_CONFIG)
+else ifeq "$(TEE_SOCKET_BOARD_TEST)" "1"
+	sed -i 's/CONFIG_OPTEE_TA_AVB=y/# CONFIG_OPTEE_TA_AVB is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_TEE=y/# CONFIG_TEE is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_OPTEE=y/# CONFIG_OPTEE is not set/g' $(TARGET_UBOOT_CONFIG)
+else
+	sed -i 's/# CONFIG_OPTEE_TA_AVB is not set/CONFIG_OPTEE_TA_AVB=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_TEE is not set/CONFIG_TEE=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_OPTEE is not set/CONFIG_OPTEE=y/g' $(TARGET_UBOOT_CONFIG)
+ifeq ($(EFUSE_ROLLBACK_INDEX_CONTROL), 1)
+	@echo "[uboot2109] CONFIG_ROLLBACK_INDEX_IN_EFUSE=y by EFUSE_ROLLBACK_INDEX_CONTROL=1"
+	sed -i 's/# CONFIG_ROLLBACK_INDEX_IN_EFUSE is not set/CONFIG_ROLLBACK_INDEX_IN_EFUSE=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+ifeq ($(RPMB_ROLLBACK_INDEX_CONTROL), 1)
+	@echo "[uboot2109] CONFIG_ROLLBACK_INDEX_IN_RPMB=y by RPMB_ROLLBACK_INDEX_CONTROL=1"
+	sed -i 's/# CONFIG_ROLLBACK_INDEX_IN_RPMB is not set/CONFIG_ROLLBACK_INDEX_IN_RPMB=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+endif
+else
+	@echo "### BUILD UBOOT2019 -- Disable AVB ###"
+	sed -i 's/CONFIG_AVB_VERIFY=y/# CONFIG_AVB_VERIFY is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_CMD_AVB=y/# CONFIG_CMD_AVB is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_LIBAVB=y/# CONFIG_LIBAVB is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_LEGACY_AVB_PARTITION=y/# CONFIG_LEGACY_AVB_PARTITION is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_UBOOT_SMP_SUPPORT), false)
+	@echo "### BUILD UBOOT2019 -- Disable Multi-Core Support ###"
+	sed -i 's/CONFIG_MULTICORES_PLATFORM/# CONFIG_MULTICORES_PLATFORM is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMAZON_FEATURE_UBOOT_SMP_OPTIMIZATION), false)
+	@echo "### BUILD UBOOT2019 --AMAZON UBOOT SMP Optimization NOT Support ###"
+	sed -i 's/CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION=y/# CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION is not set/g' $(TARGET_UBOOT_CONFIG)
+else 
+	@echo "### BUILD UBOOT2019 --AMAZON UBOOT SMP Optimization  Support ###"
+	sed -i 's/# CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION is not set/CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_UBOOT_USB_HOST_ETHERNET), true)
+	@echo "### BUILD UBOOT2019 -- Enable USB-to-Ethernet Support ###"
+	sed -i 's/# CONFIG_USB_HOST_ETHER is not set/CONFIG_USB_HOST_ETHER=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_USB_ETHER_ASIX is not set/CONFIG_USB_ETHER_ASIX=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/# CONFIG_USB_ETHER_ASIX88179 is not set/CONFIG_USB_ETHER_ASIX88179=y/g' $(TARGET_UBOOT_CONFIG)
+else
+	@echo "### BUILD UBOOT2019 -- Disable USB-to-Ethernet Support ###"
+	sed -i 's/CONFIG_USB_HOST_ETHER=y/# CONFIG_USB_HOST_ETHER is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_USB_ETHER_ASIX=y/# CONFIG_USB_ETHER_ASIX is not set/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_USB_ETHER_ASIX88179=y/# CONFIG_USB_ETHER_ASIX88179 is not set/g' $(TARGET_UBOOT_CONFIG)
+ifeq ($(AMZN_FEATURE_UBOOT_DIAG_FOS_TRANSITION_DIALOG), true)
+	@echo "### BUILD UBOOT2019 -- Enable Diag-FOS transition done screen ###"
+	sed -i 's/# CONFIG_DIAG_TRANSITION_DIALOG is not set/CONFIG_DIAG_TRANSITION_DIALOG=y/g' $(TARGET_UBOOT_CONFIG)
+else
+	@echo "### BUILD UBOOT2019 -- Disable Diag-FOS transition done screen ###"
+	sed -i 's/CONFIG_DIAG_TRANSITION_DIALOG=y/# CONFIG_DIAG_TRANSITION_DIALOG is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+endif
+
+ifeq ($(AMZN_UBOOT_LED_SETTING), true)
+	@echo "### BUILD UBOOT2019 -- Enable LED Setting ###"
+	sed -i 's/# CONFIG_MTK_LED_SETTING is not set/CONFIG_MTK_LED_SETTING=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_VBYONE_CUSTOMIZED), true)
+	@echo "### BUILD UBOOT2019 -- Enable VBYONE customized ###"
+	sed -i 's/# CONFIG_VBYONE_CUSTOMIZED is not set/CONFIG_VBYONE_CUSTOMIZED=y/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_VBYONE_DTBO_CFG_NAME=""/CONFIG_VBYONE_DTBO_CFG_NAME="$(UBOOT_VBYONE_DTBO_CFG_NAME)"/g' $(TARGET_UBOOT_CONFIG)
+	sed -i 's/CONFIG_VBYONE_FLAG_NAME=""/CONFIG_VBYONE_FLAG_NAME="$(UBOOT_VBYONE_FLAG_NAME)"/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_TRANS_SCREEN_CUSTOMIZED), true)
+	@echo "### BUILD UBOOT2019 -- Enable TRANS SCREEN customized ###"
+	sed -i 's/# CONFIG_TRANS_SCREEN_CUSTOMIZED is not set/CONFIG_TRANS_SCREEN_CUSTOMIZED=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_UBOOT_LED_IN_STANDBY), true)
+	@echo "### BUILD UBOOT2019 -- Enable LED Setting in Standby ###"
+	sed -i 's/# CONFIG_MTK_LED_IN_STANDBY is not set/CONFIG_MTK_LED_IN_STANDBY=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_UBOOT_USB_UPGRADE_LED), true)
+	@echo "### BUILD UBOOT2019 -- Enable LED status for USB upgrade ###"
+	sed -i 's/# CONFIG_USB_UPGRADE_LED is not set/CONFIG_USB_UPGRADE_LED=y/g' $(TARGET_UBOOT_CONFIG)
+else
+	@echo "### BUILD UBOOT2019 -- Disable LED status for USB upgrade ###"
+	sed -i 's/CONFIG_USB_UPGRADE_LED=y/# CONFIG_USB_UPGRADE_LED is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_SUPPORT_ODMTVCONFIG), true)
+	@echo "### BUILD UBOOT2019 -- Enable AMZ second dtbo overlay from odmtvconfig partition ###"
+	sed -i 's/# CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY is not set/CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY=y/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+ifeq ($(AMZN_FEATURE_UENV_INTEGRITY_CHECK), true)
+	@echo "### BUILD UBOOT2019 -- Enable AMZ uenv integrity check ###"
+	sed -i 's/# CONFIG_UENV_INTEGRITY_CHECK is not set/CONFIG_UENV_INTEGRITY_CHECK=y/g' $(TARGET_UBOOT_CONFIG)
+else
+	@echo "### BUILD UBOOT2019 -- Disable AMZ uenv integrity check ###"
+	sed -i 's/CONFIG_UENV_INTEGRITY_CHECK=y/# CONFIG_UENV_INTEGRITY_CHECK is not set/g' $(TARGET_UBOOT_CONFIG)
+endif
+
+	@echo "build uboot config";
+	$(ACP) $(TARGET_UBOOT_CONFIG) $(ROOTDIR)/$(UBOOT_DIR)/configs/configs_defconfig
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) configs_defconfig
+
+
+$(TARGET_BUILT_UBOOT): $(VAR_EXPORT) $(TARGET_UBOOT_CONFIG)
+	@echo "Building uboot 2019";
+	@echo "[uboot/Android.mk]UBOOT_BOOTCMD=$(UBOOT_BOOTCMD)"
+	@echo "[uboot/Android.mk]UBOOT_REVOCERYCMD=$(UBOOT_REVOCERYCMD)"
+ifeq ($(ANDROID_VTS_LTPKTF),yes)
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) ENABLE_VTS_TEST=y HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) UBOOT_BOOTCMD="$(UBOOT_BOOTCMD)" UBOOT_REVOCERYCMD="$(UBOOT_REVOCERYCMD)"
+else
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) UBOOT_BOOTCMD="$(UBOOT_BOOTCMD)" UBOOT_REVOCERYCMD="$(UBOOT_REVOCERYCMD)"
+endif
+	$(ACP) $(UBOOT_OUT_SRC)/mboot.bin $(TARGET_BUILT_UBOOT)
+
+
+ifeq ($(AVB_ENABLE), true)
+ifneq ($(LINUX_ONLY), true)
+$(TARGET_BUILT_CUSTOMER_KEY_UBOOT): $(TARGET_BUILT_UBOOT)
+	@echo "Rebuilding mboot with Google_UB_A_AVB_Key from $(UBOOT_OUT_SRC)"
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) COMMON_CFG=$(COMMON_CFG) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) AVB_CUSTOMER_KEY_SELECT=GOOGLE_AVB_PUBLIC_KEY UBOOT_BOOTCMD="$(UBOOT_BOOTCMD)" UBOOT_REVOCERYCMD="$(UBOOT_REVOCERYCMD)"
+	mv $(UBOOT_OUT_SRC)/mboot.bin $(TARGET_BUILT_CUSTOMER_KEY_UBOOT)
+endif
+endif
+
+
+$(INSTALLED_UBOOT_TARGET): $(TARGET_BUILT_UBOOT) | $(ACP)
+	mkdir -p $(PRODUCT_OUT)/unsigned
+ifeq ($(wildcard $(TARGET_PREBUILT_MBOOT)),)
+	@echo Copies the built mboot to $(PRODUCT_OUT)
+	$(ACP) $(TARGET_BUILT_UBOOT) $(INSTALLED_UBOOT_TARGET)
+	$(ACP) $(INSTALLED_UBOOT_TARGET) $(PRODUCT_OUT)/unsigned/mboot.bin
+else
+	@echo Copies pre-built mboot to $(PRODUCT_OUT)
+	$(ACP) $(TARGET_PREBUILT_MBOOT) $(INSTALLED_UBOOT_TARGET)
+	$(ACP) $(TARGET_BUILT_UBOOT) $(PRODUCT_OUT)/unsigned/mboot.unsigned.bin
+	$(ACP) $(UBOOT_OUT_SRC)/System.map $(PRODUCT_OUT)/unsigned/System.map
+	$(ACP) $(UBOOT_OUT_SRC)/u-boot.map $(PRODUCT_OUT)/unsigned/u-boot.map
+	$(ACP) $(UBOOT_OUT_SRC)/u-boot $(PRODUCT_OUT)/unsigned/u-boot.debug
+endif
+
+ifeq ($(AVB_ENABLE), true)
+ifneq ($(LINUX_ONLY), true)
+$(INSTALLED_UBOOT_CUSTOMER_KEY_TARGET): $(TARGET_BUILT_CUSTOMER_KEY_UBOOT)
+	@echo Copies the built mboot with Google key to $(PRODUCT_OUT)
+	$(ACP) $(TARGET_BUILT_CUSTOMER_KEY_UBOOT) $(INSTALLED_UBOOT_CUSTOMER_KEY_TARGET)
+endif
+endif
+
+droidcore: $(INSTALLED_UBOOT_CUSTOMER_KEY_TARGET) $(TARGET_BUILT_CUSTOMER_KEY_UBOOT) $(INSTALLED_UBOOT_TARGET) $(TARGET_BUILT_UBOOT)
+
+ubootclean: $(VAR_EXPORT) $(ACP)
+	@echo "Executing uboot 2019 clean";
+	$(MAKE_UBOOT) -C $(ROOTDIR)/$(UBOOT_DIR) O=$(ROOTDIR)/$(UBOOT_OUT_SRC) HOSTCC=$(HOSTCC) CROSS_COMPILE=$(UBOOT2019_CROSS_COMPILE_FILENAME) PYTHON3_SITE_PACKAGES=$(UBOOT_PYTHON3_SITE_PACKAGES) clean
+	@rm -rf $(TARGET_BUILT_UBOOT)
+	@rm -rf $(TARGET_BUILT_CUSTOMER_KEY_UBOOT)
+	@rm -rf $(PRODUCT_OUT)/mboot.bin
+	@rm -rf $(PRODUCT_OUT)/mboot_Google_UB_A_AVB_Key.bin
+
+# This is for developer to only build uboot.
+# when make any change above, please make chanege to this section as well if needed
+uboot: $(INSTALLED_UBOOT_CUSTOMER_KEY_TARGET) $(INSTALLED_UBOOT_TARGET) $(TARGET_BUILT_UBOOT) $(VAR_EXPORT) $(ACP)
+
+.PHONY: uboot ubootclean
+
+endif	#end of ifeq ("$(NCT5_BUILD)","true")
+endif

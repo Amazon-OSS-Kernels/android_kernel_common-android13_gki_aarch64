@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/{
+	mediatek-panel {
+		compatible = "mediatek,mediatek-panel";
+		status ="okay";
+		panel-info {
+			panel_name = "UD_VB1_16LANE";
+			link_type = <51>;
+			div_section = <1>;
+			on_timing1 = <30>;
+			on_timing2 = <200>;
+			off_timing1 = <220>;
+			off_timing2 = <10>;
+			hsync_width = <30>;
+			h_backporch = <80>;
+			vsync_width = <2>;
+			v_backporch = <40>;
+			de_hstart = <110>;
+			de_vstart = <98>;
+			resolution_width = <3840>;
+			resolution_height = <2160>;
+			max_h_total = <4500>;
+			typ_h_total = <4400>;
+			min_h_total = <4300>;
+			max_v_total = <2350>;
+			typ_v_total = <2250>;
+			min_v_total = <2150>;
+			max_clk = <620000000>;
+			typ_clk = <594000000>;
+			min_clk = <560000000>;
+			output_format = <0>;
+			vrr_en = <0>;
+			min_vrr_framerate = <30>;
+			max_vrr_framerate = <120>;
+
+		};
+		panel-cus-setting {
+			PanelGamma_Enable = <0>;
+			PanelGamme_BinPath = "";
+			TCON_Enable = <0>;
+			TCON_BinPath = "";
+			PanelMirrorMode = <0>;
+			PanelOutputFormat = <0>;
+			SSC_Enable = <0>;
+			SSC_Step = <0>;
+			SSC_Span = <0>;
+			OverDrive_Enable = <0>;
+			OverDrive_Buf_Addr = <0>;
+			OverDrive_Buf_Size = <0>;
+			GPIO_Backlight = <0>;
+			GPIO_VCC = <0>;
+			M_delta = <4>;
+			CustomerColorPrimaries = <0>;
+			SourceWx = <15635>;
+			SourceWy = <16450>;
+			VIDEO_GFX_DISPLAY_MODE = <0>;
+			OSD_Height = <0>;
+			OSD_Width = <0>;
+			OSD_HsyncStart = <0>;
+			OSD_HsyncEnd = <0>;
+			OSD_HDEStart = <0>;
+			OSD_HDEEnd = <0>;
+			OSD_HTotal = <0>;
+			OSD_VsyncStart = <0>;
+			OSD_VsyncEnd = <0>;
+			OSD_VDEStart = <0>;
+			OSD_VDEEnd = <0>;
+			OSD_VTotal = <0>;
+
+			cus_x_dpi = <0>;
+			cus_y_dpi = <0>;
+
+			u32PeriodPWM = <0xFFFF>;
+			u32DutyPWM = <0x3FFF>;
+			u16DivPWM = <0x00>;
+			bPolPWM = <0>;
+			u16MaxPWMvalue = <0xFFFF>;
+			u16MinPWMvalue = <0x2000>;
+			u16PWMPort = <0>;
+		};
+		panel-output-swing-level {
+			Swing_Level_Enable = <0>;
+			Swing_Control_Channels = <0>;
+			Swing_Level_CH3to0 = <0>;
+			Swing_Level_CH7to4 = <0>;
+			Swing_Level_CH11to8 = <0>;
+			Swing_Level_CH15to12 = <0>;
+			Swing_Level_CH19to16 = <0>;
+			Swing_Level_CH23to20 = <0>;
+			Swing_Level_CH27to24 = <0>;
+			Swing_Level_CH31to28 = <0>;
+		};
+		panel-output-pre-emphasis {
+			PE_Level_Enable = <0>;
+			PE_Control_Channels = <0>;
+			PE_Level_CH3to0 = <0>;
+			PE_Level_CH7to4 = <0>;
+			PE_Level_CH11to8 = <0>;
+			PE_Level_CH15to12 = <0>;
+			PE_Level_CH19to16 = <0>;
+			PE_Level_CH23to20 = <0>;
+			PE_Level_CH27to24 = <0>;
+			PE_Level_CH31to28 = <0>;
+		};
+		panel-lane-order {
+			MOD_LANE_ORDER_CH3to0 = <0x3210>;
+			MOD_LANE_ORDER_CH7to4 = <0x6573>;
+			MOD_LANE_ORDER_CH11to8 = <0xBA98>;
+			MOD_LANE_ORDER_CH15to12 = <0>;
+			MOD_LANE_ORDER_CH19to16 = <0>;
+			MOD_LANE_ORDER_CH23to20 = <0>;
+			MOD_LANE_ORDER_CH27to24 = <0>;
+			MOD_LANE_ORDER_CH31to28 = <0>;
+		};
+		panel-output-config {
+			MOD_OUTPUT_CONFIG_CH3to0 = <0x55>;
+			MOD_OUTPUT_CONFIG_CH7to4 = <0x55>;
+			MOD_OUTPUT_CONFIG_CH11to8 = <0>;
+			MOD_OUTPUT_CONFIG_CH15to12 = <0>;
+			MOD_OUTPUT_CONFIG_CH19to16 = <0>;
+			MOD_OUTPUT_CONFIG_CH23to20 = <0>;
+			MOD_OUTPUT_CONFIG_CH27to24 = <0>;
+			MOD_OUTPUT_CONFIG_CH31to28 = <0>;
+		};
+		panel-color-info {
+			COLOR_SPACE = <4>;
+			COLOR_FORAMT = <0>;
+			COLOR_RANGE = <3>;
+			Rx = <32000>;
+			Ry = <16455>;
+			Gx = <15000>;
+			Gy = <30000>;
+			Bx = <7500>;
+			By = <3000>;
+			Wx = <15635>;
+			Wy = <16450>;
+			MaxLuminance = <100>;
+			MedLuminance = <50>;
+			MinLuminance = <500>;
+			LinearRGB = <1>;
+			HDRPanelNits = <399>;
+		};
+	};
+};

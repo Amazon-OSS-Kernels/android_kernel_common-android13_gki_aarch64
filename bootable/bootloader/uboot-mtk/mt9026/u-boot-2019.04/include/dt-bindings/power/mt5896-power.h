@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ */
+
+#ifndef _DT_BINDINGS_MT5896_POWER_H
+#define _DT_BINDINGS_MT5896_POWER_H
+
+#define MT5896_POWER_DOMAIN_ETHSYS	0
+#define MT5896_POWER_DOMAIN_HIF0	1
+#define MT5896_POWER_DOMAIN_HIF1	2
+
+#endif /* _DT_BINDINGS_MT5896_POWER_H */

@@ -1,0 +1,31 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ */
+
+#include <dt-bindings/clock/mt5896-clk.h>
+#include "merak_clk/mt5896_adc_fix.dtsi"
+#include "merak_clk/mt5896_adcpll_clock.dtsi"
+#include "merak_clk/mt5896_cvbso_clock.dtsi"
+#include "merak_clk/mt5896_ge_clock.dtsi"
+#include "merak_clk/mt5896_hdmi_clock.dtsi"
+#include "merak_clk/mt5896_i2c_clock.dtsi"
+#include "merak_clk/mt5896_jpd_clock.dtsi"
+#include "merak_clk/mt5896_mheg5_clock.dtsi"
+#include "merak_clk/mt5896_nonpm_adc_clock.dtsi"
+#include "merak_clk/mt5896_pm_adc_clock.dtsi"
+#include "merak_clk/mt5896_pm_clock.dtsi"
+#include "merak_clk/mt5896_pm_fix.dtsi"
+#include "merak_clk/mt5896_pwm_nonpm_clock.dtsi"
+#include "merak_clk/mt5896_sctcon_clock.dtsi"
+#include "merak_clk/mt5896_top_mg_clock.dtsi"
+#include "merak_clk/mt5896_memc_clock.dtsi"
+#include "merak_clk/mt5896_memc_mg_clock.dtsi"
+
+#include "merak_clk/mt5897_MIIC_mg_clock.dtsi"
+#include "merak_clk/mt5897_fuart_mg_clock.dtsi"
+#include "merak_clk/mt5897_miic_nonpm_swen_clock.dtsi"
+#include "merak_clk/mt5897_uart_mg_clock.dtsi"
+#include "merak_clk/mt5897_uart_swen_clock.dtsi"

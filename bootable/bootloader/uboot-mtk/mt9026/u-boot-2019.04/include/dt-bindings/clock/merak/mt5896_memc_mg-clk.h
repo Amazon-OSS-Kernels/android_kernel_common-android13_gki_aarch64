@@ -1,0 +1,3 @@
+#define CLK_MEMC_FRC_FCLK_INT_CK	1
+#define CLK_MEMC_FRC_FCLK_2X_INT_CK	2
+#define CLK_MEMC_NR	3

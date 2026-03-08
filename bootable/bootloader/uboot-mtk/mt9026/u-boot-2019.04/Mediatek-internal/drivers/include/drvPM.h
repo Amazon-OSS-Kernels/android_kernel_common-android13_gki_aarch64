@@ -1,0 +1,1 @@
+#define PM_SOURCE_DISABLE	(0xFF)

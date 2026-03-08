@@ -1,0 +1,45 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ */
+
+&ssusb {
+		status ="disabled";
+};
+
+&u3phy0 {
+			status ="disabled";
+};
+
+&ssusb1 {
+		status ="disabled";
+};
+
+&u3phy1 {
+		status ="disabled";
+};
+
+&ssusb_fpga {
+		status = "okay";
+};
+
+&u3phy_fpga {
+        status = "okay";
+};
+
+&gmac {
+	pinctrl-names = "default";
+	pinctrl-0 = <&rgmii_pmux &rgmii_tx_pcfg>;
+	external-phy;
+	force-10m;
+	fpga-haps;
+	/* internal-phy; */
+};
+
+/* overlay dtsi properties for haps, original setting in mt5896_uart.dtsi */
+&uart0 {
+	current-speed = <38400>;
+	clock-frequency = <12000000>;
+};

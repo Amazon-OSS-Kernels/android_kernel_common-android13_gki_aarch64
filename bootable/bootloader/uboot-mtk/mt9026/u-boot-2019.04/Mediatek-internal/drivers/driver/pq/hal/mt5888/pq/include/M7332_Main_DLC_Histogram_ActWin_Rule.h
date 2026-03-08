@@ -1,0 +1,18 @@
+#define PQ_DLC_Histogram_ActWin_Rule_ID_Main 6
+#define PQ_DLC_Histogram_ActWin_Rule_IP_NUM_Main 2
+#define PQ_DLC_Histogram_ActWin_Rule_NUM_Main 3
+
+#define PQ_DLC_HISTOGRAM_ACTWIN_RULE_ASPECT_RATIO_16_9_MAIN 1
+#define PQ_DLC_HISTOGRAM_ACTWIN_RULE_ASPECT_RATIO_4_3_MAIN 1
+#define PQ_DLC_HISTOGRAM_ACTWIN_RULE_ASPECT_RATIO_JUSTSCAN_MAIN 1
+
+typedef enum
+{
+PQ_DLC_Histogram_ActWin_Rule_ASPECT_RATIO_16_9_Main,
+PQ_DLC_Histogram_ActWin_Rule_ASPECT_RATIO_4_3_Main,
+PQ_DLC_Histogram_ActWin_Rule_ASPECT_RATIO_JustScan_Main,
+}
+MST_DLC_Histogram_ActWin_Rule_Index_Main;
+extern U8 MST_DLC_Histogram_ActWin_Rule_IP_Index_Main[PQ_DLC_Histogram_ActWin_Rule_IP_NUM_Main];
+extern U8 MST_DLC_Histogram_ActWin_Rule_Array_Main[PQ_DLC_Histogram_ActWin_Rule_NUM_Main][PQ_DLC_Histogram_ActWin_Rule_IP_NUM_Main];
+

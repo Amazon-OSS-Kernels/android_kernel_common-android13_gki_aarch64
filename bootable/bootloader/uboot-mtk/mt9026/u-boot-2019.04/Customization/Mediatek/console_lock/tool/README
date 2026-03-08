@@ -1,0 +1,21 @@
+A simple console lock authentication server simulation.
+
+gen response steps:
+1. take your CKB_S_CE_Key.pem and use rsapem2key.py to gen private_key and public_key
+   $ python rsapem2key.py CKB_S_CE_Key.pem
+
+2. replace private_key and public_key in folder keys/DEFAULT/
+
+3. path in tool
+   $ make
+
+4. path in tool
+   $ ./auth-server <challenge>
+
+5. you will get <response>
+
+6. type "ce" command in uboot console
+
+7. copy <response> in input:
+
+8. if <response> is valid, uboot console will unlock, and you can use any command in uboot console
