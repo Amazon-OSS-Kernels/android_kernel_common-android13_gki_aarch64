@@ -1,0 +1,222 @@
+/*
+ * Copyright (C) 2018 MediaTek Inc.
+ * Author: Ryder Lee <ryder.lee@mediatek.com>
+ *
+ * SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ */
+
+/dts-v1/;
+#include "mt5888.dtsi"
+
+/ {
+	model = "MediaTek MT5888 RFB";
+	compatible = "mediatek,mt5888-rfb", "mediatek,mt5888";
+
+	aliases {
+		spi0 = &qspi;
+	};
+
+	chosen {
+		stdout-path = &uart0;
+		tick-timer = &timer0;
+	};
+
+	/* soft i2c example */
+	/*softi2c: softi2c@0 {*/
+	/*	compatible = "i2c-gpio";*/
+	/*	gpios = <&gpio 0 0>,*/  /* sda */
+	/*		<&gpio 1 0>;*/  /* scl */
+	/*	i2c-gpio,delay-us = <2>;*/  /* 100kHz */
+	/*	#address-cells = <1>;*/
+	/*	#size-cells = <0>;*/
+	/*	status = "okay";*/
+	/*};*/
+
+};
+
+&eth {
+	status = "okay";
+	mediatek,gmac-id = <1>;
+	phy-mode = "gmii";
+	phy-handle = <&phy0>;
+
+	phy0: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&pinctrl {
+	qspi_pins: qspi-pins {
+		mux {
+			function = "flash";
+			groups = "spi_nor";
+		};
+	};
+
+	uart0_pins: uart0-default {
+		mux {
+			function = "uart";
+			groups = "uart0_txd_rxd";
+		};
+	};
+
+	watchdog_pins: watchdog-default {
+		mux {
+			function = "watchdog";
+			groups = "watchdog";
+		};
+	};
+};
+
+&qspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_pins>;
+	status = "okay";
+
+	spi-flash@0{
+		compatible = "spi-flash";
+		reg = <0>;
+		u-boot,dm-pre-reloc;
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pins>;
+	status = "okay";
+};
+
+&watchdog {
+	pinctrl-names = "default";
+	pinctrl-0 = <&watchdog_pins>;
+	status = "okay";
+};
+
+&mmc0{
+    cap-mmc-highspeed;
+	mmc-ddr-1_8v;
+    mmc-hs200-1_8v;
+    mmc-hs400-1_8v;
+    mmc-hs400-enhanced-strobe;
+    status ="okay";
+    bus-width = <8>;
+    non-removable;
+    max-frequency = <200000000>;
+    host-driving = <0>;
+    device-driving =<0>;
+};
+
+/* Panel backlight PWM */
+&pwm {
+	/* private control setting */
+	shift = <0>;
+	div = <0>;
+	//rst-mux; /* enable/disable rst_mux */
+	//rst-vsync; /* enable/disable vsync rst */
+	rstcnt = <0>;
+
+	pad-modes = <1 0 0 0>; /* pad modes of 4 pwm channels */
+			       /* MT166B/MT165B only use channel 0 */
+	status = "okay";
+};
+
+/* pwmdac example, MT166B/MT165B not use it */
+//&pwmdac {
+//	/* private control setting */
+//	duty-offset = <0>; /* -127 ~ 127 */
+//	div = <0>;
+//	duty-auto-correct; /* switch duty value auto correct */
+//	//double-buffer; /* switch double buffer */
+//
+//	pad-modes = <1 1>; /* pad modes of 2 pwm channels */
+//	status = "ok";
+//};
+
+/* pwmpm, for MT166B/MT165B on board LED */
+&pwmpm {
+	/* private control setting */
+	div = <255>;
+	//double-buffer; /* enable/disable double buffer */
+
+	/* pad modes of 2 pwm channels */
+	/* only enable PM_PWM0 output for LED */
+	pad-modes = <1 0>;
+
+	status = "okay";
+};
+
+/* hw i2c0 example */
+//&i2c0 {
+//	pad-mode = <1>;
+//	clock-frequency = <100000>;
+//
+//	start-count = <73>;         /* SCL and SDA count for start */
+//	sda-count = <5>;            /* closk count between falling edge SCL and SDA */
+//	data-latch-count = <5>;     /* data latch timing */
+//	stop-count = <73>;          /* SCL and SDA count for stop */
+//
+//	status = "okay";
+//};
+
+&i2c1 {
+	pad-mode = <1>;
+	clock-frequency = <100000>;
+
+	start-count = <73>;         /* SCL and SDA count for start */
+	sda-count = <5>;            /* closk count between falling edge SCL and SDA */
+	data-latch-count = <5>;     /* data latch timing */
+	stop-count = <73>;          /* SCL and SDA count for stop */
+
+	status = "okay";
+};
+
+/* hw i2c2 example */
+//&i2c2 {
+//	pad-mode = <1>;
+//	clock-frequency = <100000>;
+//
+//	start-count = <73>;         /* SCL and SDA count for start */
+//	sda-count = <5>;            /* closk count between falling edge SCL and SDA */
+//	data-latch-count = <5>;     /* data latch timing */
+//	stop-count = <73>;          /* SCL and SDA count for stop */
+//
+//	status = "okay";
+//};
+
+&i2c3 {
+	pad-mode = <2>;
+	clock-frequency = <100000>;
+
+	start-count = <73>;         /* SCL and SDA count for start */
+	sda-count = <5>;            /* closk count between falling edge SCL and SDA */
+	data-latch-count = <5>;     /* data latch timing */
+	stop-count = <73>;          /* SCL and SDA count for stop */
+
+	status = "okay";
+};
+
+/* hw i2c4 example */
+//&i2c4 {
+//	pad-mode = <1>;
+//	clock-frequency = <100000>;
+//
+//	start-count = <73>;         /* SCL and SDA count for start */
+//	sda-count = <5>;            /* closk count between falling edge SCL and SDA */
+//	data-latch-count = <5>;     /* data latch timing */
+//	stop-count = <73>;          /* SCL and SDA count for stop */
+//
+//	status = "okay";
+//};
+
+&usb0{
+    status ="okay";
+};
+
+&usb1{
+    status ="okay";
+};
+
+&udc0{
+    status ="okay";
+};
+

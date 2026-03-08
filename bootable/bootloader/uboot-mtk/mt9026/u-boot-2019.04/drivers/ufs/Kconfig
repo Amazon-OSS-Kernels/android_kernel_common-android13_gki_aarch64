@@ -1,0 +1,42 @@
+config UFS
+	bool "Support UFS controllers"
+	select HAVE_BLOCK_DEVICE
+	help
+	  This enables support for UFS (Universal Flash Storage),
+	  a serial interface widely used with storage peripherals.
+	  The core driver is derived from linux 5.4.19. 
+
+config DM_UFS
+	bool "Support UFS controllers with driver model"
+	depends on BLK
+	help
+	  This option enables the UFS (Universal Flash Storage) uclass.
+	  For every device configuration (LUNs) a block device is created
+	  with RAW read/write and filesystem support.
+
+config UFS_DEBUG
+	bool "Support UFS DEBUG"
+	depends on UFS
+	help
+	  This option enables the UFS (Universal Flash Storage) debug.
+
+config SUPPORT_UFS_RPMB
+	bool "Support UFS replay protected memory block (RPMB)"
+	imply CMD_UFS_RPMB
+	help
+	  Enable support for reading, writing and programming the
+	  key for the Replay Protection Memory Block partition in UFS.
+
+config UFS_MTK_DTV
+	bool "Mediatek specific hooks to UFS controller platform driver"
+	depends on UFS && DM_UFS
+	help
+	  This selects the Mediatek specific additions to UFSHCD platform driver.
+	  UFS host on Mediatek needs some vendor specific configuration before
+	  accessing the hardware which includes PHY configuration and vendor
+	  specific registers.
+
+	  Select this if you have UFS controller on Mediatek chipset.
+
+	  If unsure, say N.
+

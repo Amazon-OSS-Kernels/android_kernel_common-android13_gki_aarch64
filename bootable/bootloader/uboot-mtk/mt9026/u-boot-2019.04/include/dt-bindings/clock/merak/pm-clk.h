@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause) */
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+#ifndef _DT_BINDINGS_CLK_MT5896_PM_H
+#define _DT_BINDINGS_CLK_MT5896_PM_H
+
+#define CLK_PM_XTAL_24M_USB_INT_CK	1
+#define CLK_PM_XTAL_24M_PM_INT_CK	2
+#define CLK_PM_XTAL_12M_PM_INT_CK	3
+#define CLK_PM_SMI_INT_CK	4
+#define CLK_PM_SMI_DIV2_INT_CK	5
+#define CLK_PM_RC_INT_CK	6
+#define CLK_PM_XIU_RX_INT_CK	7
+#define CLK_PM_MCU_BUS_PM_INT_CK	8
+#define CLK_PM_MCU_NONPM_INT_CK	9
+#define CLK_PM_MCU_PM_INT_CK	10
+#define CLK_PM_RIU_PM_INT_CK	11
+#define CLK_PM_RIU_NONPM_INT_CK	12
+#define CLK_PM_SPI_PM_INT_CK	13
+#define CLK_PM_MIIC0_PM_INT_CK	14
+#define CLK_PM_MIIC1_PM_INT_CK	15
+#define CLK_PM_UART0_PM_SYNTH_INT_CK	16
+#define CLK_PM_UART0_PM_INT_CK	17
+#define CLK_PM_UART1_PM_SYNTH_INT_CK	18
+#define CLK_PM_UART1_PM_INT_CK	19
+#define CLK_PM_FUART0_PM_SYNTH_INT_CK	20
+#define CLK_PM_FUART0_PM_INT_CK	21
+#define CLK_PM_DDC_INT_CK	22
+#define CLK_PM_IR_INT_CK	23
+#define CLK_PM_SD_INT_CK	24
+#define CLK_PM_NR	25
+
+#endif

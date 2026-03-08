@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+/ {
+	emi_cen2: emi_cen2 {
+	};
+	smi_common2: smi_common2 {
+	};
+	smi_common5: smi_common5 {
+	};
+	larb6: larb6 {
+	};
+	larb31: larb31 {
+	};
+	larb3: larb3 {
+	};
+	larb4: larb4 {
+	};
+	larb5: larb5 {
+	};
+	larb30: larb30 {
+	};
+	larb32: larb32 {
+	};
+	larb33: larb33 {
+	};
+	larb34: larb34 {
+	};
+};
+

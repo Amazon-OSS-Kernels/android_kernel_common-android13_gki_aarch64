@@ -1,0 +1,10 @@
+# Mediatek Implement
+
+source "Mediatek-internal/impl/ab/Kconfig"
+source "Mediatek-internal/impl/upgrade/Kconfig"
+source "Mediatek-internal/impl/romtblo/Kconfig"
+source "Mediatek-internal/impl/jpd/Kconfig"
+source "Mediatek-internal/impl/pm/Kconfig"
+source "Mediatek-internal/impl/pmu/Kconfig"
+source "Mediatek-internal/impl/standby/Kconfig"
+source "Mediatek-internal/impl/led/Kconfig"

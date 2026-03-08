@@ -1,0 +1,4 @@
+DTBO_OVERLAY_DTB_BASE:=$(UBOOT_MAIN_DTB_FILE)
+include $(KERNEL_MK_PATH)/build_rules.mk
+include $(KERNEL_MK_PATH)/build_dto_linux.mk
+$(DTBO_OVERLAY_INI_TARGET): $(BUILT_DTBO_TARGET)

@@ -1,0 +1,36 @@
+if TARGET_MT5896
+
+config SYS_BOARD
+	default "mt5896"
+
+config SYS_CONFIG_NAME
+	default "mt5896"
+
+menu "Memory setting"
+
+config BUSADDR_START
+	hex "Setting bus address start"
+	default 0x20000000
+	help
+	  Setting buss address
+
+config BUSADDR_SIZE
+	hex "Setting bus address size"
+	default 0x200000000
+	help
+	  Setting buss address size
+
+config DRAM_SIZE_MB_RELOCATE
+	hex "Setting DRAM relocate size (MB)"
+	default 152
+	help
+	  Setting DRAM relocate size (MB)
+
+config ARMv8_64BIT_KERNEL
+	bool "Select platform kernel type"
+	default y
+	help
+	  Select platform kernel type
+
+endmenu		# Memory setting
+endif

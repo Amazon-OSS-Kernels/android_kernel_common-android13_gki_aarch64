@@ -1,0 +1,18 @@
+#
+# infrastructure and common function
+#
+
+menu "Mediatek PMU Support"
+
+config MTK_PMU
+	tristate "MediaTek PMU Support"
+	help
+	  Say yes here to add support for Mediatek PMU loader.
+
+config BOOTPMU_EARLY
+	bool "Enable boot pmu early"
+	default n
+	help
+	  Enabling this option will enable do boot pmu early.
+
+endmenu

@@ -1,0 +1,13 @@
+#
+# Copyright (c) 2023 Amazon.com, Inc. or its affiliates.  All rights reserved.
+#
+
+# Amazon-internal
+menu "Amazon"
+
+config UFBL
+	bool "Enable Amazon UFBL"
+	default n
+	help
+	  Enable Amazon UFBL Feature
+endmenu	#Amazon
