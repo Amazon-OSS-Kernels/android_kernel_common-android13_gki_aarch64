@@ -25,6 +25,7 @@
 #include <amzn_tv_common.h>
 #include <amzn_tv_secure_boot.h>
 #include <amzn_secure_boot.h>
+#include <debug_impl.h>
 
 static void getvar_version(char *var_parameter, char *response);
 static void getvar_version_bootloader(char *var_parameter, char *response);
@@ -293,6 +294,12 @@ static void getvar_serialno(char *var_parameter, char *response)
 {
 	const char *tmp = env_get("serial#");
 
+	if (tmp) {
+		fastboot_okay(tmp, response);
+		return;
+	}
+
+	tmp = env_get("serialno");
 	if (tmp)
 		fastboot_okay(tmp, response);
 	else
@@ -578,23 +585,23 @@ static void getvar_product_variant(char *var_parameter, char *response)
 	char ammo_var[PROD_VAR_SIZE+1] = {0,};
 
 	idme_get_oem_data_field("ammo_var=", ammo_var, PROD_VAR_SIZE);
-	/* following if condition is only for ABC, ABC, ABC */
-	/* and ABC as AMMO is enabled in the middle of development    */
+	/* following if condition is only for abc123, abc123, abc123 */
+	/* and abc123 as AMMO is enabled in the middle of development    */
 	if (!(strcmp(ammo_var, ""))) {
 		const char *board_name = env_get("board");
 
-		if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-wp");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-gp");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-lp");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-ca");
-		else if (!(strcmp(board_name, "ABCeu")))
-			sprintf(ammo_var, "ABCeu-gm");
-		else if (!(strcmp(board_name, "ABC")))
-			sprintf(ammo_var, "ABC-gm");
+		if (!(strcmp(board_name, "abc123")))
+			sprintf(ammo_var, "abc123-wp");
+		else if (!(strcmp(board_name, "abc123")))
+			sprintf(ammo_var, "abc123-gp");
+		else if (!(strcmp(board_name, "abc123")))
+			sprintf(ammo_var, "abc123-lp");
+		else if (!(strcmp(board_name, "abc123")))
+			sprintf(ammo_var, "abc123-ca");
+		else if (!(strcmp(board_name, "abc123eu")))
+			sprintf(ammo_var, "abc123eu-gm");
+		else if (!(strcmp(board_name, "abc123")))
+			sprintf(ammo_var, "abc123-gm");
 		else {
 			product_variant_is_valid = 0;
 			debug("Invalid board name(%s) to produce product-variant\n", board_name);
@@ -691,28 +698,67 @@ static void getvar_replay_protected_unlock_code(char *var_parameter, char *respo
 
 static void getvar_antirollback_version_info(char *var_parameter, char *response)
 {
-	#define AR_VER_STRING_SIZE 40
-	struct ar_efuse_version_type ar_vers;
-	char ar_version[AR_VER_STRING_SIZE] = {0,};
+	#define AR_VER_STRING_SIZE 80
+	char ar_version_str[AR_VER_STRING_SIZE] = {0,};
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+	struct ar_efuse_version_type ar_efuse_vers;
+#endif
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+	struct ar_rpmb_version_type ar_rpmb_vers;
+#endif
+	unsigned ar_status = (unsigned)anti_rollback_enabled();
 
-	if (anti_rollback_enabled()==0) {
+	switch (ar_status) {
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+	case AR_ENABLED_EFUSE:
+		if (amzn_antirollback_efuse_version((unsigned char *)&ar_efuse_vers)) {
+			snprintf(ar_version_str, sizeof(ar_version_str), "%x:%x:%x:%x:%x:%x:%x:%x:%x:%x",
+			ar_efuse_vers.hash1_version,
+			ar_efuse_vers.teeloader_version,
+			ar_efuse_vers.armfw_version,
+			ar_efuse_vers.optee_version,
+			ar_efuse_vers.reeloader_version,
+			ar_efuse_vers.uboot_version,
+			ar_efuse_vers.pmufw_version,
+			ar_efuse_vers.vbmeta_version,
+			ar_efuse_vers.boot_version,
+			ar_efuse_vers.recovery_version);
+			fastboot_okay(ar_version_str, response);
+			UBOOT_INFO("[%s] efuse ar_version_str:%s\n", __func__, ar_version_str);
+		} else
+			fastboot_fail("anti-rollback version is not available", response);
+		break;
+#endif /* CONFIG_ROLLBACK_INDEX_IN_EFUSE */
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+	case AR_ENABLED_RPMB:
+	case (AR_ENABLED_EFUSE|AR_ENABLED_RPMB):
+		if (amzn_antirollback_rpmb_version((unsigned char *)&ar_rpmb_vers)) {
+			snprintf(ar_version_str, sizeof(ar_version_str), "%llx:%llx:%llx:%llx:%llx:%llx:%llx:%llx:%llx:%llx",
+			ar_rpmb_vers.hash1_version,
+			ar_rpmb_vers.teeloader_version,
+			ar_rpmb_vers.armfw_version,
+			ar_rpmb_vers.optee_version,
+			ar_rpmb_vers.reeloader_version,
+			ar_rpmb_vers.uboot_version,
+			ar_rpmb_vers.pmufw_version,
+			ar_rpmb_vers.vbmeta_version,
+			ar_rpmb_vers.boot_version,
+			ar_rpmb_vers.recovery_version);
+			fastboot_okay(ar_version_str, response);
+			UBOOT_INFO("[%s] RPMB ar_version_str:%s\n", __func__, ar_version_str);
+		} else
+			fastboot_fail("anti-rollback version is not available", response);
+		break;
+#endif /* CONFIG_ROLLBACK_INDEX_IN_RPMB */
+	case AR_DISABLED:
 		fastboot_okay("anti-rollback is not enabled", response);
-	} else if (amzn_antirollback_efuse_version((unsigned char *)&ar_vers)) {
-		snprintf(ar_version, sizeof(ar_version), "%x:%x:%x:%x:%x:%x:%x:%x:%x:%x",
-		ar_vers.hash1_version,
-		ar_vers.teeloader_version,
-		ar_vers.armfw_version,
-		ar_vers.optee_version,
-		ar_vers.reeloader_version,
-		ar_vers.uboot_version,
-		ar_vers.pmufw_version,
-		ar_vers.vbmeta_version,
-		ar_vers.boot_version,
-		ar_vers.recovery_version);
-		fastboot_okay(ar_version, response);
-	} else
-		fastboot_fail("anti-rollback version is not available", response);
+		break;
 
+	case AR_NOT_INITED:
+	default:
+		fastboot_fail("anti-rollback version is not available", response);
+		break;
+	}
 	return;
 }
 

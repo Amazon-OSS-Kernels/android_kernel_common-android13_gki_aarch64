@@ -383,6 +383,12 @@
 			panel_spi_speed = <0x4C4B40>;
 			panel_spi_mode = <0x0>;
 			vcc_to_custic_delay = <0>;
+			dmc_dlg_enable = <0x00>; /*demura DLG mode enable*/
+			bl_dmc_enable = <0x00>; /*backlight demura enable*/
+			bl_dmc_vendorid = <0x00>; /*backlight demura vendor id*/
+			bl_dmc_partition = "tvconfig"; /*backlight demura partition*/
+			bl_dmc_vendor_bin = ""; /*backlight demura binary path*/
+			bl_dmc_bound = <0x00>;
 		};
 		output_swing_info:output_swing_info {
 			swing_usr_define = <0>;
@@ -514,12 +520,18 @@
 			pmic_vcom_addr_start = <0>;
 			pmic_vcom_addr_length = <0>;
 			pmic_i2c_read_mode = <0>;
+			pmic_i2c_write_mode = <0>;
 			pimc_i2c_burn_cmd = <0>;
 			pimc_i2c_burn_offset = <0>;
 			pmic_i2c_ctrl_reg = <0>;
 			pmic_i2c_ctrl_reg_offset = <0>;
 			pimc_data_start = <0>;
 			pimc_data_end = <0>;
+			pmic_nvm_chk_en = <0>;
+			pmic_nvm_chk_offset = <0>;
+			pmic_nvm_chk_val = <0>;
+			pmic_nvm_chk_i2c_post_dly = <0>;
+			pmic_nvm_chk_rst_dly = <0>;
 		};
 		pgamma_info:pgamma_info {
 			pgamma_info_version = <0>;
@@ -542,6 +554,7 @@
 			pgamma_post_delay = <0>;
 			pgamma_auto_from_flash = <0>;
 			pgamma_i2c_read_mode = <0>;
+			pgamma_i2c_write_mode = <0>;
 			pgamma_i2c_burn_cmd = <0>;
 			pgamma_i2c_burn_offset = <0>;
 			pgamma_i2c_ctrl_reg = <0>;
@@ -570,6 +583,7 @@
 			levelshift_post_delay = <0>;
 			levelshift_auto_from_flash = <0>;
 			levelshift_i2c_read_mode = <0>;
+			levelshift_i2c_write_mode = <0>;
 			levelshift_i2c_burn_cmd = <0>;
 			levelshift_i2c_burn_offset = <0>;
 			levelshift_i2c_ctrl_reg = <0>;
@@ -598,6 +612,7 @@
 			vcomic_post_delay = <0>;
 			vcomic_auto_from_flash = <0>;
 			vcomic_i2c_read_mode = <0>;
+			vcomic_i2c_write_mode = <0>;
 			vcomic_i2c_burn_cmd = <0>;
 			vcomic_i2c_burn_offset = <0>;
 			vcomic_i2c_ctrl_reg = <0>;
@@ -627,6 +642,7 @@
 			pmic_sub_post_delay = <0>;
 			pmic_sub_auto_from_flash = <0>;
 			pmic_sub_i2c_read_mode = <0>;
+			pmic_sub_i2c_write_mode = <0>;
 			pmic_sub_i2c_burn_cmd = <0>;
 			pmic_sub_i2c_burn_offset = <0>;
 			pmic_sub_i2c_ctrl_reg = <0>;
@@ -656,6 +672,7 @@
 			pgamma_sub_post_delay = <0>;
 			pgamma_sub_auto_from_flash = <0>;
 			pgamma_sub_i2c_read_mode = <0>;
+			pgamma_sub_i2c_write_mode = <0>;
 			pgamma_sub_i2c_burn_cmd = <0>;
 			pgamma_sub_i2c_burn_offset = <0>;
 			pgamma_sub_i2c_ctrl_reg = <0>;
@@ -685,6 +702,7 @@
 			levelshift_sub_post_delay = <0>;
 			levelshift_sub_auto_from_flash = <0>;
 			levelshift_sub_i2c_read_mode = <0>;
+			levelshift_sub_i2c_write_mode = <0>;
 			levelshift_sub_i2c_burn_cmd = <0>;
 			levelshift_sub_i2c_burn_offset = <0>;
 			levelshift_sub_i2c_ctrl_reg = <0>;
@@ -714,6 +732,7 @@
 			vcomic_sub_post_delay = <0>;
 			vcomic_sub_auto_from_flash = <0>;
 			vcomic_sub_i2c_read_mode = <0>;
+			vcomic_sub_i2c_write_mode = <0>;
 			vcomic_sub_i2c_burn_cmd = <0>;
 			vcomic_sub_i2c_burn_offset = <0>;
 			vcomic_sub_i2c_ctrl_reg = <0>;

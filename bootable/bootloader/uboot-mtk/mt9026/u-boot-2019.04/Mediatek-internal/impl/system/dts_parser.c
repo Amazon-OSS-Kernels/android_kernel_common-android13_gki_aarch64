@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <linux/libfdt.h>
@@ -12,10 +12,15 @@
 #include <jpd_impl.h>
 #include <gegop_impl.h>
 #include <panel_impl.h>
+#include <demura_impl.h>
 
 #define OFFSET_32        32
 #define MAX_LEVEL        32
 #define MAX_CUST_PATH_LEN   (128)
+
+#define DEMURA_ENV_PARTITION_BACKLIGHT        "dmc_partition_backlight"
+#define DEMURA_ENV_VENDOR_BACKLIGHT           "dmc_vendorid_backlight"
+
 DECLARE_GLOBAL_DATA_PTR;
 
 void integer_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target)
@@ -471,7 +476,59 @@ void cus_panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *fi
 	{
 		panel_data->vcc_to_custic_delay = fdt32_to_cpu(fdt_data->attribute[0]);
 	}
+	if(strstr(fdt_data->field,"TCON_Enable") != NULL)
+	{
+		panel_data->using_tcon_en = fdt32_to_cpu(fdt_data->attribute[0]);
+	}
 }
+
+void cus_demura_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target)
+{
+    st_cust_dmc_info *cust_dmc_info = (st_cust_dmc_info*)out;
+
+    if (!cust_dmc_info || !out)
+    {
+        return;
+    }
+    if (strstr(fdt_data->field, "dmc_dlg_enable") != NULL)
+    {
+        cust_dmc_info->dmc_dlg_enable = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if (strstr(fdt_data->field, "bl_dmc_enable") != NULL)
+    {
+        cust_dmc_info->bl_dmc_enable = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if (strstr(fdt_data->field, "bl_dmc_vendorid") != NULL)
+    {
+        cust_dmc_info->bl_dmc_vendorid = fdt32_to_cpu(fdt_data->attribute[0]);
+        if (env_get(DEMURA_ENV_VENDOR_BACKLIGHT) != NULL)
+            cust_dmc_info->bl_dmc_vendorid = (uint16_t)mst_atoi(env_get(DEMURA_ENV_VENDOR_BACKLIGHT));
+    }
+    if (strstr(fdt_data->field, "bl_dmc_bound") != NULL)
+    {
+        cust_dmc_info->bl_dmc_bound = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if (strstr(fdt_data->field, "bl_dmc_partition") != NULL)
+    {
+        cust_dmc_info->bl_dmc_partiton = malloc(MAX_CUST_PATH_LEN);
+        if (cust_dmc_info->bl_dmc_partiton != NULL)
+        {
+            memset(cust_dmc_info->bl_dmc_partiton, 0x00, MAX_CUST_PATH_LEN);
+            memcpy(cust_dmc_info->bl_dmc_partiton, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    if (strstr(fdt_data->field, "bl_dmc_vendor_bin") != NULL)
+    {
+        cust_dmc_info->bl_dmc_vendor_bin = malloc(MAX_CUST_PATH_LEN);
+        if (cust_dmc_info->bl_dmc_vendor_bin != NULL)
+        {
+            memset(cust_dmc_info->bl_dmc_vendor_bin, 0x00, MAX_CUST_PATH_LEN);
+            memcpy(cust_dmc_info->bl_dmc_vendor_bin, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    return;
+}
+
 
 void panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target)
 {
@@ -607,6 +664,25 @@ void cust_pmic_dt_parser(struct fdt_content *fdt_data, void *out, const char *fi
             memcpy(cust_ic_setting->pmic_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
         }
     }
+    if(strstr(fdt_data->field,"pmic_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->pmic_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->pmic_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->pmic_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->pmic_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->pmic_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->pmic_info.checksum_bypass_size = 0;
+        }
+    }
     if(strstr(fdt_data->field,"pmic_bin_format_type") != NULL)
     {
         cust_ic_setting->pmic_info.bin_format_type = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -671,6 +747,10 @@ void cust_pmic_dt_parser(struct fdt_content *fdt_data, void *out, const char *fi
     {
         cust_ic_setting->pmic_info.read_mode= fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "pmic_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->pmic_info.write_mode= fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "pimc_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->pmic_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -708,6 +788,26 @@ void cust_pmic_dt_parser(struct fdt_content *fdt_data, void *out, const char *fi
     {
         cust_ic_setting->pmic_vcom_info.addr_length = fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if(strstr(fdt_data->field,"pmic_nvm_chk_en") != NULL)
+    {
+        cust_ic_setting->pmic_info.nvm_chk_en = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if(strstr(fdt_data->field,"pmic_nvm_chk_offset") != NULL)
+    {
+        cust_ic_setting->pmic_info.nvm_chk_offset = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if(strstr(fdt_data->field,"pmic_nvm_chk_val") != NULL)
+    {
+        cust_ic_setting->pmic_info.nvm_chk_val = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+	if(strstr(fdt_data->field,"pmic_nvm_chk_i2c_post_dly") != NULL)
+    {
+        cust_ic_setting->pmic_info.nvm_chk_i2c_post_dly = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if(strstr(fdt_data->field,"pmic_nvm_chk_rst_dly") != NULL)
+    {
+        cust_ic_setting->pmic_info.nvm_chk_rst_dly = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     return;
 }
 
@@ -737,6 +837,26 @@ void cust_pgamma_dt_parser(struct fdt_content *fdt_data, void *out, const char *
             memcpy(cust_ic_setting->pgamma_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
         }
     }
+    if(strstr(fdt_data->field,"pgamma_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->pgamma_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->pgamma_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->pgamma_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->pgamma_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->pgamma_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->pgamma_info.checksum_bypass_size = 0;
+        }
+    }
+
     if(strstr(fdt_data->field,"pgamma_bin_format_type") != NULL)
     {
         cust_ic_setting->pgamma_info.bin_format_type = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -801,6 +921,10 @@ void cust_pgamma_dt_parser(struct fdt_content *fdt_data, void *out, const char *
     {
         cust_ic_setting->pgamma_info.read_mode= fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "pgamma_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->pgamma_info.write_mode= fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "pgamma_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->pgamma_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -853,6 +977,25 @@ void cust_levelshift_dt_parser(struct fdt_content *fdt_data, void *out, const ch
         if (cust_ic_setting->levelshift_info.ic_bin_file_path != NULL) {
             memset(cust_ic_setting->levelshift_info.ic_bin_file_path, 0x00, MAX_CUST_PATH_LEN);
             memcpy(cust_ic_setting->levelshift_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    if(strstr(fdt_data->field,"levelshift_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->levelshift_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->levelshift_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->levelshift_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->levelshift_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->levelshift_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->levelshift_info.checksum_bypass_size = 0;
         }
     }
     if(strstr(fdt_data->field,"levelshift_bin_format_type") != NULL)
@@ -919,6 +1062,10 @@ void cust_levelshift_dt_parser(struct fdt_content *fdt_data, void *out, const ch
     {
         cust_ic_setting->levelshift_info.read_mode= fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "levelshift_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->levelshift_info.write_mode= fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "levelshift_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->levelshift_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -971,6 +1118,25 @@ void cust_vcomic_dt_parser(struct fdt_content *fdt_data, void *out, const char *
         if (cust_ic_setting->vcomic_info.ic_bin_file_path != NULL) {
             memset(cust_ic_setting->vcomic_info.ic_bin_file_path, 0x00, MAX_CUST_PATH_LEN);
             memcpy(cust_ic_setting->vcomic_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    if(strstr(fdt_data->field,"vcomic_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->vcomic_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->vcomic_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->vcomic_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->vcomic_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->vcomic_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->vcomic_info.checksum_bypass_size = 0;
         }
     }
     if(strstr(fdt_data->field,"vcomic_bin_format_type") != NULL)
@@ -1037,6 +1203,10 @@ void cust_vcomic_dt_parser(struct fdt_content *fdt_data, void *out, const char *
     {
         cust_ic_setting->vcomic_info.read_mode= fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "vcomic_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->vcomic_info.write_mode= fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "vcomic_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->vcomic_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1093,6 +1263,26 @@ void cust_pmic_sub_dt_parser_part1(st_multi_cust_ic_info *cust_ic_setting, struc
             memcpy(cust_ic_setting->pmic_sub_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
         }
     }
+    if(strstr(fdt_data->field,"pmic_sub_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->pmic_sub_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->pmic_sub_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->pmic_sub_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->pmic_sub_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->pmic_sub_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->pmic_sub_info.checksum_bypass_size = 0;
+        }
+    }
+
     if (strstr(fdt_data->field, "pmic_sub_bin_format_type") != NULL)
     {
         cust_ic_setting->pmic_sub_info.bin_format_type = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1166,6 +1356,10 @@ void cust_pmic_sub_dt_parser_part2(st_multi_cust_ic_info *cust_ic_setting, struc
     {
         cust_ic_setting->pmic_sub_info.read_mode= fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "pmic_sub_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->pmic_sub_info.write_mode= fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "second_pimc_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->pmic_sub_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1234,6 +1428,26 @@ void cust_pgamma_sub_dt_parser_part1(st_multi_cust_ic_info *cust_ic_setting, str
             memcpy(cust_ic_setting->pgamma_sub_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
         }
     }
+    if(strstr(fdt_data->field,"pgamma_sub_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->pgamma_sub_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->pgamma_sub_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->pgamma_sub_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->pgamma_sub_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->pgamma_sub_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->pgamma_sub_info.checksum_bypass_size = 0;
+        }
+    }
+
     if (strstr(fdt_data->field, "pgamma_sub_bin_format_type") != NULL)
     {
         cust_ic_setting->pgamma_sub_info.bin_format_type = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1307,6 +1521,10 @@ void cust_pgamma_sub_dt_parser_part2(st_multi_cust_ic_info *cust_ic_setting, str
     {
         cust_ic_setting->pgamma_sub_info.read_mode = fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "pgamma_sub_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->pgamma_sub_info.write_mode = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "pgamma_sub_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->pgamma_sub_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1373,6 +1591,25 @@ void cust_levelshift_sub_dt_parser_part1(st_multi_cust_ic_info *cust_ic_setting,
         {
             memset(cust_ic_setting->levelshift_sub_info.ic_bin_file_path, 0x00, MAX_CUST_PATH_LEN);
             memcpy(cust_ic_setting->levelshift_sub_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    if(strstr(fdt_data->field,"levelshift_sub_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->levelshift_sub_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->levelshift_sub_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->levelshift_sub_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->levelshift_sub_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->levelshift_sub_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->levelshift_sub_info.checksum_bypass_size = 0;
         }
     }
     if (strstr(fdt_data->field, "levelshift_sub_bin_format_type") != NULL)
@@ -1448,6 +1685,10 @@ void cust_levelshift_sub_dt_parser_part2(st_multi_cust_ic_info *cust_ic_setting,
     {
         cust_ic_setting->levelshift_sub_info.read_mode = fdt32_to_cpu(fdt_data->attribute[0]);
     }
+    if (strstr(fdt_data->field, "levelshift_sub_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->levelshift_sub_info.write_mode = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
     if (strstr(fdt_data->field, "levelshift_sub_i2c_burn_cmd") != NULL)
     {
         cust_ic_setting->levelshift_sub_info.i2c_burn_cmd = fdt32_to_cpu(fdt_data->attribute[0]);
@@ -1514,6 +1755,25 @@ void cust_vcomic_sub_dt_parser_part1(st_multi_cust_ic_info *cust_ic_setting, str
         {
             memset(cust_ic_setting->vcomic_sub_info.ic_bin_file_path, 0x00, MAX_CUST_PATH_LEN);
             memcpy(cust_ic_setting->vcomic_sub_info.ic_bin_file_path, fdt_data->attribute, fdt_data->len);
+        }
+    }
+    if(strstr(fdt_data->field,"vcomic_sub_checksum_bypass_offset") != NULL)
+    {
+        if (fdt_data->len > 0)
+        {
+            int array_size = fdt_data->len/sizeof(u32);
+            cust_ic_setting->vcomic_sub_info.checksum_bypass_offset = malloc(fdt_data->len);
+            if(cust_ic_setting->vcomic_sub_info.checksum_bypass_offset != NULL) {
+                memset(cust_ic_setting->vcomic_sub_info.checksum_bypass_offset, 0, fdt_data->len);
+                for (int i=0; i<array_size;i++)
+                {
+                    cust_ic_setting->vcomic_sub_info.checksum_bypass_offset[i] = fdt32_to_cpu(fdt_data->attribute[i]);
+                }
+            }
+            cust_ic_setting->vcomic_sub_info.checksum_bypass_size = array_size;
+        }
+        else {
+            cust_ic_setting->vcomic_sub_info.checksum_bypass_size = 0;
         }
     }
     if (strstr(fdt_data->field, "vcomic_sub_bin_format_type") != NULL)
@@ -1588,6 +1848,10 @@ void cust_vcomic_sub_dt_parser_part2(st_multi_cust_ic_info *cust_ic_setting, str
     if (strstr(fdt_data->field, "vcomic_sub_i2c_read_mode") != NULL)
     {
         cust_ic_setting->vcomic_sub_info.read_mode = fdt32_to_cpu(fdt_data->attribute[0]);
+    }
+    if (strstr(fdt_data->field, "vcomic_sub_i2c_write_mode") != NULL)
+    {
+        cust_ic_setting->vcomic_sub_info.write_mode = fdt32_to_cpu(fdt_data->attribute[0]);
     }
     if (strstr(fdt_data->field, "vcomic_sub_i2c_burn_cmd") != NULL)
     {

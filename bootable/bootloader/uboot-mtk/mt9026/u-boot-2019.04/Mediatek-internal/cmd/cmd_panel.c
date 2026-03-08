@@ -157,12 +157,6 @@ int do_panel_output_enable(cmd_tbl_t *cmdtp, int flag, int argc, char * const ar
         return 0;
 #endif
 
-    if (pm_check_back_ground_active() == 1)
-    {
-        UBOOT_INFO("QHB case, do_panel_output_enable return\n");
-        return 0;
-    }
-
     UBOOT_TRACE("IN\n");
     if (mtk_is_panel_ready())
     {

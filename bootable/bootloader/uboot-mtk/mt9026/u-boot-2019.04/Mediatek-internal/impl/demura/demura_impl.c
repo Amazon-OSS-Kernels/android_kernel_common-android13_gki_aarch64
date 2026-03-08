@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <MsTypes.h>
@@ -16,11 +16,9 @@
 #include "dts_parser.h"
 #include "demura_impl.h"
 #include <linux/io.h>
-
-#ifdef MSOS_TYPE_LINUX_KERNEL
-#define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
-#else
-#define mst_atoi(str) strtoul(((str != NULL) ? str : ""), NULL, 0);
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#include <panel_impl.h>
+#include <ms_utils.h>
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -183,10 +181,32 @@ void mtk_demura_init(DemuraImpl_Panel_Data panel_data, Demura_Panel_Vendor panel
 
     MApi_MsDemura_SetPnlInfo(g_stpnlinfo.u16PanelWidth, g_stpnlinfo.u16PanelHeight);
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+        st_cust_dmc_info st_cust_dmc_info;
+        memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+        parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+        UBOOT_TRACE("backlight demura is [%d]\n", st_cust_dmc_info.bl_dmc_enable);
+#endif
+
     if ((g_u8vendor == E_DEMURA_MULTI_NOT) || (g_u8vendor == E_DEMURA_MULTI_MAX))
     {
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+        if (st_cust_dmc_info.bl_dmc_enable)
+        {
+            g_u8vendor = st_cust_dmc_info.bl_dmc_vendorid;
+            g_stpnlinfo.bOn = TRUE;/*if tcon.bin/vby1 panel don't set demura_en=1 sitll enable backlight demura acording to dtso*/
+            MApi_MsDemura_Setfile(E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY);
+            UBOOT_TRACE("demura continue due to backlight [%d] demura is enable! set demura_en=%d\n", g_u8vendor, g_stpnlinfo.bOn);
+        }
+        else
+        {
+            UBOOT_TRACE("demura disable due to invalid vendor: %u\n", g_u8vendor);
+            return;
+        }
+#else
         UBOOT_TRACE("demura disable due to invalid vendor: %u\n", g_u8vendor);
         return;
+#endif
     }
 
     MApi_MsDemura_SetBinType(type);
@@ -205,7 +225,11 @@ void mtk_demura_init(DemuraImpl_Panel_Data panel_data, Demura_Panel_Vendor panel
         return;
     }
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    if (!panel_data.btcon && !st_cust_dmc_info.bl_dmc_enable)
+#else
     if (!panel_data.btcon)
+#endif
     {
         UBOOT_TRACE("demura disable due to tcon:%d\n", panel_data.btcon);
         return;

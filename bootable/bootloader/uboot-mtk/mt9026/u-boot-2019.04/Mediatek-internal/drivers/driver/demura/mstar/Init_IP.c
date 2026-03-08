@@ -1,56 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #include <common.h>
 #include <MsTypes.h>
 #include <apiPNL.h>
@@ -68,12 +20,30 @@
 #include "convert_entry.h"
 #include "apiDemura.h"
 #include "demura_config.h"
-
+#include <demuraDll.h>
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#include <dts_parser.h>
+#include <panel_impl.h>
+#endif
 #undef ALIGN
 #define ALIGN(x,a)        __ALIGN_MASK((x),(typeof(x))(a)-1)
 #define __ALIGN_MASK(x,mask)    (((x)+(mask))&~(mask))
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#define BLOCK_SIZE_INDEX_2        (2)
+#define BLOCK_SIZE_INDEX_3        (3)
+#define BLOCK_SIZE_INDEX_4        (4)
+#endif
+
+#define HEX_FF (0xff)
+
 static DeMuraBinHeader *pHeader = NULL;
+
+#ifdef MSOS_TYPE_LINUX_KERNEL
+#define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
+#else
+#define mst_atoi(str) strtoul(((str != NULL) ? str : ""), NULL, 0);
+#endif
 
 MS_BOOL __attribute__((weak)) If_Need_Decode(void)
 {
@@ -191,7 +161,6 @@ MS_BOOL MsDemura_LoadHeader(MS_U8 *pHdr, Demura_Panel_Data panel_data)
     return TRUE;
 }
 
-
 MS_BOOL MsDemura_LoadBin(MS_U8 *pData, MS_U8 *mmap_buf, MS_U8 *unzip_buf)
 {
     MS_U8 *buf = NULL;
@@ -281,13 +250,141 @@ MS_BOOL MsDemura_LoadBin(MS_U8 *pData, MS_U8 *mmap_buf, MS_U8 *unzip_buf)
     return TRUE;
 }
 
+MS_BOOL If_Need_Decode_Check(EN_DEMURA_MULTI_VENDOR multi_vendor)
+{
+    MS_BOOL decode_ret = TRUE;
+
+    if (multi_vendor == EN_DEMURA_MULTI_NOVA)
+    {
+        decode_ret = If_Need_Decode_NOVA(NOVA_Shift);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_AUO)
+    {
+        decode_ret = If_Need_Decode_AUO();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_HI_SILICON)
+    {
+        decode_ret = If_Need_Decode_CSOT_HI_SILICON();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_HIMAX)
+    {
+        decode_ret = If_Need_Decode_CSOT_HIMAX();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_SDC)
+    {
+        decode_ret = If_Need_Decode_SDC();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_INX)
+    {
+        decode_ret = If_Need_Decode_INX();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_CSOT)
+    {
+        decode_ret = If_Need_Decode_CSOT_CSOT();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_HKC_NOVA)
+    {
+        decode_ret = If_Need_Decode_NOVA(H_K_C_NOVA_Shift);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_H_K_C_NOVA_120HZ)
+    {
+        decode_ret = If_Need_Decode_NOVA(H_K_C_NOVA_Shift_120HZ);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_MTK)
+    {
+        decode_ret = FALSE;
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_BOE_ESWIN)
+    {
+        decode_ret = If_Need_Decode_BOE_ESWIN();
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_SIO)
+    {
+        decode_ret = If_Need_Decode_SIO();
+    }
+    else
+    {
+        UBOOT_ERROR("Unkown demura vendor id = %d!\n", multi_vendor);
+    }
+    return decode_ret;
+}
+
 #if defined(CONFIG_DEMURA_VENDOR_MULTI)
+
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+static void MsDemura_Set_Block_Size(MS_U8 u8Hsize, MS_U8 u8Vsize)
+{
+    if (get_demura_act() == E_MS_UTIL_BIN_ACT_FIRST)
+    {
+        u8Vsize = u8Vsize + 1;
+    }
+
+    if ((u8Hsize == BLOCK_SIZE_INDEX_2) && (u8Vsize == BLOCK_SIZE_INDEX_2))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H4V4);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_2) && (u8Vsize == BLOCK_SIZE_INDEX_3))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H4V8);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_2) && (u8Vsize == BLOCK_SIZE_INDEX_4))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H4V16);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_3) && (u8Vsize == BLOCK_SIZE_INDEX_2))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H8V4);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_3) && (u8Vsize == BLOCK_SIZE_INDEX_3))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H8V8);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_3) && (u8Vsize == BLOCK_SIZE_INDEX_4))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H8V16);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_4) && (u8Vsize == BLOCK_SIZE_INDEX_2))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H16V4);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_4) && (u8Vsize == BLOCK_SIZE_INDEX_3))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H16V8);
+    }
+    else if ((u8Hsize == BLOCK_SIZE_INDEX_4) && (u8Vsize == BLOCK_SIZE_INDEX_4))
+    {
+        set_demura_block_size(E_MS_UTIL_BLOCK_SIZE_H16V16);
+    }
+    else
+    {
+        UBOOT_ERROR("Not support block size!\n");
+    }
+    return;
+}
+#endif
+
+MS_BOOL backlight_demura_check_vendor(st_cust_dmc_info *st_cust_dmc_info)
+{
+    if ( env_get(DEMURA_ENV_VENDORID_BACKLIGHT))
+    {
+        st_cust_dmc_info->bl_dmc_vendorid = mst_atoi(env_get(DEMURA_ENV_VENDORID_BACKLIGHT));
+        st_cust_dmc_info->bl_dmc_enable = 1;
+    }
+    return TRUE;
+}
+
 static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_DEMURA_MULTI_VENDOR multi_vendor)
 {
+    int bRet = -1;
+    int bl_bRet = -1;
 #if (CONFIG_DEMURA_VENDOR_MSTAR == 0)
     MS_U8  *bin_buf   = NULL;
     MS_U8  *tbuf_addr = NULL;
     BinOutputInfo bin_info = {0};
+
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    BinOutputInfo bin_backlight_info = {0};
+#endif
 
     if(EN_DEMURA_MULTI_MTK == multi_vendor)
     {
@@ -296,19 +393,101 @@ static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_D
         UBOOT_ERROR("Load Demura Binary Error!\n");
         return 0x00;
     }
+    if (get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY)
+    {
+        UBOOT_TRACE("ONLY backlight demura [%d]\n", multi_vendor);
+    }
+    else
+    {
+        set_demura_file(E_MS_UTIL_BIN_FILE_NORMAL);
+    }
+    bRet = do_demura_convert(&bin_info, multi_vendor);
 
-    if (do_demura_convert(&bin_info, multi_vendor) != 0)
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    st_cust_dmc_info st_cust_dmc_info;
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+    backlight_demura_check_vendor(&st_cust_dmc_info);
+
+    if ((st_cust_dmc_info.bl_dmc_enable) && (get_demura_file() != E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
+    {
+        UBOOT_TRACE("demura dlg is %s\n", st_cust_dmc_info.dmc_dlg_enable ? "enable" : "disable");
+        UBOOT_TRACE("backlight demura is %s\n", st_cust_dmc_info.bl_dmc_enable ? "enable" : "disable");
+        UBOOT_TRACE("backlight demura vendor %d.\n", st_cust_dmc_info.bl_dmc_vendorid);
+        UBOOT_TRACE("backlight demura path  %s\n", st_cust_dmc_info.bl_dmc_vendor_bin);
+        UBOOT_TRACE("backlight demura bound  %d\n", st_cust_dmc_info.bl_dmc_bound);
+
+        if (st_cust_dmc_info.bl_dmc_vendor_bin) {
+            set_demura_file(E_MS_UTIL_BIN_FILE_BACKLIGHT);
+            UBOOT_DEBUG("dmc_h_block=%d dmc_v_block=%d\n", bin_info.Info.reg_dmc_h_block, bin_info.Info.reg_dmc_v_block);
+            if (get_demura_act() == E_MS_UTIL_BIN_ACT_FIRST)
+            {
+                MsDemura_Set_Block_Size(bin_info.Info.reg_dmc_h_block, bin_info.Info.reg_dmc_v_block - 1);
+            }
+            else
+            {
+                MsDemura_Set_Block_Size(bin_info.Info.reg_dmc_h_block, bin_info.Info.reg_dmc_v_block);
+            }
+            if (bRet == 0)
+            {
+                bl_bRet = do_demura_convert(&bin_backlight_info, st_cust_dmc_info.bl_dmc_vendorid);
+                if (bl_bRet == 0)
+                {
+                    if (do_demura_merge(&bin_info, &bin_backlight_info, st_cust_dmc_info.bl_dmc_bound) != 0)
+                    {
+                        UBOOT_ERROR("Merge %s to Mstar Demura Failed!\n", CONFIG_DEMURA_VENDOR_STRING);
+                        UBOOT_DEBUG("Only panel demura vendor=%d\n", multi_vendor);
+                    }
+                }
+                mstar_demura_interface((interface_info *)&bin_info.Info, &bin_info);
+            }
+            else
+            {
+                bRet = do_demura_convert(&bin_info, st_cust_dmc_info.bl_dmc_vendorid);
+                if (bRet == 0)
+                {
+                    mstar_demura_interface((interface_info *)&bin_info.Info, &bin_info);
+                }
+                else
+                {
+                    UBOOT_ERROR("read %s to Mstar Demura Failed!\n", CONFIG_DEMURA_VENDOR_STRING);
+                    return 0x00;
+                }
+            }
+        }
+        else
+        {
+            UBOOT_ERROR("backlight demura path is NULL!\n");
+        }
+    }
+#endif
+
+    // Enable SPI_FLASH - Write protect
+    /*memset(cmd, 0, sizeof(cmd));
+    snprintf(cmd, sizeof(cmd), "sf protect lock");
+    if (run_command(cmd, 0) != 0)
+    {
+      printf("Enable SPI_FLASH Write protect Fail !\n");
+    }
+    memset(cmd, 0, sizeof(cmd));
+    snprintf(cmd, sizeof(cmd), "sf protect status");
+    run_command(cmd, 0);
+    */
+    printf("\n");
+
+    if (bRet != 0)
     {
         UBOOT_ERROR("Convert %s to Mstar Demura Failed!\n", CONFIG_DEMURA_VENDOR_STRING);
         return 0x00;
     }
-
-    #ifdef CONFIG_MTK_DEMURA_UFC_BIN
-    memcpy(pHdr, bin_info.bin_buf, sizeof(ST_DEMURA_UFC_HEADER));  // Copy Demura Header;
-    #else
-    memcpy(pHdr, bin_info.bin_buf, sizeof(DeMuraBinHeader));  // Copy Demura Header;
-    #endif
-
+    if (bin_info.bin_buf)
+    {
+        #ifdef CONFIG_MTK_DEMURA_UFC_BIN
+        memcpy(pHdr, bin_info.bin_buf, sizeof(ST_DEMURA_UFC_HEADER));  // Copy Demura Header;
+        #else
+        memcpy(pHdr, bin_info.bin_buf, sizeof(DeMuraBinHeader));  // Copy Demura Header;
+        #endif
+    }
     if (MDrv_DEMURA_Check_HeaderCRC(pHdr) == FALSE)
     {
         UBOOT_ERROR("Calculate Demura Bin header CRC fail\n");
@@ -371,6 +550,8 @@ static MS_U32 Convert_and_Reload(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_D
     }
     UBOOT_INFO("Convert %s to Mstar Demura Success!\n", CONFIG_DEMURA_VENDOR_STRING);
 
+    set_demura_file(E_MS_UTIL_BIN_FILE_NORMAL);
+
     if (MsDemura_LoadHeader(pHdr, panel_data) != TRUE)
     {
         UBOOT_ERROR("MsDemura_LoadHeader Error Again!\n");
@@ -405,6 +586,10 @@ static MS_U32 MsDemura_AC_Init(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_DEM
     MS_U8  *tbuf_addr = NULL;
     MS_BOOL ret       = FALSE;
     MS_BOOL decode_ret = TRUE;
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    st_cust_dmc_info st_cust_dmc_info;
+    MS_BOOL bl_decode_ret = TRUE;
+#endif
 #ifdef CONFIG_MTK_DEMURA_UFC_BIN
 #else
     DeMuraBinHeader *pHeadr = (DeMuraBinHeader *)pHdr;
@@ -419,19 +604,45 @@ static MS_U32 MsDemura_AC_Init(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_DEM
 
     if (ret == TRUE)
     {
-#ifdef CONFIG_MTK_DEMURA_UFC_BIN
+
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+       memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+       parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+       UBOOT_TRACE("backlight demura is %s\n", st_cust_dmc_info.bl_dmc_enable ? "enable" : "disable");
+       UBOOT_TRACE("backlight demura vendor %d.\n", st_cust_dmc_info.bl_dmc_vendorid);
+#ifndef CONFIG_MTK_DEMURA_UFC_BIN
+       if ((st_cust_dmc_info.bl_dmc_enable) && (get_demura_file() != E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
+       {
+           if (((pHeadr->u32ProjectId & HEX_FF) != st_cust_dmc_info.bl_dmc_vendorid) && (EN_DEMURA_MULTI_MTK != multi_vendor))
+           {
+                UBOOT_ERROR("Bl Demura Bin and panel is not matched\n");
+                ret = FALSE;
+           }
+       }
+       else
+       {
+           if (((pHeadr->u32ProjectId & HEX_FF) != multi_vendor) && (EN_DEMURA_MULTI_MTK != multi_vendor))
+           {
+                UBOOT_ERROR("Demura Bin and panel is not matched\n");
+                ret = FALSE;
+           }
+       }
+#endif
 #else
-        if(((pHeadr->u32ProjectId & 0xff) != multi_vendor) && (EN_DEMURA_MULTI_MTK != multi_vendor))
+#ifndef CONFIG_MTK_DEMURA_UFC_BIN
+       if (((pHeadr->u32ProjectId & HEX_FF) != multi_vendor) && (EN_DEMURA_MULTI_MTK != multi_vendor))
        {
             UBOOT_ERROR("Demura Bin and panel is not matched\n");
             ret = FALSE;
        }
 #endif
+#endif
+
     }
 
     if (ret != TRUE)//(MsDemura_LoadHeader(pHdr, panel_data) != TRUE)
     {
-        UBOOT_ERROR("MsDemura_LoadHeader Error, do convert\n");
+        UBOOT_ERROR("MsDemura_LoadHeader Error, do convert, use multi_vendor = %d\n", multi_vendor);
         return Convert_and_Reload(pHdr, panel_data, multi_vendor);
     }
 
@@ -441,51 +652,35 @@ static MS_U32 MsDemura_AC_Init(MS_U8 *pHdr, Demura_Panel_Data panel_data, EN_DEM
         return 0x00;
     }
 
-    if(multi_vendor == EN_DEMURA_MULTI_NOVA)
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    if (get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY)
     {
-        decode_ret = If_Need_Decode_NOVA(NOVA_Shift);
+        decode_ret = If_Need_Decode_Check(multi_vendor);
     }
-    else if(multi_vendor == EN_DEMURA_MULTI_AUO)
+    else
     {
-        decode_ret = If_Need_Decode_AUO();
+        set_demura_file(E_MS_UTIL_BIN_FILE_NORMAL);
+        decode_ret = If_Need_Decode_Check(multi_vendor);
     }
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_HISILICON)
+    if ((st_cust_dmc_info.bl_dmc_enable) && (get_demura_file() != E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
     {
-        decode_ret = If_Need_Decode_CSOT_HISILICON();
+        set_demura_file(E_MS_UTIL_BIN_FILE_BACKLIGHT);
+#ifndef CONFIG_MTK_DEMURA_UFC_BIN
+        UBOOT_TRACE("dmc_h_block=%d dmc_v_block=%d\n", pHeadr->nHBlockSize, pHeadr->nVBlockSize);
+        MsDemura_Set_Block_Size(pHeadr->nHBlockSize, pHeadr->nVBlockSize);
+#endif
+        bl_decode_ret = If_Need_Decode_Check((EN_DEMURA_MULTI_VENDOR) st_cust_dmc_info.bl_dmc_vendorid);
+        if (bl_decode_ret != TRUE)
+        {
+            UBOOT_TRACE("backlight demura does not exist!\n");
+            // prevent strange log
+            set_demura_file(E_MS_UTIL_BIN_FILE_NORMAL);
+        }
+        decode_ret = decode_ret | bl_decode_ret;
     }
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_HIMAX)
-    {
-        decode_ret = If_Need_Decode_CSOT_HIMAX();
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_SDC)
-    {
-        decode_ret = If_Need_Decode_SDC();
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_INX)
-    {
-        decode_ret = If_Need_Decode_INX();
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_CSOT)
-    {
-        decode_ret = If_Need_Decode_CSOT_CSOT();
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_HKC_NOVA)
-    {
-        decode_ret = If_Need_Decode_NOVA(HKC_NOVA_Shift);
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_H_K_C_NOVA_120HZ)
-    {
-        decode_ret = If_Need_Decode_NOVA(H_K_C_NOVA_Shift_120HZ);
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_MTK)
-    {
-        decode_ret = FALSE;
-    }
-    else if(multi_vendor == EN_DEMURA_MULTI_BOE_ESWIN)
-    {
-        decode_ret = If_Need_Decode_BOE_ESWIN();
-    }
-
+#else
+    decode_ret = If_Need_Decode_Check(multi_vendor);
+#endif
     if ((MsDemura_LoadBin(pHdr, bin_buf, tbuf_addr) != TRUE) || (decode_ret == TRUE))
     {
         Free_Load_Buf(pHdr, &bin_buf, &tbuf_addr);
@@ -1147,6 +1342,12 @@ MS_BOOL MApi_MsDemura_Enable(MS_BOOL bOnOff)
     return TRUE;
 }
 
+MS_BOOL MApi_MsDemura_BYPASS(MS_BOOL bOnOff)
+{
+    MDrv_DEMURA_BYPASS(bOnOff);
+    return TRUE;
+}
+
 void MApi_MsDemura_SetVersion(int version)
 {
     set_demura_version(version);
@@ -1166,4 +1367,15 @@ void MApi_MsDemura_SetAct(MS_U8 act)
 {
     set_demura_act(act);
 }
+
+void MApi_MsDemura_Setfile(MS_U8 u8file)
+{
+    set_demura_file(u8file);
+}
+
+MS_U8 MApi_MsDemura_Getfile(void)
+{
+    return get_demura_file();
+}
+
 

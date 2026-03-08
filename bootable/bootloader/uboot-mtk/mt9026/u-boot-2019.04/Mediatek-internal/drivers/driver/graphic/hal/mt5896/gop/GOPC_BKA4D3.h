@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #define GOPC_BKA4D3 0x0149A600
 
 //Page GOPC_BKA4D3

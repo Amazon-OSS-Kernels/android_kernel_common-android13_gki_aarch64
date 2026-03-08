@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <utility.h>
@@ -19,11 +19,13 @@
 #define SCREEN_STATE_PARTITION          "uenv"
 #define NODE_ODM_PATH                   "/odm"
 #define KEY_SPECIFIC_STANDBY_BEHAVIOR    "specific_standby_behavior"
+#define KEY_BYPASS_UBOOTSTANDBY         "bypass_ubootstandby_behavior"
 
 static bool already_init = false;
 static struct standby_qhb_info standby_info;
 
 extern bool IsPowerButtonPressed(void);
+extern bool IsResetButtonPressed(void);
 
 static bool screen_is_off = false;
 bool oobe_completed = false;
@@ -40,6 +42,21 @@ bool check_specific_standby_behavior(void)
         UBOOT_DEBUG("ofnode_path %s failed.\n", NODE_ODM_PATH);
 
     UBOOT_DEBUG("check_specific_standby_behavior, ret=%d\n", ret);
+    return ret;
+}
+
+static bool check_bypass_ubootstandby_flag(void)
+{
+    bool ret = false;
+    ofnode node;
+
+    node = ofnode_path(NODE_ODM_PATH);
+    if (ofnode_valid(node))
+        ret = ofnode_read_bool(node, KEY_BYPASS_UBOOTSTANDBY);
+    else
+        UBOOT_DEBUG("ofnode_path %s failed.\n", NODE_ODM_PATH);
+
+    UBOOT_DEBUG("check_bypass_ubootstandby_flag, ret=%d\n", ret);
     return ret;
 }
 
@@ -69,7 +86,7 @@ int standby_init(void)
     const char *relpath;
     unsigned char *file_buf = NULL;
     loff_t size;
-    int bootreason;
+    int bootreason = pm_get_boot_reason();
 
     memset(part, 0, sizeof(part));
     memset(filepath, 0, sizeof(filepath));
@@ -105,6 +122,12 @@ int standby_init(void)
     }
 #endif
 
+    if ((bootreason == PM_BR_AC && (env_get("usr_flags") && (simple_strtoul(env_get("usr_flags"), NULL, 16) & USR_FLAGS_STOREDEMO_MODE)) )) {
+        UBOOT_INFO("store mode set to bypass qhb mode.\n");
+        standby_info.qhb_mode = 0;
+        return 0;
+    }
+
     file_buf = read_storage_file_to_memory(SCREEN_STATE_PARTITION, "screen_state", &size);
     if (file_buf) {
         screen_is_off = !strncmp((const char*)file_buf, "off", 3);
@@ -129,8 +152,10 @@ int standby_init(void)
     bootreason = pm_get_boot_reason();
     if (check_specific_standby_behavior()) {
         bool store_mode = env_get("usr_flags") && (simple_strtoul(env_get("usr_flags"), NULL, 16) & USR_FLAGS_STOREDEMO_MODE);
+        char *abnormal_reboot_flag = env_get("abnormal_reboot_flag");
 
-        if (true == IsPowerButtonPressed() || PM_BR_SECONDARY == bootreason) {
+        if (true == IsPowerButtonPressed() || PM_BR_SECONDARY == bootreason ||
+            (abnormal_reboot_flag && !strncmp(abnormal_reboot_flag, "true", 4))) {
             UBOOT_INFO("force bypass enter quiescent mode!\n");
             standby_info.qhb_mode = 0;
         } else if (store_mode && PM_BR_AC == bootreason) {
@@ -140,11 +165,22 @@ int standby_init(void)
             UBOOT_INFO("force quiescent mode bootup system for AC on!!!\n");
             standby_info.qhb_mode = 2;
         }
+    } else if (check_bypass_ubootstandby_flag()) {
+        bool store_mode = env_get("usr_flags") && (simple_strtoul(env_get("usr_flags"), NULL, 16) & USR_FLAGS_STOREDEMO_MODE);
+
+        if (true == IsPowerButtonPressed() || PM_BR_SECONDARY == bootreason) {
+            UBOOT_INFO("last screen state is off, bypass enter quiescent mode!\n");
+            standby_info.qhb_mode = 0;
+        } else if (PM_BR_AC == bootreason && !store_mode) {
+            UBOOT_INFO("force quiescent mode bootup system for AC on!!!\n");
+            standby_info.qhb_mode = 2;
+        }
     } else {
         //disable qhb mode, or will no backlight when system last screen state is off.
         if (standby_info.qhb_mode == 2) {
-            if (true == IsPowerButtonPressed() || PM_BR_SECONDARY == bootreason || PM_BR_AC == bootreason) {
-                UBOOT_INFO("last screen statte is off, bypass enter quiescent mode!\n");
+            if (true == IsPowerButtonPressed() || PM_BR_SECONDARY == bootreason ||
+                PM_BR_AC == bootreason || bootreason == PM_BR_LONG_PRESS_PWR_KEY) {
+                UBOOT_INFO("last screen state is off, bypass enter quiescent mode!\n");
                 standby_info.qhb_mode = 0;
             }
         }
@@ -204,9 +240,22 @@ int standby_mode_enter_standby(void)
         already_init = true;
     }
 
+    //check idme setting which has higher priority
+    if (!standby_check_idme() ){
+        standby_mode_pm_status = 0;
+        return(standby_mode_pm_status);
+    }
+
     if (true == IsPowerButtonPressed())
     {
         UBOOT_INFO("Detect Keypad press do not enter stnadby mode.\n");
+        standby_mode_pm_status = 0;
+        return(standby_mode_pm_status);
+    }
+
+    if (IsResetButtonPressed() == true)
+    {
+        UBOOT_INFO("Detect Reset button press do not enter standby mode.\n");
         standby_mode_pm_status = 0;
         return(standby_mode_pm_status);
     }
@@ -241,8 +290,7 @@ int standby_mode_enter_standby(void)
         }
     }
 
-    //check idme setting which has higher priority
-    if (!standby_check_idme() ){
+    if (check_bypass_ubootstandby_flag()) {
         standby_mode_pm_status = 0;
         return(standby_mode_pm_status);
     }

@@ -179,6 +179,13 @@
 			/* status: must be okay or disable */
 			status = "disabled";
 		};
+		pm_ext_gpio: pm-ext-gpio {
+			/* gpio number for control during STR on/off */
+			/* range = 0~3
+			   ext_gpio_num%d = <>;
+			   ext_gpio_polarity%d = <>;*/
+			status = "disabled";
+		};
 		gpio_control: gpio-control {
 			/* nonpm gpio number start from */
 			nonpm-gpio-nbase = <0>;

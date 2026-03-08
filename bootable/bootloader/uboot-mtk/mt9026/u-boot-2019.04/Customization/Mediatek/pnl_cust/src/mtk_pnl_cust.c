@@ -7,6 +7,7 @@
 
 #include <common.h>
 #include <utility.h>
+#include <environment.h>
 #include "mtk_pnl_cust.h"
 #include <i2c.h>
 #include <asm/gpio.h>
@@ -27,9 +28,9 @@
 #define FALSE                       0
 #endif
 
-#define FILE_CUS_PARTITION          ""
-#define FILE_DEFAULT_PARTITION_1    "bootdata" /* STI flow usage*/
-#define FILE_DEFAULT_PARTITION_2    "tvconfig" /* Mixed mode flow usage*/
+#define FILE_CUS_PARTITION          "CusFilePart"
+#define FILE_DEFAULT_PARTITION_1    "tvconfig"
+#define FILE_DEFAULT_PARTITION_2    "bootdata"
 #define FILE_FIXED_FOLDER           ""
 #define FILE_PATH_LENGTH            (128)
 #define PANEL_DLG_PARTITION_PATH    "persist"
@@ -39,6 +40,7 @@
 
 #define H_K_C_FORMAT_TYPE_LEN       3
 #define H_K_C_FORMAT_TYPE2_LEN       31
+#define H_K_C_FORMAT_TYPE3_LEN       31
 #define COST_FORMAT_TYPE1_LEN       42  //use CS602
 #define COST_FORMAT_TYPE2_LEN       48
 #define COST_FORMAT_TYPE3_LEN       48
@@ -93,6 +95,9 @@
 #define HKC_VCOM_MAX    7500 //7.80V
 #define HKC_VCOM_MIN    5000 //5.00V
 
+#define HKC_TYPE3_REG_GAMMA_START           (0x13)
+#define HKC_TYPE3_REG_GAMMA_END             (0x27)
+
 // Defined by the register map in the TC901 data sheet. These are the
 // GAMMA and VCOM locations in the PMIC. These are used for the overrides
 // of the auto pgamma that is stored in the panel memory's EERPOM.
@@ -103,6 +108,26 @@
 #define TC901_VCOM2_REG    0x11 //[6:0]
 #define TC901_GAMMA_REGS   0x13 //from 0x13 to 0x27, 21 bytes for 14 GAMMAs
 #define TC901_GAMMA_SIZE   21
+
+// Defined by the register map in the IML_1946 data sheet. These are the
+// GAMMA and VCOM locations in the PMIC. These are used for the overrides
+// of the auto pgamma that is stored in the panel memory's EERPOM.
+#define CSOT_PGAMMA_GLDO_SET        0x0A
+#define CSOT_PGAMMA_ADDR_START      0x10
+#define CSOT_PGAMMA_ADDR_END        0x24
+#define CSOT_CFVCOM_ADDR_START      0x25
+#define CSOT_VCOM2_ADDR_START       0x26
+#define IML_PGAMMA_ADDR_START       0x10
+#define IML_PGAMMA_ADDR_END         0x24
+#define IML_PGAMMA_VCOM2_SET        0x26
+#define IML_PGAMMA_VCOM3_SET        0x2A
+#define IML_VCOM_STEP               200
+#define IML_VCOM_BASE               13000
+#define IML_VCOM_RES                1024
+#define IML_CSOT_VCOM_THRESHOLD     0x19
+#define IML_CSOT_VCOM_STEP          2
+#define IML_CSOT_VCOM_BASE          130
+#define IML_CSOT_VCOM_UPPER         180
 
 static unsigned char *pmic_bin_buf          = NULL;
 static unsigned char *pmic_sub_bin_buf      = NULL;
@@ -124,6 +149,8 @@ static unsigned short vcomic_sub_size       = 0;
 
 static unsigned int iic_bus = 0;
 static struct udevice *i2c_cur_dev = NULL;
+
+unsigned int g_TCONLESS_FORCE_RESET_FLAG = 0;
 
 #define UBOOT_DUMP_FORCE(addr, size)\
     do{\
@@ -578,12 +605,22 @@ static bool _mtk_pnl_cust_set_auto_gamma_addr_length(EN_AUTOPGAMMA_TYPE etype,
         *gamma_address = HKC_GAMMA_DATA_ADDR;
         *auto_gamma_data_len = H_K_C_FORMAT_TYPE2_LEN;
     }
+    else if (etype == EN_AUTOPGAMMA_H_K_C_TYPE3)
+    {
+        *gamma_address = HKC_GAMMA_DATA_ADDR;
+        *auto_gamma_data_len = H_K_C_FORMAT_TYPE3_LEN;
+    }
+    else if (etype == EN_AUTOPGAMMA_CSOT_TYPE8)
+    {
+        *gamma_address = COST_GAMMA_DATA_ADDR2;
+        *auto_gamma_data_len = COST_FORMAT_TYPE1_LEN;
+    }
     else
     {
         UBOOT_DEBUG("Not support Auto-Pgamma [%d]\n",  etype);
         return false;
     }
-	return true;
+    return true;
 }
 
 static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char *bin_buf, unsigned short size, unsigned char *r_data)
@@ -615,13 +652,13 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
 
     if (!_mtk_pnl_cust_set_auto_gamma_addr_length(etype, &gamma_address, &auto_gamma_data_len))
     {
-        UBOOT_DEBUG("Not support Auto-Pgamma [%d]\n",  etype);
+        UBOOT_ERROR("Not support Auto-Pgamma [%d]\n",  etype);
         return -EINVAL;
     }
 
     if (size < auto_gamma_data_len)
     {
-        UBOOT_DEBUG("Auto Pgamma fail. bin size=%d read size=%d!!! \n", size, auto_gamma_data_len);
+        UBOOT_ERROR("Auto Pgamma fail. bin size=%d read size=%d!!! \n", size, auto_gamma_data_len);
         return -EINVAL;
     }
     UBOOT_DEBUG("[Get]Auto P-gamma Offset=0x%lx data_len=%d type=%d \n", gamma_address, auto_gamma_data_len, etype);
@@ -636,17 +673,19 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
         case EN_AUTOPGAMMA_CSOT_TYPE7:
         case EN_AUTOPGAMMA_CHOT_TYPE:
         case EN_AUTOPGAMMA_H_K_C_TYPE2:
+        case EN_AUTOPGAMMA_H_K_C_TYPE3:
+        case EN_AUTOPGAMMA_CSOT_TYPE8:
         {
             #if CONFIG_SPI_FLASH
             if (init_spi_flash() != TRUE)
             {
-                UBOOT_DEBUG("init_spi_flash error!\n");
+                UBOOT_ERROR("init_spi_flash error!\n");
                 return -ENXIO;
             }
             read_spi_flash(rd_buffer, gamma_address, auto_gamma_data_len);
             UBOOT_DUMP(rd_buffer, auto_gamma_data_len);
             #else
-            UBOOT_DEBUG("need CONFIG_SPI_FLASH!\n");
+            UBOOT_ERROR("need CONFIG_SPI_FLASH!\n");
                 return -ENXIO;
             #endif
             UBOOT_DEBUG("Auto P-gamma data read from SPI flash!!!\n");
@@ -658,13 +697,13 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             UBOOT_DEBUG("read MultiByte BusID %d, SlaveID 0x%02x, Offset=0x%lx, Size=%d\n ", u16BusID, CSOT_AUTOPGAMMA_EEPROM_ADDR, gamma_address, auto_gamma_data_len);
             bRetE = _mtk_pnl_cust_eeprom_pageRead(gamma_address, rd_buffer, auto_gamma_data_len, (MS_U8)u16BusID);
             if (bRetE)
-                UBOOT_DEBUG("Auto P-gamma data read from eeprom fail!!! \n");
+                UBOOT_ERROR("Auto P-gamma data read from eeprom fail!!! \n");
             else
                 UBOOT_DEBUG("Auto P-gamma data read from eeprom success!! \n");
         }
         break;
         default:
-              UBOOT_DEBUG("Not support Auto-Pgamma=%d\n", etype);
+              UBOOT_ERROR("Not support Auto-Pgamma=%d\n", etype);
         break;
     }
 
@@ -676,7 +715,7 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
     }
     if ((u32TempSum1 == 0) || (u32TempSum2 == auto_gamma_data_len * 0xFF))
     {
-        UBOOT_DEBUG("Read invalid values !!! \n");
+        UBOOT_ERROR("Read invalid values !!! \n");
         return -EINVAL;
     }
 
@@ -687,12 +726,12 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             u8CheckSum = (rd_buffer[1] + rd_buffer[2]) & 0xFF;
             if(u8CheckSum == rd_buffer[0])
             {
-                UBOOT_DEBUG("Get auto gamma data success!!! \n");
+                UBOOT_DEBUG("Auto P-gamma checksum is correct!!! \n");
                 memcpy(wr_buffer, rd_buffer, auto_gamma_data_len);
             }
             else
             {
-                UBOOT_DEBUG("Auto Pgamma data is invalid!!! \n");
+                UBOOT_ERROR("Auto P-gamma checksum data is invalid!!! \n");
                 return -EINVAL;
             }
         }
@@ -705,12 +744,13 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
         case EN_AUTOPGAMMA_CSOT_TYPE6:
         case EN_AUTOPGAMMA_CSOT_TYPE7:
         case EN_AUTOPGAMMA_CHOT_TYPE:
+        case EN_AUTOPGAMMA_CSOT_TYPE8:
         {
             crc_high_address = auto_gamma_data_len - 2;
             crc_low_address  = auto_gamma_data_len - 1;
             if ((crc_high_address >= AUTOPGAMMA_BUFFER_SIZE) || (crc_low_address >= AUTOPGAMMA_BUFFER_SIZE))
             {
-                UBOOT_DEBUG("Auto Pgamma crc address is invalid!!! \n");
+                UBOOT_ERROR("Auto Pgamma crc address is invalid!!! \n");
                 return -EINVAL;
             }
             sample_crc16 = (((MS_U16)rd_buffer[crc_high_address]) << 8) + rd_buffer[crc_low_address];
@@ -718,12 +758,12 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             UBOOT_DEBUG("sample_crc16=0x%x   cal_crc16=0x%x \n",sample_crc16, cal_crc16);
             if (sample_crc16 == cal_crc16)
             {
-                UBOOT_DEBUG("Get auto gamma data success!!! \n");
+                UBOOT_DEBUG("Auto P-gamma CRC is correct!!! \n");
                 memcpy(wr_buffer, rd_buffer, auto_gamma_data_len);
             }
             else
             {
-                UBOOT_DEBUG("Auto Pgamma data is invalid!!! \n");
+                UBOOT_ERROR("Auto P-gamma CRC is invalid!!! \n");
                 return -EINVAL;
             }
         }
@@ -736,18 +776,24 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             cal_crc16 = HKC_Cal_CRC16(&rd_buffer[2], (HKC_GAMMA_ADDR_END-HKC_VCOM_ADDR+1));
             if (sample_crc16 == cal_crc16)
             {
-                UBOOT_DEBUG("Get auto gamma data success!!! \n");
+                UBOOT_DEBUG("Auto P-gamma CRC is correct!!! \n");
                 memcpy(wr_buffer, rd_buffer, auto_gamma_data_len);
             }
             else
             {
-                UBOOT_DEBUG("Auto Pgamma data is invalid!!! \n");
+                UBOOT_ERROR("Auto P-gamma CRC is invalid!!! \n");
                 return -EINVAL;
             }
         }
         break;
+        case EN_AUTOPGAMMA_H_K_C_TYPE3:
+        {
+            UBOOT_DEBUG("Auto P-gamma no need to calculate CRC, get auto gamma data success!!! \n");
+            memcpy(wr_buffer, rd_buffer, auto_gamma_data_len);
+        }
+        break;
         default:
-            UBOOT_DEBUG("Not support Auto-Pgamma=%d\n", etype);
+            UBOOT_ERROR("Not support Auto-Pgamma=%d\n", etype);
         break;
     }
 
@@ -813,7 +859,8 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             {
                 bin_buf[i] = wr_buffer[i];
             }
-            bin_buf[CS602_GLD0_ADDR] = wr_buffer[CS602_GLD0_ADDR];
+            //only need to apply GLD0[4:0], the rest use original value.
+            bin_buf[CS602_GLD0_ADDR] = (bin_buf[CS602_GLD0_ADDR]&0xE0) | (wr_buffer[CS602_GLD0_ADDR]&0x1F);
         }
         break;
         case EN_AUTOPGAMMA_CSOT_TYPE6:
@@ -943,7 +990,7 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             bin_buf[TC901_VCOM1_REG] = vcom1;
             UBOOT_DEBUG("TC901 vcom data is : %s\n", (vcom1 == r_data[TC901_VCOM1_REG]) ? "same": "different");
         }
-    	break;
+        break;
         case EN_AUTOPGAMMA_H_K_C_TYPE2:
         {
             unsigned int GLDO_Vx1000 = 15580;
@@ -970,10 +1017,10 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
 
             // gamma/vcom voltage set to TC901 need to be calculate by avdd voltage on TC901
             // avdd voltage = 13.5V + (0.1 * avdd)
-            AVDD_Vx1000 = 13500 + ((r_data[TC901_AVDD_REG] & 0x3F) * 100);
+            AVDD_Vx1000 = 13500 + ((bin_buf[TC901_AVDD_REG] & 0x3F) * 100);
 
             UBOOT_DEBUG("avdd=%d.%03dV(0x%x) gldo=%d.%03dV\n",
-            (AVDD_Vx1000 / 1000), (AVDD_Vx1000 % 1000), (r_data[TC901_AVDD_REG] & 0x3F),
+            (AVDD_Vx1000 / 1000), (AVDD_Vx1000 % 1000), (bin_buf[TC901_AVDD_REG] & 0x3F),
             (GLDO_Vx1000 / 1000), (GLDO_Vx1000 % 1000));
 
             for (i = 0; i < (gamma_size / 4); i++) {
@@ -1014,9 +1061,9 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             UBOOT_DEBUG("TC901 gamma data is : %s\n", (ret==0) ? "same": "different");
 
             // vcom_max voltage = VCOM_MAX * avdd_V / 128
-            vcom_max_Vx1000 = ((r_data[TC901_VCOM_MAX_REG] & 0x7F) + 1) * AVDD_Vx1000 / 128;
+            vcom_max_Vx1000 = ((bin_buf[TC901_VCOM_MAX_REG] & 0x7F) + 1) * AVDD_Vx1000 / 128;
             // vcom_min voltage = VCOM_MIN * avdd_V / 128
-            vcom_min_Vx1000 = (r_data[TC901_VCOM_MIN_REG] & 0x7F) * AVDD_Vx1000 / 128;
+            vcom_min_Vx1000 = (bin_buf[TC901_VCOM_MIN_REG] & 0x7F) * AVDD_Vx1000 / 128;
 
             eeprom_vcom1 = wr_buffer[HKC_VCOM_ADDR];
             // vcom voltage = (VCOM_MAX-VCOM_MIN)/127 * eeprom_vcom1 + VCOM_MIN = (7.8-5.0)/127 * eeprom_vcom1 + 5.0
@@ -1027,8 +1074,8 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             vcom1 = (unsigned char)((vcom1_Vx1000 - vcom_min_Vx1000) * 127 / (vcom_max_Vx1000 - vcom_min_Vx1000));
 
             UBOOT_DEBUG("vcom_max=%d.%03dV(0x%x) vcom_min=%d.%03dV(0x%x) vcom1=%d.%03dV(0x%x) eeprom_vcom1=0x%x\n",
-            (vcom_max_Vx1000 / 1000), (vcom_max_Vx1000 % 1000), (r_data[TC901_VCOM_MAX_REG] & 0x7F),
-            (vcom_min_Vx1000 / 1000), (vcom_min_Vx1000 % 1000), (r_data[TC901_VCOM_MIN_REG] & 0x7F),
+            (vcom_max_Vx1000 / 1000), (vcom_max_Vx1000 % 1000), (bin_buf[TC901_VCOM_MAX_REG] & 0x7F),
+            (vcom_min_Vx1000 / 1000), (vcom_min_Vx1000 % 1000), (bin_buf[TC901_VCOM_MIN_REG] & 0x7F),
             (vcom1_Vx1000    / 1000), (vcom1_Vx1000    % 1000), vcom1, eeprom_vcom1);
 
             //compare TC901 i2c eeprom and SPI flash transfer format data
@@ -1036,8 +1083,71 @@ static int _mtk_pnl_cust_ic_auto_p_gamma(st_cust_ic_info *cust_ic, unsigned char
             UBOOT_DEBUG("TC901 vcom data is : %s\n", (vcom1 == r_data[TC901_VCOM1_REG]) ? "same": "different");
         }
         break;
+        case EN_AUTOPGAMMA_H_K_C_TYPE3:
+        {
+            MS_U16 j = 0;
+            for (i = HKC_TYPE3_REG_GAMMA_START, j=HKC_GAMMA_ADDR_START; i < HKC_TYPE3_REG_GAMMA_END;)
+            {
+                bin_buf[i] = ((wr_buffer[j]&0x0F)<<4) | ((wr_buffer[j+1]&0xF0)>>4);
+                bin_buf[i+1] = ((wr_buffer[j+1]&0x0F)<<4) | ((wr_buffer[j+2]&0x0F));
+                bin_buf[i+2] = wr_buffer[j+3];
+                i+=3;
+                j+=4;
+            }
+        }
+        break;
+        case EN_AUTOPGAMMA_CSOT_TYPE8:
+        {
+            MS_U32 gldo_data_iml = 0, gldo_data_csot = 0;
+            MS_U16 temp_data1 = 0, temp_data2 = 0;
+            //STEP1: cal gldo setting
+            gldo_data_iml = bin_buf[CSOT_PGAMMA_GLDO_SET] & 0x1F;
+            if(gldo_data_iml >= IML_CSOT_VCOM_THRESHOLD)
+            {
+                gldo_data_iml = IML_CSOT_VCOM_UPPER;
+            }
+            else
+            {
+                gldo_data_iml = IML_CSOT_VCOM_BASE + 2 * gldo_data_iml; 
+            }
+            gldo_data_csot = wr_buffer[CSOT_PGAMMA_GLDO_SET] & 0x1F;
+            if(gldo_data_csot >= IML_CSOT_VCOM_THRESHOLD)
+            {
+                gldo_data_csot = IML_CSOT_VCOM_UPPER;
+            }
+            else
+            {
+                gldo_data_csot = IML_CSOT_VCOM_BASE + 2 * gldo_data_csot; 
+            }
+            //STEP2: 14 gamma voltage cal to IML 14 gamma
+            for(i = IML_PGAMMA_ADDR_START; i <= IML_PGAMMA_ADDR_END; i += 3)
+            {
+                temp_data1 = gldo_data_csot * ((((wr_buffer[i] & 0x3F) << 4) | ((wr_buffer[i+1] >> 4) & 0x0F)) + 1) / gldo_data_iml;
+                temp_data1 = temp_data1 >= 1 ? (temp_data1 - 1) : 0x0;
+                temp_data2 = gldo_data_csot * ((((wr_buffer[i+1] & 0x03) << 8) | (wr_buffer[i+2] & 0xFF)) + 1) / gldo_data_iml;
+                temp_data2 = temp_data2 >= 1 ? (temp_data2 - 1) : 0x0;
+                bin_buf[i] = (temp_data1 >> 4) & 0x3F;
+                bin_buf[i+1] = ((temp_data1 & 0x00F) << 4) | ((temp_data2 >> 8) & 0x03);
+                bin_buf[i+2] = temp_data2 & 0x0FF;
+            }
+
+            //STEP3: vcom2 voltage cal to IML VCOM2
+            temp_data1 = gldo_data_csot * ((((wr_buffer[CSOT_VCOM2_ADDR_START] & 0x03) << 8) | (wr_buffer[CSOT_VCOM2_ADDR_START+1] & 0xFF)) + 1) / gldo_data_iml;
+            temp_data1 = temp_data1 >= 1 ? (temp_data1 - 1) : 0x0;
+            bin_buf[IML_PGAMMA_VCOM2_SET] = (temp_data1 >> 8) & 0x03;
+            bin_buf[IML_PGAMMA_VCOM2_SET+1] = temp_data1 & 0x0FF;
+
+            //STEP4: cfcom voltage cal to IML VCOM3
+            temp_data1 = gldo_data_csot * ((((wr_buffer[CSOT_CFVCOM_ADDR_START] & 0x3F) << 4) | ((wr_buffer[CSOT_CFVCOM_ADDR_START+1] >> 4) & 0x0F)) + 1) / gldo_data_iml;
+            temp_data1 = temp_data1 >= 1 ? (temp_data1 - 1) : 0x0;
+            bin_buf[IML_PGAMMA_VCOM3_SET] = (temp_data1 >> 8) & 0x03;
+            bin_buf[IML_PGAMMA_VCOM3_SET+1] = temp_data1 & 0x0FF;
+            UBOOT_TRACE("[%d], [flash gldo]=[%d], [bin gldo]=[%d]\n", __LINE__, gldo_data_csot, gldo_data_iml);
+            UBOOT_DUMP(bin_buf + IML_PGAMMA_ADDR_START, IML_PGAMMA_VCOM3_SET - IML_PGAMMA_ADDR_START + 2);
+        }
+        break;
         default:
-            UBOOT_DEBUG("Not support Auto-Pgamma=%d\n", etype);
+            UBOOT_ERROR("Not support Auto-Pgamma=%d\n", etype);
         break;
     }
     return 0;
@@ -1212,7 +1322,8 @@ static void _mtk_pnl_cust_ic_write(unsigned char *w_data, int w_size, st_cust_ic
     unsigned char reg_offset;
     unsigned long data_size;
     unsigned char *write_data;
-    int ret;
+    unsigned char write_mode;
+    int ret = 0, i;
     /******************************************************************************************************/
     // PNL_VCC on -> VCC delay(ms) -> Pre GPIO Operation -> Pre delay(ms) -> IC write (from bin) ->
     // Post GPIO Operation -> Post delay(ms)
@@ -1259,10 +1370,23 @@ static void _mtk_pnl_cust_ic_write(unsigned char *w_data, int w_size, st_cust_ic
     reg_offset = cust_info->i2c_reg_offset;
     data_size = w_size;
     write_data = w_data;
+    write_mode = cust_info->write_mode;
 
     UBOOT_TRACE("I2C write MultiByte bus_id=%d, slave_id=0x%02x, reg_offset=%d, data_size=%ld\n ", bus_id, slave_id, reg_offset, data_size);
     _mtk_pnl_cust_iic_init(bus_id);
-    ret = _mtk_pnl_cust_iic_write(slave_id, addr_count, &reg_offset, data_size, write_data);
+    if(write_mode == 1) //write a byte at a time
+    {
+        for(i=0; i<data_size; i++)
+        {
+            ret |= _mtk_pnl_cust_iic_write(slave_id, addr_count, &reg_offset, 1, write_data);
+            reg_offset++;
+            write_data++;
+        }
+    }
+    else
+    {
+        ret = _mtk_pnl_cust_iic_write(slave_id, addr_count, &reg_offset, data_size, write_data);
+    }
     if(ret < 0)
         UBOOT_ERROR("write iic error!! bus_id=%d slave_id=0x%02x \n",bus_id, slave_id);
 
@@ -1270,7 +1394,7 @@ static void _mtk_pnl_cust_ic_write(unsigned char *w_data, int w_size, st_cust_ic
         mdelay(cust_info->gpio_post_dly);
     }
     if(cust_info->gpio_post_num > 0) {
-        switch(cust_info->gpio_post_num)
+        switch(cust_info->gpio_post_ops)
         {
             case 0:
             {
@@ -1354,11 +1478,12 @@ static void _mtk_pnl_cust_ic_read_by_mask(unsigned char* r_data, int r_size, st_
 
 static int _mtk_pnl_cust_ic_checksum(st_cust_ic_info *cust_info, unsigned char *r_data, unsigned char *bin_buf, unsigned short bin_size)
 {
-    int index = 0;
+    int index = 0, bypass_index = 0;
     unsigned long bin_checksum = 0;
     unsigned long read_checksum = 0;
     int data_start_offset = 0;
     int data_end_offset = 0;
+    bool bypass = FALSE;
 
     UBOOT_TRACE("IN\n");
     if ((cust_info == NULL) || (r_data == NULL) || (bin_buf == NULL) || (bin_size == 0)) {
@@ -1374,6 +1499,19 @@ static int _mtk_pnl_cust_ic_checksum(st_cust_ic_info *cust_info, unsigned char *
         return FALSE;
     }
     for (index = data_start_offset; index < (bin_size - data_end_offset); index++) {
+        if (cust_info->checksum_bypass_size>0 && cust_info->checksum_bypass_offset != NULL) {
+            bypass = FALSE;
+            for (bypass_index = 0; bypass_index < cust_info->checksum_bypass_size; bypass_index++) {
+                if (index == cust_info->checksum_bypass_offset[bypass_index]) {
+                    UBOOT_INFO("checksum bypass index = %d\n", index);
+                    bypass = TRUE;
+                    break;
+                }
+            }
+            if (bypass == TRUE)
+                continue;
+        }
+
         bin_checksum  += bin_buf[index];
         read_checksum += r_data[index];
     }
@@ -1455,7 +1593,7 @@ static int _mtk_pnl_cust_ic_burn(st_cust_ic_info *cust_info)
 
     if (cust_info->gpio_post_num > 0)
     {
-        switch (cust_info->gpio_post_num)
+        switch (cust_info->gpio_post_ops)
         {
             case 0:
             {
@@ -1486,7 +1624,6 @@ static int _mtk_pnl_cust_ic_burn(st_cust_ic_info *cust_info)
 #define RETRY_MAX 3
 int force_reset(void)
 {
-    puts ("Force reset by PMIC flow failed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
     udelay (50000);             /* wait 50 ms */
 
     disable_interrupts();
@@ -1507,6 +1644,10 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
     unsigned char *wr_data = NULL;
     bool check_write_status = FALSE;
     unsigned char* pmin_bin_backup = NULL;
+    char wr_buf;
+    int pm_boot_reason;
+    unsigned char check_byte = 255;
+    unsigned char check_byte_offset;
 
     if (pmic_info == NULL)
     {
@@ -1525,6 +1666,19 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
     {
         UBOOT_TRACE("wr_data is NULL!\n");
         return -ENOMEM;
+    }
+
+    if(pmic_info->nvm_chk_en == 1)
+    {
+        _mtk_pnl_cust_iic_init(pmic_info->i2c_bus);
+        check_byte_offset = (unsigned char)pmic_info->nvm_chk_offset;
+        retval = _mtk_pnl_cust_iic_read(pmic_info->i2c_dev_addr, 1, &check_byte_offset, 1, &check_byte);
+        UBOOT_TRACE("I2C read bus_id=%d, slave_id=0x%02x, offset=0x%02x, check_byte=%d\n ", pmic_info->i2c_bus, pmic_info->i2c_dev_addr, check_byte_offset, check_byte);
+        if (retval < 0)
+        {
+            check_byte = pmic_info->nvm_chk_val;
+            UBOOT_ERROR("[%d][%d] _mtk_pnl_cust_iic_read 0xE0 fail, force update PMIC setting!\n", __LINE__, retval);
+        }
     }
 
     if (pmic_info->auto_update_from_flash)
@@ -1556,7 +1710,7 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
 
             checkautpgammastatus = _mtk_pnl_cust_ic_checksum(pmic_info, r_data, pmic_bin_buf, pmic_size);
             UBOOT_TRACE("pmic auto gamma checksum : %s\n", checkautpgammastatus ? "pass": "fail");
-            if (!checkautpgammastatus)
+            if (!checkautpgammastatus || (check_byte == pmic_info->nvm_chk_val))
             {
                 UBOOT_TRACE("checksum fail! need update PMIC setting!\n");
                 for (i=0; i<RETRY_MAX; i++)
@@ -1591,7 +1745,9 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
                     pmic_info->gpio_pre_dly += 10;
                     pmic_info->gpio_post_dly += 10;
                 }
-                if (check_write_status == FALSE)
+                /* Expect that register can be recovered after retry, so skip reset flow.*/
+                //if (check_write_status == FALSE)
+                if(0)
                 {
                     printf("Dump data from r_data:\n");
                     UBOOT_DUMP_FORCE(r_data, pmic_size);
@@ -1600,11 +1756,18 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
                     printf("Dump data for I2C read back data:\n");
                     UBOOT_DUMP_FORCE(wr_data, pmic_size);
                     printf("Retry check failed, reset device!!!!\n");
-                    if (pm_get_boot_reason()!=PM_BR_TCONLESS_FORCE_RESET)
+                    if (!g_TCONLESS_FORCE_RESET_FLAG)
                     {
+                        /* store current boot reason */
+                        pm_boot_reason = pm_get_boot_reason();
+                        UBOOT_INFO("Store current boot reason, 0x%x\n", pm_boot_reason);
+                        wr_buf = (char)pm_boot_reason;
+                        env_set("save_boot_reason", &wr_buf);
+                        env_save();
                         pm_set_boot_reason(PM_BR_TCONLESS_FORCE_RESET);
                         mtk_panel_enable_vcc(FALSE);
                         mdelay(1000);
+                        puts ("Force reset by PMIC flow failed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                         force_reset();
                     }
                     else
@@ -1637,7 +1800,7 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
         //check bin
         checkstatus = _mtk_pnl_cust_ic_checksum(pmic_info, r_data, pmic_bin_buf, pmic_size);
         UBOOT_TRACE("pmic bin checksum : %s\n", checkstatus ? "pass": "fail");
-        if (!checkstatus)
+        if (!checkstatus || (check_byte == pmic_info->nvm_chk_val))
         {
             UBOOT_TRACE("checksum fail! need update PMIC setting!\n");
             for (i=0; i<RETRY_MAX; i++)
@@ -1672,7 +1835,9 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
                 pmic_info->gpio_pre_dly += 10;
                 pmic_info->gpio_post_dly += 10;
             }
-            if (check_write_status == FALSE)
+            /* Expect that register can be recovered after retry, so skip reset flow.*/
+            //if (check_write_status == FALSE)
+            if(0)
             {
                 printf("Dump data from r_data:\n");
                 UBOOT_DUMP_FORCE(r_data, pmic_size);
@@ -1681,11 +1846,18 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
                 printf("Dump data for I2C read back data:\n");
                 UBOOT_DUMP_FORCE(wr_data, pmic_size);
                 printf("Retry check failed, reset device!!!!\n");
-                if (pm_get_boot_reason()!=PM_BR_TCONLESS_FORCE_RESET)
+                if (!g_TCONLESS_FORCE_RESET_FLAG)
                 {
+                    /* store current boot reason */
+                    pm_boot_reason = pm_get_boot_reason();
+                    UBOOT_INFO("Store current boot reason, 0x%x\n", pm_boot_reason);
+                    wr_buf = (char)pm_boot_reason;
+                    env_set("save_boot_reason", &wr_buf);
+                    env_save();
                     pm_set_boot_reason(PM_BR_TCONLESS_FORCE_RESET);
                     mtk_panel_enable_vcc(FALSE);
                     mdelay(1000);
+                    puts ("Force reset by PMIC flow failed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                     force_reset();
                 }
                 else
@@ -1701,6 +1873,18 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
         retval = _mtk_pnl_cust_ic_burn(pmic_info);
     }
 
+    if(check_write_status == TRUE)
+    {
+        if((pmic_info->nvm_chk_i2c_post_dly != 0) || (pmic_info->nvm_chk_rst_dly != 0))
+        {
+            mdelay(pmic_info->nvm_chk_i2c_post_dly);
+            mtk_panel_enable_vcc(FALSE);
+            mdelay(pmic_info->nvm_chk_rst_dly);
+            puts ("Force reset by PMIC update!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+            force_reset();
+        }
+    }
+
     if (wr_data != NULL)
     {
         free(wr_data);
@@ -1712,6 +1896,35 @@ static int _mtk_pnl_cust_pmic_auto_update_from_flash(st_cust_ic_info *pmic_info,
         pmin_bin_backup = NULL;
     }
     return retval;
+}
+
+void _mtk_pnl_cust_set_default_post_gpio(st_cust_ic_info *cust_ic_info)
+{
+    if (cust_ic_info->gpio_post_num > 0)
+        {
+            switch (cust_ic_info->gpio_post_ops)
+            {
+                case 0:
+                {
+                    _mtk_pnl_gpio_set_low(cust_ic_info->gpio_post_num);
+                    UBOOT_TRACE("GPIO[%d] Ouput Low\n", cust_ic_info->gpio_post_num);
+                    break;
+                }
+                case 1:
+                {
+                    _mtk_pnl_gpio_set_high(cust_ic_info->gpio_post_num);
+                    UBOOT_TRACE("GPIO[%d] Ouput High\n", cust_ic_info->gpio_post_num);
+                    break;
+                }
+                case 0xFF:
+                default:
+                {
+                    _mtk_pnl_gpio_set_input(cust_ic_info->gpio_post_num);
+                    UBOOT_TRACE("GPIO[%d] Input Hi-Z\n", cust_ic_info->gpio_post_num);
+                    break;
+                }
+            }
+        }
 }
 
 static int _mtk_pnl_cust_pmic_init(st_multi_cust_ic_info *multi_cust_ic)
@@ -1755,12 +1968,23 @@ static int _mtk_pnl_cust_pmic_init(st_multi_cust_ic_info *multi_cust_ic)
         pmic_info->gpio_post_dly          = multi_cust_ic->pmic_info.gpio_post_dly;
         pmic_info->auto_update_from_flash = multi_cust_ic->pmic_info.auto_update_from_flash;
         pmic_info->read_mode              = multi_cust_ic->pmic_info.read_mode;
+        pmic_info->write_mode             = multi_cust_ic->pmic_info.write_mode;
         pmic_info->i2c_burn_cmd           = multi_cust_ic->pmic_info.i2c_burn_cmd;
         pmic_info->i2c_burn_offset        = multi_cust_ic->pmic_info.i2c_burn_offset;
         pmic_info->i2c_ctrl_reg           = multi_cust_ic->pmic_info.i2c_ctrl_reg;
         pmic_info->i2c_ctrl_reg_offset    = multi_cust_ic->pmic_info.i2c_ctrl_reg_offset;
         pmic_info->data_start             = multi_cust_ic->pmic_info.data_start;
         pmic_info->data_end               = multi_cust_ic->pmic_info.data_end;
+        pmic_info->nvm_chk_en             = multi_cust_ic->pmic_info.nvm_chk_en;
+        pmic_info->nvm_chk_offset         = multi_cust_ic->pmic_info.nvm_chk_offset;
+        pmic_info->nvm_chk_val            = multi_cust_ic->pmic_info.nvm_chk_val;
+        pmic_info->nvm_chk_i2c_post_dly   = multi_cust_ic->pmic_info.nvm_chk_i2c_post_dly;
+        pmic_info->nvm_chk_rst_dly        = multi_cust_ic->pmic_info.nvm_chk_rst_dly;
+        pmic_info->checksum_bypass_offset = multi_cust_ic->pmic_info.checksum_bypass_offset;
+        pmic_info->checksum_bypass_size   = multi_cust_ic->pmic_info.checksum_bypass_size;
+
+        //set default post gpio
+        _mtk_pnl_cust_set_default_post_gpio(pmic_info);
 
         if (pmic_info->with_nvm == 0)
         {
@@ -1957,12 +2181,18 @@ static int _mtk_pnl_cust_pgamma_init(st_multi_cust_ic_info *multi_cust_ic)
         pgamma_info->gpio_post_dly          = multi_cust_ic->pgamma_info.gpio_post_dly;
         pgamma_info->auto_update_from_flash = multi_cust_ic->pgamma_info.auto_update_from_flash;
         pgamma_info->read_mode              = multi_cust_ic->pgamma_info.read_mode;
+        pgamma_info->write_mode             = multi_cust_ic->pgamma_info.write_mode;
         pgamma_info->i2c_burn_cmd           = multi_cust_ic->pgamma_info.i2c_burn_cmd;
         pgamma_info->i2c_burn_offset        = multi_cust_ic->pgamma_info.i2c_burn_offset;
         pgamma_info->i2c_ctrl_reg           = multi_cust_ic->pgamma_info.i2c_ctrl_reg;
         pgamma_info->i2c_ctrl_reg_offset    = multi_cust_ic->pgamma_info.i2c_ctrl_reg_offset;
         pgamma_info->data_start             = multi_cust_ic->pgamma_info.data_start;
         pgamma_info->data_end               = multi_cust_ic->pgamma_info.data_end;
+        pgamma_info->checksum_bypass_offset = multi_cust_ic->pgamma_info.checksum_bypass_offset;
+        pgamma_info->checksum_bypass_size   = multi_cust_ic->pgamma_info.checksum_bypass_size;
+
+        //set default post gpio
+        _mtk_pnl_cust_set_default_post_gpio(pgamma_info);
 
         if (pgamma_info->with_nvm == 0)
         {
@@ -2152,12 +2382,18 @@ static int _mtk_pnl_cust_levelshifit_init(st_multi_cust_ic_info *multi_cust_ic)
         ls_info->gpio_post_dly          = multi_cust_ic->levelshift_info.gpio_post_dly;
         ls_info->auto_update_from_flash = multi_cust_ic->levelshift_info.auto_update_from_flash;
         ls_info->read_mode              = multi_cust_ic->levelshift_info.read_mode;
+        ls_info->write_mode             = multi_cust_ic->levelshift_info.write_mode;
         ls_info->i2c_burn_cmd           = multi_cust_ic->levelshift_info.i2c_burn_cmd;
         ls_info->i2c_burn_offset        = multi_cust_ic->levelshift_info.i2c_burn_offset;
         ls_info->i2c_ctrl_reg           = multi_cust_ic->levelshift_info.i2c_ctrl_reg;
         ls_info->i2c_ctrl_reg_offset    = multi_cust_ic->levelshift_info.i2c_ctrl_reg_offset;
         ls_info->data_start             = multi_cust_ic->levelshift_info.data_start;
         ls_info->data_end               = multi_cust_ic->levelshift_info.data_end;
+        ls_info->checksum_bypass_offset = multi_cust_ic->levelshift_info.checksum_bypass_offset;
+        ls_info->checksum_bypass_size   = multi_cust_ic->levelshift_info.checksum_bypass_size;
+
+        //set default post gpio
+        _mtk_pnl_cust_set_default_post_gpio(ls_info);
 
         if (ls_info->with_nvm == 0)
         {
@@ -2347,12 +2583,18 @@ static int _mtk_pnl_cust_vcomic_init(st_multi_cust_ic_info *multi_cust_ic)
         vcomic_info->gpio_post_dly          = multi_cust_ic->vcomic_info.gpio_post_dly;
         vcomic_info->auto_update_from_flash = multi_cust_ic->vcomic_info.auto_update_from_flash;
         vcomic_info->read_mode              = multi_cust_ic->vcomic_info.read_mode;
+        vcomic_info->write_mode             = multi_cust_ic->vcomic_info.write_mode;
         vcomic_info->i2c_burn_cmd           = multi_cust_ic->vcomic_info.i2c_burn_cmd;
         vcomic_info->i2c_burn_offset        = multi_cust_ic->vcomic_info.i2c_burn_offset;
         vcomic_info->i2c_ctrl_reg           = multi_cust_ic->vcomic_info.i2c_ctrl_reg;
         vcomic_info->i2c_ctrl_reg_offset    = multi_cust_ic->vcomic_info.i2c_ctrl_reg_offset;
         vcomic_info->data_start             = multi_cust_ic->vcomic_info.data_start;
         vcomic_info->data_end               = multi_cust_ic->vcomic_info.data_end;
+        vcomic_info->checksum_bypass_offset = multi_cust_ic->vcomic_info.checksum_bypass_offset;
+        vcomic_info->checksum_bypass_size   = multi_cust_ic->vcomic_info.checksum_bypass_size;
+
+        //set default post gpio
+        _mtk_pnl_cust_set_default_post_gpio(vcomic_info);
 
         if (vcomic_info->with_nvm == 0)
         {
@@ -2527,12 +2769,15 @@ static int _mtk_pnl_cust_ic_sub_set_info(st_multi_cust_ic_info *multi_cust_ic, e
         cust_ic_info->gpio_post_dly          = multi_cust_ic->pmic_sub_info.gpio_post_dly;
         cust_ic_info->auto_update_from_flash = multi_cust_ic->pmic_sub_info.auto_update_from_flash;
         cust_ic_info->read_mode              = multi_cust_ic->pmic_sub_info.read_mode;
+        cust_ic_info->write_mode             = multi_cust_ic->pmic_sub_info.write_mode;
         cust_ic_info->i2c_burn_cmd           = multi_cust_ic->pmic_sub_info.i2c_burn_cmd;
         cust_ic_info->i2c_burn_offset        = multi_cust_ic->pmic_sub_info.i2c_burn_offset;
         cust_ic_info->i2c_ctrl_reg           = multi_cust_ic->pmic_sub_info.i2c_ctrl_reg;
         cust_ic_info->i2c_ctrl_reg_offset    = multi_cust_ic->pmic_sub_info.i2c_ctrl_reg_offset;
         cust_ic_info->data_start             = multi_cust_ic->pmic_sub_info.data_start;
         cust_ic_info->data_end               = multi_cust_ic->pmic_sub_info.data_end;
+        cust_ic_info->checksum_bypass_offset = multi_cust_ic->pmic_sub_info.checksum_bypass_offset;
+        cust_ic_info->checksum_bypass_size   = multi_cust_ic->pmic_sub_info.checksum_bypass_size;
     }
     else if (en_type == E_PNL_CUST_IC_SECOND_PGAMMAIC)
     {
@@ -2554,12 +2799,15 @@ static int _mtk_pnl_cust_ic_sub_set_info(st_multi_cust_ic_info *multi_cust_ic, e
         cust_ic_info->gpio_post_dly          = multi_cust_ic->pgamma_sub_info.gpio_post_dly;
         cust_ic_info->auto_update_from_flash = multi_cust_ic->pgamma_sub_info.auto_update_from_flash;
         cust_ic_info->read_mode              = multi_cust_ic->pgamma_sub_info.read_mode;
+        cust_ic_info->write_mode             = multi_cust_ic->pgamma_sub_info.write_mode;
         cust_ic_info->i2c_burn_cmd           = multi_cust_ic->pgamma_sub_info.i2c_burn_cmd;
         cust_ic_info->i2c_burn_offset        = multi_cust_ic->pgamma_sub_info.i2c_burn_offset;
         cust_ic_info->i2c_ctrl_reg           = multi_cust_ic->pgamma_sub_info.i2c_ctrl_reg;
         cust_ic_info->i2c_ctrl_reg_offset    = multi_cust_ic->pgamma_sub_info.i2c_ctrl_reg_offset;
         cust_ic_info->data_start             = multi_cust_ic->pgamma_sub_info.data_start;
         cust_ic_info->data_end               = multi_cust_ic->pgamma_sub_info.data_end;
+        cust_ic_info->checksum_bypass_offset = multi_cust_ic->pgamma_sub_info.checksum_bypass_offset;
+        cust_ic_info->checksum_bypass_size   = multi_cust_ic->pgamma_sub_info.checksum_bypass_size;
     }
     else if (en_type == E_PNL_CUST_IC_SECOND_LEVELSHIFTIC)
     {
@@ -2581,12 +2829,15 @@ static int _mtk_pnl_cust_ic_sub_set_info(st_multi_cust_ic_info *multi_cust_ic, e
         cust_ic_info->gpio_post_dly          = multi_cust_ic->levelshift_sub_info.gpio_post_dly;
         cust_ic_info->auto_update_from_flash = multi_cust_ic->levelshift_sub_info.auto_update_from_flash;
         cust_ic_info->read_mode              = multi_cust_ic->levelshift_sub_info.read_mode;
+        cust_ic_info->write_mode             = multi_cust_ic->levelshift_sub_info.write_mode;
         cust_ic_info->i2c_burn_cmd           = multi_cust_ic->levelshift_sub_info.i2c_burn_cmd;
         cust_ic_info->i2c_burn_offset        = multi_cust_ic->levelshift_sub_info.i2c_burn_offset;
         cust_ic_info->i2c_ctrl_reg           = multi_cust_ic->levelshift_sub_info.i2c_ctrl_reg;
         cust_ic_info->i2c_ctrl_reg_offset    = multi_cust_ic->levelshift_sub_info.i2c_ctrl_reg_offset;
         cust_ic_info->data_start             = multi_cust_ic->levelshift_sub_info.data_start;
         cust_ic_info->data_end               = multi_cust_ic->levelshift_sub_info.data_end;
+        cust_ic_info->checksum_bypass_offset = multi_cust_ic->levelshift_sub_info.checksum_bypass_offset;
+        cust_ic_info->checksum_bypass_size   = multi_cust_ic->levelshift_sub_info.checksum_bypass_size;
     }
     else if (en_type == E_PNL_CUST_IC_SECOND_VCOMIC)
     {
@@ -2608,18 +2859,24 @@ static int _mtk_pnl_cust_ic_sub_set_info(st_multi_cust_ic_info *multi_cust_ic, e
         cust_ic_info->gpio_post_dly          = multi_cust_ic->vcomic_sub_info.gpio_post_dly;
         cust_ic_info->auto_update_from_flash = multi_cust_ic->vcomic_sub_info.auto_update_from_flash;
         cust_ic_info->read_mode              = multi_cust_ic->vcomic_sub_info.read_mode;
+        cust_ic_info->write_mode             = multi_cust_ic->vcomic_sub_info.write_mode;
         cust_ic_info->i2c_burn_cmd           = multi_cust_ic->vcomic_sub_info.i2c_burn_cmd;
         cust_ic_info->i2c_burn_offset        = multi_cust_ic->vcomic_sub_info.i2c_burn_offset;
         cust_ic_info->i2c_ctrl_reg           = multi_cust_ic->vcomic_sub_info.i2c_ctrl_reg;
         cust_ic_info->i2c_ctrl_reg_offset    = multi_cust_ic->vcomic_sub_info.i2c_ctrl_reg_offset;
         cust_ic_info->data_start             = multi_cust_ic->vcomic_sub_info.data_start;
         cust_ic_info->data_end               = multi_cust_ic->vcomic_sub_info.data_end;
+        cust_ic_info->checksum_bypass_offset = multi_cust_ic->vcomic_sub_info.checksum_bypass_offset;
+        cust_ic_info->checksum_bypass_size   = multi_cust_ic->vcomic_sub_info.checksum_bypass_size;
     }
     else
     {
         retval = -ERANGE;
         return retval;
     }
+
+    //set default post gpio
+    _mtk_pnl_cust_set_default_post_gpio(cust_ic_info);
 
     if (cust_ic_info->with_nvm == 0)
     {
@@ -2878,7 +3135,7 @@ static int _mtk_pnl_cust_auto_update_driver_settings(void)
             ret = read_spi_flash(pu8ReadBuff, ISP_HKC_GAMMA_ADDR, ISP_HKC_GAMMA_TOTAL_SIZE);
         }
         break;
-		case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
+        case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
         {
             ret = read_spi_flash(pu8ReadBuff, USIT_GAMMA_ADDR, USIT_GAMMA_TOTAL_SIZE);
         }
@@ -2939,7 +3196,7 @@ static int _mtk_pnl_cust_auto_update_driver_settings(void)
             }
         }
         break;
-		case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
+        case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
         {
             u16SampleCrc = (pu8ReadBuff[USIT_GAMMA_TOTAL_SIZE - 2] << 8) |
                 pu8ReadBuff[USIT_GAMMA_TOTAL_SIZE - 1];
@@ -2985,7 +3242,7 @@ static int _mtk_pnl_cust_auto_update_driver_settings(void)
             }
         }
         break;
-		case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
+        case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
         {
             for (u8Index = 0; u8Index < USIT_GAMMA_DATA_SIZE; u8Index++)
             {
@@ -3016,7 +3273,7 @@ static int _mtk_pnl_cust_auto_update_driver_settings(void)
             }
         }
         break;
-		case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
+        case EN_AUTO_P2P_CMD_TYPE_USIT_GAMMA:
         {
             UBOOT_TRACE("USIT Gamma dump:\n");
             UBOOT_DUMP(pu8SetBuff, USIT_GAMMA_TOTAL_SIZE);
@@ -3165,14 +3422,14 @@ VCC --> onTiming1 delay --> Data --> onTiming2 delay --> Backlight
 
 int mtk_pnl_cust_settings_befor_vcc(st_multi_cust_ic_info *multi_cust_ic)
 {
-	mtk_panel_test_on_init();
-	UBOOT_TRACE("cust settings befor vcc!\n");
-	return FALSE;
+    mtk_panel_test_on_init();
+    UBOOT_TRACE("cust settings befor vcc!\n");
+    return FALSE;
 }
 
 int mtk_pnl_cust_settings_vcc_ontiming1(st_multi_cust_ic_info *multi_cust_ic)
 {
-	UBOOT_TRACE("cust settings vcc --> ontiming1!\n");
+    UBOOT_TRACE("cust settings vcc --> ontiming1!\n");
 
     // 1.get bin file
     if(multi_cust_ic == NULL){
@@ -3222,7 +3479,7 @@ int mtk_pnl_cust_settings_vcc_ontiming1(st_multi_cust_ic_info *multi_cust_ic)
 
 int mtk_pnl_cust_settings_ontiming1_data(st_multi_cust_ic_info *multi_cust_ic)
 {
-	UBOOT_TRACE("cust settings ontiming1 --> data!\n");
+    UBOOT_TRACE("cust settings ontiming1 --> data!\n");
     // do auto panel gamma
     _mtk_pnl_cust_auto_panel_gamma();
     // do auto update driver settings, such as CSPI-Gamma, CEDS SOE
@@ -3232,20 +3489,20 @@ int mtk_pnl_cust_settings_ontiming1_data(st_multi_cust_ic_info *multi_cust_ic)
 
 int mtk_pnl_cust_settings_data_ontiming2(st_multi_cust_ic_info *multi_cust_ic)
 {
-	UBOOT_TRACE("cust settings data --> ontiming2!\n");
-	return FALSE;
+    UBOOT_TRACE("cust settings data --> ontiming2!\n");
+    return FALSE;
 }
 
 int mtk_pnl_cust_settings_ontiming2_backlight(st_multi_cust_ic_info *multi_cust_ic)
 {
-	UBOOT_TRACE("cust settings ontiming2 --> backlight!\n");
-	return FALSE;
+    UBOOT_TRACE("cust settings ontiming2 --> backlight!\n");
+    return FALSE;
 }
 
 int mtk_pnl_cust_settings_after_backlight(st_multi_cust_ic_info *multi_cust_ic)
 {
-	UBOOT_TRACE("cust settings after backlight!\n");
-	return FALSE;
+    UBOOT_TRACE("cust settings after backlight!\n");
+    return FALSE;
 }
 
 int mtk_pnl_cust_set_panel_mode(st_cust_tcon_info *tcon_info)

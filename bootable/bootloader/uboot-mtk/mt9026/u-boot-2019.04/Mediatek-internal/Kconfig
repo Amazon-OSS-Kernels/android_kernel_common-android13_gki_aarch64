@@ -21,6 +21,13 @@ config ROLLBACK_INDEX_IN_EFUSE
     help
         Enable EFuse read Function
 
+config ROLLBACK_INDEX_IN_RPMB
+    bool "Enable RPMB read"
+    default n
+    depends on OPTEE
+    help
+        Enable RPMB read Function
+
 menu "DTB Overlay"
 
 config DTB_OVERLAY_FOR_UBOOT_DTB
@@ -40,6 +47,12 @@ config MULTIPLE_DTB_SELECTION
 	default n
 	help
 	  Enabling this option will do dtb selection for multiple dtb in dtbo partition by default.
+
+config AMZ_ODMTVCONFIG_DTBO_OVERLAY
+	bool "Enable AMZ second dtbo overlay from odmtvconfig partition"
+	default n
+	help
+	  Enabling this option will overlay dtbo from odmtvconfig partition
 
 endmenu
 

@@ -19,9 +19,17 @@
 #include <environment.h>
 #include <idme.h>
 //MTK code starts
+
+
+#ifdef CONFIG_ROLLBACK_INDEX_IN_RPMB
+#include <program_rpmb_rollback_index.h>
+#endif
+
 #if defined(CONFIG_ROLLBACK_INDEX_IN_EFUSE)
 #include <program_efuse_rollback_index.h>
 #endif
+
+
 
 #ifdef AMAZON_AVB_SIGNING
 #include <amzn_tv_secure_boot.h>
@@ -890,7 +898,40 @@ static AvbIOResult read_rollback_index(AvbOps *ops,
 #endif
 #else
 	//MTK code starts
+#if defined(CONFIG_ROLLBACK_INDEX_IN_RPMB)
+
+
+	unsigned int rpmb_enable_bit = 1;
+	if(get_rpmb_rollback_enabling_bit(&rpmb_enable_bit) == AVB_IO_RESULT_OK)
+	{
+		if(!rpmb_enable_bit){
 #if defined(CONFIG_ROLLBACK_INDEX_IN_EFUSE)
+
+			//In case that rollback enabling bit is unset
+			unsigned int enabling_bit = 1; //rollback feature is enabled by default
+			//For the shipped device, rpmb antirollback not enabled, need to check if efuse
+			//antirollback bit and get version number from efuse.
+			if (get_efuse_rollback_enabling_bit(&enabling_bit) == AVB_IO_RESULT_OK) {
+				if (!enabling_bit) {
+					*out_rollback_index = 0;
+					return AVB_IO_RESULT_OK;
+				}
+			} else {
+				return AVB_IO_RESULT_ERROR_IO;
+			}
+			if (is_slot_in_efuse(rollback_index_slot))
+				return read_rollback_index_by_efuse(rollback_index_slot, out_rollback_index);
+
+#else
+			*out_rollback_index = 0;
+			return AVB_IO_RESULT_OK;
+#endif
+		}
+	}else{
+		return AVB_IO_RESULT_ERROR_IO;
+	}
+
+#elif defined(CONFIG_ROLLBACK_INDEX_IN_EFUSE)
 	{
 		//In case that rollback enabling bit is unset
 		unsigned int enabling_bit = 1; //rollback feature is enabled by default
@@ -933,6 +974,7 @@ static AvbIOResult read_rollback_index(AvbOps *ops,
 
 	*out_rollback_index = (u64)param[1].u.value.a << 32 |
 			      (u32)param[1].u.value.b;
+
 	return AVB_IO_RESULT_OK;
 #endif
 }
@@ -973,7 +1015,6 @@ static AvbIOResult write_rollback_index(AvbOps *ops,
 	param[1].attr = TEE_PARAM_ATTR_TYPE_VALUE_INPUT;
 	param[1].u.value.a = (u32)(rollback_index >> 32);
 	param[1].u.value.b = (u32)rollback_index;
-
 	return invoke_func(ops->user_data, TA_AVB_CMD_WRITE_ROLLBACK_INDEX,
 			   ARRAY_SIZE(param), param);
 #endif

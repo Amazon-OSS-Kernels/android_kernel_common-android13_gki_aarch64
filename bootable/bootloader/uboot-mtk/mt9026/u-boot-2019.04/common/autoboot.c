@@ -24,6 +24,7 @@
 #include <dm.h>
 #include <romtblo_impl.h>
 #include <system_impl.h>
+#include <dm/ofnode.h>
 #include "amzn_secure_boot.h"
 #include "idme.h"
 #include "stdlib.h"
@@ -311,6 +312,38 @@ static void amzn_add_selinux_bootargs(void)
 	}
 }
 
+static void amzn_add_resolution_bootargs(void)
+{
+	ofnode node;
+	static unsigned int resolution_width = 0;
+	static unsigned int resolution_height = 0;
+	char bootarg[BOOTARGS_VALUE_LEN] = {0};
+
+	node = ofnode_path("/video_out/panel_info");
+	if (!ofnode_valid(node)) {
+		printf("Cannot find device tree node /video_out/panel_info\n");
+		return;
+	}
+	if (ofnode_read_u32(node, "resolution_width", &resolution_width)) {
+		printf("Cannot read resolution_width\n");
+		return;
+	}
+	if (ofnode_read_u32(node, "resolution_height", &resolution_height)) {
+		printf("Cannot read resolution_height\n");
+		return;
+	}
+
+	snprintf(bootarg, BOOTARGS_VALUE_LEN,
+		"androidboot.resolution_width=%d", resolution_width);
+	printf("%s\n",  bootarg);
+	add_bootargs("androidboot.resolution_width", bootarg, 0);
+
+	snprintf(bootarg, BOOTARGS_VALUE_LEN,
+		"androidboot.resolution_height=%d", resolution_height);
+	printf("%s\n",  bootarg);
+	add_bootargs("androidboot.resolution_height", bootarg, 0);
+}
+
 /*TODO: Set env by feature, clarify env usage, remove no use env at next iteraction*/
 static void bootargs_setting(void)
 {
@@ -349,11 +382,17 @@ static void bootargs_setting(void)
 		add_bootargs("androidboot.secure_cpu", "androidboot.secure_cpu=0", 0);
 
 	if(amzn_target_device_type() == AMZN_PRODUCTION_DEVICE) {
+		anti_rollback_status_type ar_status = anti_rollback_enabled();
+
 		add_bootargs("androidboot.prod", "androidboot.prod=1", 0);
-		add_bootargs("androidboot.arb_efuse_state", "androidboot.arb_efuse_state=1", 0);
+		if (ar_status & AR_ENABLED_EFUSE)
+			add_bootargs("androidboot.arb_efuse_state", "androidboot.arb_efuse_state=1", 0);
+		if (ar_status & AR_ENABLED_RPMB)
+			add_bootargs("androidboot.rpmb_state", "androidboot.rpmb_state=1", 0);
 	} else {
 		add_bootargs("androidboot.prod", "androidboot.prod=0", 0);
 		add_bootargs("androidboot.arb_efuse_state", "androidboot.arb_efuse_state=0", 0);
+		add_bootargs("androidboot.rpmb_state", "androidboot.rpmb_state=0", 0);
 	}
 
 #if defined(UFBL_FEATURE_UNLOCK)
@@ -379,38 +418,22 @@ static void bootargs_setting(void)
 #if (defined(TARGET_AMMO_SUPPORT) && defined(UFBL_FEATURE_IDME))
 	{
 		#define PROD_VAR_SIZE 32
-		unsigned product_variant_is_valid = 1;
+		#define MAX_OEM_DATA 1024
 		char ammo_var[PROD_VAR_SIZE+1] = {0,};
 		char ammo_prop[PROD_VAR_SIZE+sizeof("androidboot.ammo.prod.var=")+2] = {0,};
+		char remote_type_value[PROD_VAR_SIZE+1] = {0,};
+		char remote_type_prop[PROD_VAR_SIZE+sizeof("androidboot.selected_remote=")+2] = {0,};
+		char oem_data[MAX_OEM_DATA] = { 0x00, };
 
-		idme_get_oem_data_field("ammo_var=", ammo_var, PROD_VAR_SIZE);
-		/* following if condition is only for ABC, ABC, ABC */
-		/* and ABC as AMMO is enabled in the middle of development    */
-		if (!(strcmp(ammo_var, ""))) {
-			const char *board_name = env_get("board");
+		idme_get_oem_data_field("ammo_var=",ammo_var, PROD_VAR_SIZE);
+		sprintf(ammo_prop, "androidboot.ammo.prod.var=%s ", ammo_var);
+		add_bootargs("androidboot.ammo.prod.var", ammo_prop, 0);
 
-			printf("AMMO: board_name:%s\n", board_name);
-			if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-wp");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-gp");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-lp");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-ca");
-			} else if (!(strcmp(board_name, "ABCeu"))) {
-				sprintf(ammo_var, "ABCeu-gm");
-			} else if (!(strcmp(board_name, "ABC"))) {
-				sprintf(ammo_var, "ABC-gm");
-			} else {
-				product_variant_is_valid = 0;
-				debug("Invalid board name(%s) to set ammo product variant property\n", board_name);
-			}
-		}
-
-		if (product_variant_is_valid) {
-			sprintf(ammo_prop, "androidboot.ammo.prod.var=%s ", ammo_var);
-			add_bootargs("androidboot.ammo.prod.var", ammo_prop, 0);
+		idme_get_var_external("oem_data", oem_data, (sizeof(oem_data) - 1));
+		if (strstr(oem_data, "selected_remote")) {
+			idme_get_oem_data_field("selected_remote=",remote_type_value, PROD_VAR_SIZE);
+			sprintf(remote_type_prop, "androidboot.selected_remote=%s ", remote_type_value);
+			add_bootargs("androidboot.selected_remote", remote_type_prop, 0);
 		}
 	}
 #endif
@@ -507,6 +530,8 @@ extern void cpu_interrupt_setting(void);
 #define DRAMC_WDT_SET_BIT8   (0x0100)
 #define REG_WDT_RST_SEL         (0x0100)
 #define REG_WDT_DRAMC_SREF_MODE  (0xC000)
+
+
 void autoboot_command(const char *s)
 {
 	int chipid = romtbl_get_chip_id_info();
@@ -516,6 +541,16 @@ void autoboot_command(const char *s)
 	debug("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
 	if (stored_bootdelay != -1 && s && !abortboot(stored_bootdelay)) {
+
+
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+		extern void amazon_init_optimize(void);
+		printf("amazon: in smp!!!\n");
+		amazon_init_optimize();
+#else
+		printf("amazon: not smp!!!\n");
+#endif
+
 #if !defined(CONFIG_MULTICORES_PLATFORM) && defined(CONFIG_GICV3)
 		cpu_interrupt_setting();
 #endif
@@ -543,6 +578,8 @@ void autoboot_command(const char *s)
 			snprintf(bootarg, BOOTARGS_VALUE_LEN, "androidboot.support_ldm=%d", ldm);
 			add_bootargs("androidboot.support_ldm", bootarg, 0);
 		}
+
+		amzn_add_resolution_bootargs();
 
 		bootargs_setting();
 		do_jump_to_kernel();

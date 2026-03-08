@@ -224,11 +224,148 @@ int env_append_backslash(char* cmd_in, char* cmd_out)
 		}
 		i++;
 	}
+	cmd[STRING_MAX_LENGTH-1] = '\0';
 	memset(cmd_out, '\0', STRING_MAX_LENGTH);
 	memcpy(cmd_out, cmd, strlen(cmd));
 
 	return 0;
 }
+
+#define SET_BOOTARGS_CMD "setenv bootargs"
+#define ENV_BOOTARGS "console=ttyS0,115200 androidboot.console=ttyS0 init=/init CORE_DUMP_PATH=/data/core_dump.%%p.gz \
+KDebug=1 delaylogo=true security=selinux SD_CONFIG=2 loop.max_part=7 vmpressure_level_critical=80 \
+cgroup.memory=nokmem utpa_str_fr=1 8250.nr_uarts=4 vmalloc=550M kasan_multi_shot=1 transparent_hugepage=never \
+firmware_class.path=/vendor/odmtvconfig/,/vendor/tvconfig/,/vendor/firmware/"
+#define ENV_DTBO_ADDR "0x2C000000"
+
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+static int verify_env_bootarg(void)
+{
+	char *bootargs = env_get("bootargs");
+	int cmp;
+
+	if (!bootargs) {
+		printf("##### no bootargs uenv param.\n");
+		return -1;
+	}
+
+	cmp = strncmp((const char *)bootargs, (const char *)ENV_BOOTARGS, strlen(ENV_BOOTARGS));
+
+	if (cmp) {
+		printf("##### bootarg doesn't match\n");
+		return -EAGAIN;
+	}
+
+	return 0;
+}
+
+static int verify_env_bootarg_normal_boot(void)
+{
+	char *bootargs = env_get("bootargs");
+
+	if (!bootargs) {
+		printf("##### no bootargs uenv param.\n");
+		return -1;
+	}
+
+	if (!strstr(bootargs, "firmware_class.path")) {
+		printf("##### bootarg doesn't match\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int verify_env_dtboaddr(void)
+{
+	char *dtboaddr = env_get("dtboaddr");
+	int cmp;
+
+	if (!dtboaddr) {
+		printf("##### no dtboaddr uenv param.\n");
+		return -1;
+	}
+
+	cmp = strncmp((const char *)dtboaddr, (const char *)ENV_DTBO_ADDR, strlen(ENV_DTBO_ADDR));
+
+	if (cmp) {
+		printf("##### dtboaddr doesn't match\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int verify_env_dtbo_cfg_sel(void)
+{
+	char *cmp;
+	bool use_default_dtbo = 1;
+	char model_name[128] = "\0";
+	char *dtbo_cfg_sel = env_get("dtbo_cfg_sel");
+
+	if (!dtbo_cfg_sel) {
+		printf("##### no dtbo_cfg_sel uenv param.\n");
+		return -1;
+	}
+
+#ifdef UFBL_FEATURE_IDME
+	idme_get_var_external("model_name", model_name, (127));
+	if (!strcmp(model_name, "0") || !strcmp(model_name, "") || !strcmp(model_name, "/config/model/Customer_1.ini")) {
+		use_default_dtbo = 1;
+	}
+	else
+		use_default_dtbo = 0;
+#endif
+	if (!use_default_dtbo) {
+		cmp = strstr(dtbo_cfg_sel, model_name);
+	}
+	else {
+		cmp = strstr(dtbo_cfg_sel, UBOOT_ENV_DTBO_SEL);
+	}
+
+	if (!cmp) {
+		printf("##### dtbo_cfg_sel doesn't match\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int verify_env_dataindex_cfg_name(void)
+{
+	char *cmp;
+	bool use_default_dataindex = 1;
+	char config_name[128] = "\0";
+	char *dataindex_cfg_name = env_get("dataindex_cfg_name");
+
+	if (!dataindex_cfg_name) {
+		printf("##### no dataindex_cfg_name uenv param.\n");
+		return -1;
+	}
+
+#ifdef UFBL_FEATURE_IDME
+	idme_get_var_external("config_name", config_name, (127));
+	if (!strcmp(config_name, "0") || !strcmp(config_name, "")) {
+		use_default_dataindex = 1;
+	}
+	else
+		use_default_dataindex = 0;
+#endif
+	if (!use_default_dataindex)	{
+		cmp = strstr(dataindex_cfg_name, config_name);
+	}
+	else {
+		cmp = strstr(dataindex_cfg_name, "default");
+	}
+
+	if (!cmp) {
+		printf("##### dataindex_cfg_name doesn't match\n");
+		return -1;
+	}
+
+	return 0;
+}
+#endif
 
 int env_cus_load(void)
 {
@@ -245,9 +382,8 @@ int env_cus_load(void)
 	int ret = 0;
 
 	run_command("env default -a", 0);
-
-	run_command("setenv bootargs console=ttyS0,115200 androidboot.console=ttyS0 init=/init CORE_DUMP_PATH=/data/core_dump.%%p.gz KDebug=1 delaylogo=true security=selinux SD_CONFIG=2 loop.max_part=7 \
-			vmpressure_level_critical=80 cgroup.memory=nokmem utpa_str_fr=1 8250.nr_uarts=4 vmalloc=550M kasan_multi_shot=1 transparent_hugepage=never firmware_class.path=/vendor/tvconfig/,/vendor/firmware/", 0);
+	snprintf(env_cmd_temp, STRING_MAX_LENGTH, "%s %s", SET_BOOTARGS_CMD, ENV_BOOTARGS);
+	run_command(env_cmd_temp, 0);
 	run_command("setenv verify n", 0);
 	run_command("setenv devicestate unlock", 0);
 	run_command("avb set-devicestate 0", 0);
@@ -261,7 +397,8 @@ int env_cus_load(void)
 
 	run_command("setenv initrd_high 0x2B000000", 0);
 	run_command("setenv fdt_high 0x2B800000", 0);
-	run_command("setenv dtboaddr 0x2C000000", 0);
+	snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv dtboaddr %s", ENV_DTBO_ADDR);
+	run_command(env_cmd_temp, 0);
 
 	env_cmd = malloc(STRING_MAX_LENGTH);
 	if(env_cmd)
@@ -321,6 +458,12 @@ int env_cus_load(void)
 			return -ENODEV;
 		run_command(env_cmd, 0);
 
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+		if (strstr(config_name, "odmtvconfig")) {
+			printf("set CusFilePart = odmtvconfig\n");
+			run_command("setenv CusFilePart odmtvconfig", 0);
+		}
+#endif
 		ret = snprintf(env_cmd_temp, STRING_MAX_LENGTH, "setenv bootcmd %s", UBOOT_BOOTCMD);
 		if(ret < 0)
 			return -ENODEV;
@@ -347,6 +490,9 @@ int do_env_cus_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return env_cus_load();
 }
 
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+#define RETRY_LIMIT 5
+#endif
 int env_load(void)
 {
 	struct env_driver *drv;
@@ -359,21 +505,31 @@ int env_load(void)
 
 	for (prio = 0; (drv = env_driver_lookup(ENVOP_LOAD, prio)); prio++) {
 		int ret;
-
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+		int retry = 0;
+#endif
 		if (!drv->load)
 			continue;
 
 		if (!env_has_inited(drv->location))
 			continue;
 
-		printf("Loading Environment from %s... ", drv->name);
+		printf("\nLoading Environment from %s...\n", drv->name);
 		/*
 		 * In error case, the error message must be printed during
 		 * drv->load() in some underlying API, and it must be exactly
 		 * one message.
 		 */
 		ret = drv->load();
+
 		if (!ret) {
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+			if (verify_env_dtbo_cfg_sel() || verify_env_bootarg_normal_boot() || \
+			verify_env_dtboaddr() || verify_env_dataindex_cfg_name()) {
+				printf("##### uenv verification failed. Resetting.\n");
+				env_cus_load();
+			}
+#endif
 			printf("OK\n");
 			return 0;
 		} else if (ret == -ENOMSG) {
@@ -381,33 +537,39 @@ int env_load(void)
 			if (best_prio == -1)
 				best_prio = prio;
 		} else {
-			/* handle after successful ota installation */
 			rd_buf = read_storage_file_to_memory(UENV_PARTITION, UENV_RELOAD, &rd_size);
 			if (rd_buf && (strncmp((const char*)rd_buf, "1", 1) == 0)) {
+				/* handle after successful ota installation */
 				printf("Reload uenv after ota\n");
-				env_cus_load();
-
-				/* unset uenv_reload flag */
-				if (write_storage_file(UENV_PARTITION, UENV_RELOAD_FILE_NAME,
-						wr_buf, &wr_size) == NULL) {
-					printf("Write uenv_reload failed \n");
-				}
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+				do {
+#endif
+					env_cus_load();
+					/* unset uenv_reload flag, OTA case */
+					if (write_storage_file(UENV_PARTITION, UENV_RELOAD_FILE_NAME,
+							wr_buf, &wr_size) == NULL) {
+						printf("Write uenv_reload failed \n");
+					}
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+					if (!verify_env_bootarg()) break;
+					retry++;
+					printf("##### bootarg verification failed. Retry cnt %d #####\n", retry);
+				} while(retry < RETRY_LIMIT);
+#endif
 			} else {
-				/* handle for first bootup*/
+				/* handle for first bootup */
 				printf("Format uenv partition to EXT4\n");
 				run_command("formatenv mmc 0", 0);
-				env_cus_load();
-				ret = drv->load();
-				if (!ret) {
-					printf("OK\n");
-					return 0;
-				} else if (ret == -ENOMSG) {
-					/* Handle "bad CRC" case */
-					if (best_prio == -1)
-						best_prio = prio;
-				} else {
-					debug("Failed (%d)\n", ret);
-				}
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+				do {
+#endif
+					env_cus_load();
+#ifdef CONFIG_UENV_INTEGRITY_CHECK
+					if (!verify_env_bootarg()) break;
+					retry++;
+					printf("##### bootarg verification failed. Retry cnt %d #####\n", retry);
+				} while(retry < RETRY_LIMIT);
+#endif
 			}
 
 			/* delete read buf */

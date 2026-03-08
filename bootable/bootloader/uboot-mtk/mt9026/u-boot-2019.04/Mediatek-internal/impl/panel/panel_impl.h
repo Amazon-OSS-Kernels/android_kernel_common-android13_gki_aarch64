@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _PNL_IMPL_HEADER_
 #define _PNL_IMPL_HEADER_
@@ -247,12 +247,20 @@ typedef struct {
     uint16_t gpio_post_dly;
     uint16_t auto_update_from_flash;
     uint16_t read_mode;
+    uint16_t write_mode;
     uint16_t i2c_burn_cmd;
     uint16_t i2c_burn_offset;
     uint16_t i2c_ctrl_reg;
     uint16_t i2c_ctrl_reg_offset;
     uint16_t data_start;
     uint16_t data_end;
+    uint16_t nvm_chk_en;
+    uint16_t nvm_chk_offset;
+    uint16_t nvm_chk_val;
+    uint16_t nvm_chk_i2c_post_dly;
+    uint16_t nvm_chk_rst_dly;
+    uint16_t *checksum_bypass_offset;
+    uint16_t checksum_bypass_size;
 }st_cust_ic_info;
 
 typedef struct {
@@ -310,7 +318,18 @@ typedef struct {
 }st_cust_tcon_info;
 #endif
 
-typedef struct {
+typedef struct
+{
+    bool dmc_dlg_enable;
+    bool bl_dmc_enable;
+    uint16_t bl_dmc_vendorid;
+    char *bl_dmc_partiton;
+    char *bl_dmc_vendor_bin;
+    uint16_t bl_dmc_bound;
+}st_cust_dmc_info;
+
+typedef struct
+{
     char *panel_spi_bus;
     uint32_t panel_spi_speed;
     uint32_t panel_spi_mode;

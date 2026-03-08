@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 /*****************************************************************************/
 #include <dm/ofnode.h>
@@ -39,6 +39,7 @@
 #define PM_OFS_EMER			(0x0020)
 #define PM_OFS_MIC_MUTE			(0x0030)
 #define PM_OFS_HDMI33V_CONTROL		(0x0040)
+#define PM_OFS_EXT_GPIO			(0x0050)
 #define PM_OFS_IR			(0x0100)
 #define PM_OFS_SAR			(0x0200)
 #define PM_OFS_SAR_UPGRADE  		(0x0290)
@@ -216,6 +217,7 @@ typedef struct  __attribute__((packed))
 	u16 wakeadc[SAR_KEY_NUMS];
 	u16 wakeup_lb;
 	u8 adc_offset;
+	u8 keypad_reset;
 }st_pm_ini_sar;
 static int pm_ini_sar_probe(struct pm_ini_device *priv)
 {
@@ -226,6 +228,7 @@ static int pm_ini_sar_probe(struct pm_ini_device *priv)
 	u32 wakeup_ch = 0;
 	u32 adc_offset = 0;
 	u32 wakeup_lb = 0;
+	u32 keypad_reset = 1;
 #if !defined(CONFIG_MT58XX_SARADC)
 	u32 upgrade_ch = 0;
 	u32 upgrade_lb = 0;
@@ -265,10 +268,16 @@ static int pm_ini_sar_probe(struct pm_ini_device *priv)
                         UBOOT_INFO("wakeadc[%02d]=0x%X\n", idx, adc[idx]);
 		}
 	}
+	ret = ofnode_read_u32(node, "keypad-reset", &keypad_reset);
+	if (ret) {
+		UBOOT_INFO("[SAR] read (keypad-reset) failed.(%d) and set default enable\n", ret);
+		keypad_reset = 1;
+	}
 	/* handle endian for pm51 here */
 	ini.wakeup_lb = cpu_to_be16(wakeup_lb);
 	ini.wakeup_ch = wakeup_ch;
 	ini.adc_offset = adc_offset;
+	ini.keypad_reset = keypad_reset;
 
 	memcpy((void *)priv->buff_addr + PM_OFS_SAR, (void *)&ini, sizeof(ini));
 
@@ -696,6 +705,80 @@ static int pm_ini_gpio_control_probe(struct pm_ini_device *priv)
 
 	return 0;
 }
+/*****************************************************************************/
+#define EXT_GPIO_LENGTH		4
+#define EXT_GPIO_NUM		"ext_gpio_num"
+#define EXT_GPIO_POLARITY	"ext_gpio_polarity"
+struct pm_ini_ext_gpio {
+	u16 ext_gpio[EXT_GPIO_LENGTH];
+	u16 ext_gpio_polarity[EXT_GPIO_LENGTH];
+};
+
+static int pm_ini_ext_gpio_probe(struct pm_ini_device *priv)
+{
+	ofnode node = {0};
+	struct pm_ini_ext_gpio ini;
+	u32 get_val = 0;
+	u16 ext_gpio = 0;
+	u16 ext_gpio_polarity = 0;
+	int ret = 0;
+	const char *status;
+	int i = 0;
+	memset(&ini, 0xFF, sizeof(struct pm_ini_ext_gpio));
+
+	node = ofnode_find_subnode(priv->ini_node, "pm-ext-gpio");
+	if (!ofnode_valid(node)) {
+		UBOOT_ERROR("[EXT_GPIO] ofnode_path(ps_gpio) not found.\n");
+		goto exit_ext_gpio;
+	}
+
+	status = ofnode_read_string(node, "status");
+	/* only skip if status existed with disable string */
+	if ((status) && (strncmp(status, "disabled", DTS_STAT_DISABLE_NUM) == 0)) {
+		UBOOT_INFO("[EXT_GPIO] skip ext-gpio\n");
+		goto exit_ext_gpio;
+	}
+
+	for (i=0;i<EXT_GPIO_LENGTH;i++)
+	{
+
+		char ext_gpio_node[64];
+		ret = snprintf(ext_gpio_node, sizeof(ext_gpio_node), "%s%d", EXT_GPIO_NUM, i);
+		if (ret > 0) {
+			ret = ofnode_read_u32(node, ext_gpio_node, &get_val);
+			if (ret) {
+				UBOOT_DEBUG("[EXT_GPIO] read (ext-gpio-num) failed.(%d)\n", ret);
+				goto exit_ext_gpio;
+			}
+			ext_gpio = (u16)get_val;
+			UBOOT_INFO("[EXT_GPIO] from dts ext_gpio = %d\n", ext_gpio);
+			/* handle endian for pm51 here */
+			ini.ext_gpio[i] = cpu_to_be16(ext_gpio);
+			UBOOT_INFO("[EXT_GPIO] to pm51 ext_gpio = %d\n", ini.ext_gpio[i]);
+			ret = snprintf(ext_gpio_node, sizeof(ext_gpio_node), "%s%d", EXT_GPIO_POLARITY, i);
+			if (ret > 0) {
+				ret = ofnode_read_u32(node, ext_gpio_node, &get_val);
+				if (ret) {
+					UBOOT_ERROR("[EXT_GPIO] read (ext-gpio-polarity) failed.(%d)\n", ret);
+					goto exit_ext_gpio;
+				}
+				ext_gpio_polarity = (u16)get_val;
+				UBOOT_INFO("[EXT_GPIO] from dts ext_gpio_polarity = %d\n", ext_gpio_polarity);
+				/* handle endian for pm51 here */
+				ini.ext_gpio_polarity[i] = cpu_to_be16(ext_gpio_polarity);
+				UBOOT_INFO("[EXT_GPIO] to pm51 ext_gpio_polarity = %d\n", ini.ext_gpio_polarity[i]);
+			}
+		}
+	}
+
+
+exit_ext_gpio:
+
+	memcpy((void *)priv->buff_addr + PM_OFS_EXT_GPIO, (void *)&ini, sizeof(ini));
+
+	return 0;
+}
+
 
 /*****************************************************************************/
 struct pm_ini_hdmi33v_control
@@ -777,6 +860,7 @@ int pmu_ini_loader(void)
 		(ret = pm_ini_wifi_probe(&dev)) ||
 		(ret = pm_ini_bt_probe(&dev)) ||
 		(ret = pm_ini_emer_probe(&dev)) ||
+		(ret = pm_ini_ext_gpio_probe(&dev)) ||
 		(ret = pm_ini_mic_mute_probe(&dev)) ||
 		(ret = pm_ini_wifi_reset_probe(&dev)) ||
         (ret = pm_ini_gpio_control_probe(&dev)) ||

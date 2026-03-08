@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <command.h>
@@ -29,7 +29,17 @@ int mtk_main_chip_power_standby(void)
         UBOOT_ERROR("power off short failure\n");
     }
 #if defined(CONFIG_MTK_PM)
-    pm_set_boot_reason(PM_BR_SECONDARY);
+    int bootreason = pm_get_boot_reason();
+
+    if (PM_BR_WATCHDOG == bootreason || PM_BR_WATCHDOG_FORCE == bootreason ||
+        PM_BR_PANIC == bootreason || PM_BR_PANIC_FORCE == bootreason) {
+        UBOOT_INFO("Set abnormal_reboot_flag info\n\n");
+        env_set("abnormal_reboot_flag", "true");
+        env_save();
+        pm_set_boot_reason(bootreason);
+    } else {
+        pm_set_boot_reason(PM_BR_SECONDARY);
+    }
 #endif
     run_command("poweroff",0);
 
@@ -50,6 +60,15 @@ int mtk_standby_mode_framework(void)
     int bootreason = pm_get_boot_reason();
 
     if (check_specific_standby_behavior()) {
+        char *abnormal_reboot_flag = env_get("abnormal_reboot_flag");
+
+        if (abnormal_reboot_flag && !strncmp(abnormal_reboot_flag, "true", 4)) {
+            UBOOT_INFO("Clear abnormal_reboot_flag env info\n\n");
+            env_set("abnormal_reboot_flag", "false");
+            env_save();
+            return 0;
+        }
+
         if (oobe_completed) {
             if (bootreason == PM_BR_SECONDARY || bootreason == PM_BR_DC || bootreason == PM_BR_MAX_CNT ||
                 bootreason == PM_BR_REBOOT || bootreason == PM_BR_REBOOT_SHELL || bootreason == PM_BR_REBOOT_FORCE) {

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _BOOT_IMPL_
 #define _BOOT_IMPL_
@@ -49,6 +49,7 @@ typedef enum
 
 #if defined(CONFIG_MT58XX_SARADC)
 void long_press_sar_key_detect(void);
+void long_press_sar_reset_key_detect(void);
 #endif
 int get_boot_mode_flag(void);
 int boot_mode_check(void);

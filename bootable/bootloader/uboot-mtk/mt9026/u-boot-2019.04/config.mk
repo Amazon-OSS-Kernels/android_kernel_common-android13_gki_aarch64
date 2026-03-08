@@ -38,6 +38,9 @@ endif
 ifneq ($(CONFIG_CUSTOMER_NAME),)
 CUSTOMER := $(CONFIG_CUSTOMER_NAME:"%"=%)
 endif
+ifneq ($(CONFIG_CUSTOMER2_NAME),)
+CUSTOMER2 := $(CONFIG_CUSTOMER2_NAME:"%"=%)
+endif
 
 # Some architecture config.mk files need to know what CPUDIR is set to,
 # so calculate CPUDIR before including ARCH/SOC/CPU config.mk files.

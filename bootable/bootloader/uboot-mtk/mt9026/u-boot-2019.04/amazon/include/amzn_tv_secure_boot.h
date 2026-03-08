@@ -32,6 +32,28 @@ struct ar_efuse_version_type {
 	uint32_t recovery_version;
 };
 
+/* anti-rollback rpmb version structure */
+struct ar_rpmb_version_type {
+	uint64_t hash1_version;
+	uint64_t teeloader_version;
+	uint64_t armfw_version;
+	uint64_t optee_version;
+	uint64_t reeloader_version;
+	uint64_t uboot_version;
+	uint64_t pmufw_version;
+	uint64_t vbmeta_version;
+	uint64_t boot_version;
+	uint64_t recovery_version;
+};
+
+typedef enum {
+	AR_NOT_INITED = 0x00,
+	AR_DISABLED = 0x01,
+	AR_ENABLED_ASSUMED = 0x02,
+	AR_ENABLED_EFUSE = 0x04,
+	AR_ENABLED_RPMB = 0x08
+} anti_rollback_status_type;
+
 sbvc_result sboot_version_check(char *sboot_buf, int sboot_len, int partition_num);
 
 unsigned char is_secure_cpu(void);
@@ -40,7 +62,12 @@ int target_is_production(void);
 int amzn_device_is_unlocked(void);
 int amzn_device_relock(void);
 int chk_cmd_lockdown(const char* command);
-int anti_rollback_enabled(void);
+anti_rollback_status_type anti_rollback_enabled(void);
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 unsigned int amzn_antirollback_efuse_version(unsigned char *ar_vers);
+#endif
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+unsigned int amzn_antirollback_rpmb_version(unsigned char *ar_vers);
+#endif
 
 #endif

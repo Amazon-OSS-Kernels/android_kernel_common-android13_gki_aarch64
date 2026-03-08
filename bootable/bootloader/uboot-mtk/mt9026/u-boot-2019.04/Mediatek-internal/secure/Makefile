@@ -21,3 +21,4 @@ obj-$(CONFIG_LIBAVB) += ./avb/avb_uboot_verity.o
 obj-$(CONFIG_LIBAVB) += ./avb/avb_uboot_verification.o
 obj-$(CONFIG_AVB_VERIFY) += ./avb/image-android-sig.o
 obj-$(CONFIG_ROLLBACK_INDEX_IN_EFUSE) += ./avb/program_efuse_rollback_index.o
+obj-$(CONFIG_ROLLBACK_INDEX_IN_RPMB) += ./avb/program_rpmb_rollback_index.o

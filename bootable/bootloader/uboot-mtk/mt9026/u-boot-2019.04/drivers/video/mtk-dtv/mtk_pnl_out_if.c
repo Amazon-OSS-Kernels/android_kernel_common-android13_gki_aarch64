@@ -197,6 +197,8 @@
 #define CHIP_VERSION3 (3)
 #define CHIP_VERSION4 (4)
 
+#define FILE_CUS_PARTITION          "CusFilePart"
+
 #ifdef MSOS_TYPE_LINUX_KERNEL
 #define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
 #else
@@ -11268,6 +11270,9 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
     struct mtk_panel_priv *priv = dev_get_priv(dev);
 	char chFilePath[BIN_FILE_PATH_LENGTH];
 	bool is_dlg = dlg_mode;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    char *cus_path = NULL;
+#endif
 
     if (priv == NULL) {
         UBOOT_ERROR("Get device private fail\n");
@@ -11285,7 +11290,13 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
 				strncpy(chFilePath, priv->tcon_info.tcon_bin_path, sizeof(chFilePath) - 1);
 		}
 		UBOOT_TRACE("tcon: isDLG=%d, bin path %s\n", is_dlg, chFilePath);
-		file_buf = (u8 *)read_storage_file_to_memory("tvconfig", chFilePath, &tcon_size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        cus_path = env_get(FILE_CUS_PARTITION);
+        if (cus_path)
+            file_buf = (u8 *)read_storage_file_to_memory(cus_path, chFilePath, &tcon_size);
+        if (!file_buf)
+#endif
+            file_buf = (u8 *)read_storage_file_to_memory("tvconfig", chFilePath, &tcon_size);
 	}
 
 	//if not found, load tcon bin from default path
@@ -11305,7 +11316,15 @@ void Init_TCON_Path(struct udevice *dev, bool dlg_mode)
 	 */
 
 	if (file_buf) {
-	    eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_MI, &eva_size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        if (cus_path) {
+                eva_buf = (u8 *)read_storage_file_to_memory(cus_path, EVA_DEFAUL_PATH_MI, &eva_size);
+            if (!eva_buf)
+                eva_buf = (u8 *)read_storage_file_to_memory(cus_path, EVA_DEFAUL_PATH_AOSP, &eva_size);
+        }
+        if (!eva_buf)
+#endif
+            eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_MI, &eva_size);
 		if (!eva_buf)
 			eva_buf = (u8 *)read_storage_file_to_memory("tvconfig", EVA_DEFAUL_PATH_AOSP, &eva_size);
 		/*  The Linux Path is aligned with AOSP
@@ -11374,9 +11393,20 @@ static void _mtk_panelgamma_verify(struct udevice *dev)
     loff_t size;
     unsigned char* file_buf;
     bool bret = FALSE;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    char *cus_path = NULL;
+#endif
 
     UBOOT_DEBUG("read panel_gamma bin file from config/gamma/panel_gamma.bin\n");
-    file_buf = read_storage_file_to_memory("tvconfig", "gamma/panel_gamma.bin", &size);
+
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    cus_path = env_get(FILE_CUS_PARTITION);
+    if (cus_path)
+        file_buf = read_storage_file_to_memory(cus_path, "gamma/panel_gamma.bin", &size);
+    if (!file_buf)
+#endif
+        file_buf = read_storage_file_to_memory("tvconfig", "gamma/panel_gamma.bin", &size);
+
     if(file_buf == NULL)
     {
 		UBOOT_ERROR("Error: Read raw data file failure\n");
@@ -11474,6 +11504,9 @@ void mtk_panelgamma_setting(struct udevice *dev, bool dlg_mode)
 		bool is_dlg = dlg_mode;
 		char chPanelGammaPath[BIN_FILE_PATH_LENGTH];
 		bool bret = FALSE;
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+        char *cus_path = NULL;
+#endif
 
 		if (priv->tcon_info.panelgamma_bin_path || priv->tcon_info.panelgamma_dlg_bin_path)	{
 			if (is_dlg)	{
@@ -11484,7 +11517,13 @@ void mtk_panelgamma_setting(struct udevice *dev, bool dlg_mode)
 					strncpy(chPanelGammaPath, priv->tcon_info.panelgamma_bin_path, sizeof(chPanelGammaPath) - 1);
 			}
 			debug("panel gamma is_dlg=%d, bin path %s\n", is_dlg, chPanelGammaPath);
-			panel_gamma_buf = (u8 *)read_storage_file_to_memory("tvconfig", chPanelGammaPath, &panel_gamma_size);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+            cus_path = env_get(FILE_CUS_PARTITION);
+            if (cus_path)
+                panel_gamma_buf = (u8 *)read_storage_file_to_memory(cus_path, chPanelGammaPath, &panel_gamma_size);
+            if (!panel_gamma_buf)
+#endif
+                panel_gamma_buf = (u8 *)read_storage_file_to_memory("tvconfig", chPanelGammaPath, &panel_gamma_size);
 		}
 
 		//if not found, load tcon bin from default path

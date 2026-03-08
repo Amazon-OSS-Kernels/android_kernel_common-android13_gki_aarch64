@@ -648,6 +648,9 @@ static int xhci_mtk_remove(struct udevice *dev)
 	xhci_mtk_ldos_disable(mtk);
 	xhci_mtk_clks_disable(mtk);
 
+	if (!mtk->pm_domain)
+		xhci_mtk_gpios_disable(mtk);
+
 	return 0;
 }
 

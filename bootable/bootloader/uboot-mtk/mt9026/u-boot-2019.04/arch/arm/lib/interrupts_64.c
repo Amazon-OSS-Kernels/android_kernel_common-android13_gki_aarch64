@@ -19,6 +19,7 @@ DECLARE_GLOBAL_DATA_PTR;
 extern int need_to_reschedule(void);
 extern void reschedule_irq(void);
 extern smp_spin_lock_t g_sched_lock;
+volatile unsigned int spin_lock_count[NR_CPUS] = {0};
 #endif
 
 /* Interrupt related define*/
@@ -251,7 +252,7 @@ void do_irq(struct pt_regs *pt_regs, unsigned int esr)
 	asm volatile("msr S3_0_c12_c12_1 ,%0"::"r"(INITD) : ); //ICC_EOIR1_EL1
 #if defined(CONFIG_MULTICORES_PLATFORM)
 	if (INITD == INTID_EL1_PHY_TIMER) {
-		if (need_to_reschedule() && g_sched_lock.lock == 0) {
+		if (need_to_reschedule() && g_sched_lock.lock == 0 && spin_lock_count[cpuid] == 0) {
 			irq_disable();
 			reschedule_irq();
 			asm volatile("clrex");

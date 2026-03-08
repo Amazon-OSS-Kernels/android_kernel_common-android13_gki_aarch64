@@ -15,6 +15,10 @@
 #include <debug_impl.h>
 #define	PWM_MAX_CNT		8
 
+// Local variable
+static uint pwmduty_set = 0;
+
+
 struct mtk_pwm_dat {
 	unsigned int shift;
 	unsigned int div;
@@ -204,7 +208,7 @@ static int _mediatek_pwm_set_dutycycle(struct udevice *dev, uint channel,
 		dev_err(dev, "Duty time too long to register setting\n");
 		return -EINVAL;
 	}
-
+	pwmduty_set = duty_set;
 	debug("Duty %d by clk %d div %d, reg value %llu (0x%llX)\n",
 	      duty_ns, priv->clkspeed, priv->data.div, duty_set,
 	      duty_set);
@@ -236,13 +240,15 @@ static int _mediatek_pwm_set_period(struct udevice *dev, uint channel,
 	void __iomem *addr;
 	u32 mask;
 	int val;
+	u64 newduty_set;
+	u64 period_set_tmp;
 
 	/* calculate real PWM clock rate by divider */
 	// real divider value is priv->data.div + 1
 	clkspeed /= (priv->data.div + 1);
-
 	period_set = (u64)clkspeed * period_ns;
 	period_set = lldiv(period_set, 1000000000);
+	period_set_tmp = period_set;
 
 	if (unlikely((period_set >> 24) != 0)) {
 		dev_err(dev, "Period time too long to register setting\n");
@@ -268,6 +274,25 @@ static int _mediatek_pwm_set_period(struct udevice *dev, uint channel,
 	val |= period_set & mask;
 	debug("pwm period ext, set reg %p value 0x%04X\n", addr, val);
 	writew(val, addr);
+
+	if(((period_set_tmp == pwmduty_set) || (period_set_tmp == (pwmduty_set - 1))) && period_set_tmp != 0)
+	{
+		newduty_set = period_set_tmp + 1;
+		/* duty low word */
+		addr = priv->reg_base + REG_PWM0_DUTY;
+		debug("pwm duty 2, set reg %p value 0x%04llX\n", addr, newduty_set & 0xFFFF);
+		writew(newduty_set & 0xFFFF, addr);
+		addr = priv->reg_base + REG_PWM0_DUTY_EXT;
+		/* duty 8-bit msb */
+		newduty_set >>= 16;
+		mask = 0xFF;
+		val = readw(addr);
+		debug("pwm duty 2 ext, reg %p original value 0x%04X\n", addr, val);
+		val &= ~mask;
+		val |= newduty_set & mask;
+		debug("pwm duty 2 ext, set reg %p value 0x%04X\n", addr, val);
+		writew(val, addr);
+	}
 
 	return 0;
 }
@@ -342,7 +367,6 @@ static int mediatek_pwm_set_config(struct udevice *dev, uint channel,
 {
 	struct mediatek_pwm_priv *priv = dev_get_priv(dev);
 	int ret;
-
 	debug("%s, reg %p, channel %d, period %d, duty %d\n", __func__,
 	      priv->reg_base, channel, period_ns, duty_ns);
 

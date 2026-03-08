@@ -18,6 +18,7 @@
 #include "coda/OD_1ST_BKA336_V004.h"
 #include "coda/OD_2ND_BKA337_V004.h"
 #include "coda/OD_3RD_BKA338_V004.h"
+#include "coda/OD_DNR_BKA339.h"
 #include "coda/SCTCON_BKA4F7_V004.h"
 #include "coda/SCTCON_MISC_BKA3E0_V005.h"
 #include "mtk_pnl_utility.h"
@@ -130,6 +131,7 @@
 
 #define DEC_3 (3)
 #define DEC_4 (4)
+#define DEC_7 (7)
 #define DEC_10 (10)
 #define DEC_64 (64)
 
@@ -280,7 +282,7 @@ void _overdriver_vac_hscaling_setting(struct udevice *dev)
                                         REG_0020_PAFRC_BKA324_V004_REG_VAC_POLARITY_LUT0_0020);
         bool bRBSwap = FALSE;
         // set mode
-        W2BYTEMSK(REG_01B0_OD_3RD_BKA338_V004, 1, REG_01B0_OD_3RD_BKA338_V004_REG_VAC_SCALING_EN_01B0);
+        W2BYTEMSK(REG_01B0_OD_3RD_BKA338_V004, 0, REG_01B0_OD_3RD_BKA338_V004_REG_VAC_SCALING_EN_01B0);
         if ((u16VacPol == EVA_POLARITY_LUT0_MODE_3) ||
             ((u16VacPol == EVA_POLARITY_LUT0_MODE_2) && (bRBSwap == TRUE)))
         {
@@ -598,6 +600,34 @@ bool mtk_tcon_OverDriverGetVscaling(u8 u8OdModeType)
 	return bVscaling;
 }
 
+#define HSIZE_4K 3840
+#define HSIZE_2K 1920
+#define VSIZE_2K 2160
+#define VSIZE_1K 1080
+
+void _get_od_page_length(u16 u16hsize,
+	u16 u16vsize, u16 *od_page_length)
+{
+	if (u16hsize < HSIZE_2K && u16vsize < VSIZE_1K) {
+		// < 2K1K
+		*od_page_length = 0x1;
+	} else if (u16hsize == HSIZE_2K && u16vsize == VSIZE_1K) {
+		// 2k1k
+		*od_page_length = DEC_3;
+	} else if (u16hsize <= HSIZE_4K && u16vsize <= VSIZE_1K) {
+		// 4k1k
+		*od_page_length = DEC_7;
+	} else if (u16hsize <= HSIZE_4K && u16vsize <= VSIZE_2K) {
+		// 4k2k
+		*od_page_length = 0xf;
+	} else {
+		// > 4k2k
+		*od_page_length = 0xf;
+	}
+	TCON_DEBUG("%s = %d, Hde= %d, Vde = %d\n",
+		__func__, *od_page_length, u16hsize, u16vsize);
+}
+
 void _overdriver_init(
                 struct udevice *dev, u64 u64OD_MSB_Addr, u64 u64OD_LSB_Addr)
 {
@@ -618,6 +648,7 @@ void _overdriver_init(
 	bool bHscaling2X = 0;
 	bool bHscaling4X = 0;
 	u8 u8OdModeType = 0;
+	u16 od_page_length = 1;
 
     struct mtk_panel_priv *priv = dev_get_priv(dev);
     if (priv == NULL) {
@@ -658,6 +689,7 @@ void _overdriver_init(
 #endif
     u16hsize = ALIGN_8(priv->de_width);//panel H, need align 8
     u16vsize = priv->de_height;//panel V
+	_get_od_page_length(u16hsize, u16vsize, &od_page_length);
 #if (OVERDRIVE_ENABLE_RGBW == TRUE)//not support w channel
     if (_overdriver_is_enable_rgbw())
     {
@@ -725,9 +757,10 @@ void _overdriver_init(
 	phypg_addr_limit = ((u64)(u16hsize * u16vsize) * (u64)u8PixBitNum *
 		(u64)OVERDRIVE_EXTRA_MEM_SIZE_FACTOR) /
 		(u64)(DEC_10 * OVERDRIVE_MIU_BUS *
-		OVERDRIVE_PG_ENTRY_PRE_REQ*OVERDRIVE_PG_LENGTH);//254,128,64
+		OVERDRIVE_PG_ENTRY_PRE_REQ * (od_page_length + 1) * DEC_4);//254,128,64
 
-    phydram_addr_offset = (phypg_addr_limit+1)*OVERDRIVE_PG_ENTRY_PRE_REQ*OVERDRIVE_PG_LENGTH;
+	phydram_addr_offset = (phypg_addr_limit + 1) * OVERDRIVE_PG_ENTRY_PRE_REQ *
+		(od_page_length + 1) * DEC_4;
 
     TCON_DEBUG("pg_addr_limit=%td dram_addr_offset=%td \n",
                     (ptrdiff_t)phypg_addr_limit, (ptrdiff_t)phydram_addr_offset);
@@ -754,6 +787,10 @@ void _overdriver_init(
     W2BYTEMSK(REG_009C_OD_1ST_BKA336_V004,
                 phypg_addr_limit,
                 REG_009C_OD_1ST_BKA336_V004_REG_PG_ADR_LIMIT_009C); //OD PG Address Limit
+
+	W2BYTEMSK(REG_00A4_OD_1ST_BKA336_V004,
+		od_page_length,
+		REG_00A4_OD_1ST_BKA336_V004_REG_PG_LENGTH_00A4); //OD PG length
 
     // read/write address = mit setting
 	wadr_max_limit = div_u64((u64)u8PixBitNum * (u64)(u16hsize * u16vsize) +
@@ -843,6 +880,37 @@ void _overdriver_init(
     //W2BYTEMSK(REG_00EC_OD_1ST_BKA336_V004, 0xFFFF, Fld(16,0,AC_FULLW10));
 
     //OD setting
+	//enable hw config of dram priority
+	W2BYTEMSK(REG_01E0_OD_3RD_BKA338_V004,
+		    0,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_W_PREULTRA_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    0,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_W_ULTRA_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    1,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_W_URGENT_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    1,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_W_URGENT_BLANKING_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    0,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_R_PREULTRA_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    0,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_R_ULTRA_MASK_01E0);
+	W2BYTEMSK(
+		    REG_01E0_OD_3RD_BKA338_V004,
+		    1,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_R_URGENT_MASK_01E0);
+	W2BYTEMSK(REG_01E0_OD_3RD_BKA338_V004,
+		    1,
+		    REG_01E0_OD_3RD_BKA338_V004_REG_R_URGENT_BLANKING_MASK_01E0);
     //od request vsync reset wait all request end enable,RD suggest for prevent miu lock problem
     W2BYTEMSK(REG_0080_OD_1ST_BKA336_V004, 1, REG_0080_OD_1ST_BKA336_V004_REG_REQ_STATE_JUMP_SEL_0080);
 
@@ -922,6 +990,62 @@ void _overdriver_set_od_mode(u8 u8OdModeType)
 	}
 }
 
+void _overdriver_set_od_dnr(uint32_t pnl_lib_version, bool bEnable)
+{
+	bool bIsVacScalingEn = false;
+
+	// always disable vac scaling
+	bIsVacScalingEn = 0;//R2BYTEMSK(REG_01B0_OD_3RD_BKA338_V004,
+		//REG_01B0_OD_3RD_BKA338_V004_REG_VAC_SCALING_EN_01B0);
+
+	if (pnl_lib_version == VERSION6)
+	{
+		if (bEnable)
+		{
+			if (!bIsVacScalingEn)
+			{
+				W2BYTEMSK(
+						REG_0068_OD_DNR_BKA339,
+						1,
+						REG_0068_OD_DNR_BKA339_REG_NEED_READ_F2_0068);
+				W2BYTEMSK(
+						REG_0068_OD_DNR_BKA339,
+						1,
+						REG_0068_OD_DNR_BKA339_REG_YCBCR_422_F2_0068);
+				W2BYTEMSK(
+						REG_0084_OD_DNR_BKA339,
+						1,
+						REG_0084_OD_DNR_BKA339_REG_F2_DNR_CORE_EN_0084);
+				W2BYTEMSK(
+						REG_0080_OD_1ST_BKA336_V004,
+						bEnable,
+						REG_0080_OD_1ST_BKA336_V004_REG_OD_NR_EN_0080);
+			} else {
+				TCON_ERROR("VAC scaling is %d, do not enable DNR\n", bIsVacScalingEn);
+				W2BYTEMSK(
+						REG_0080_OD_1ST_BKA336_V004,
+						0,
+						REG_0080_OD_1ST_BKA336_V004_REG_OD_NR_EN_0080);
+				W2BYTEMSK(
+						REG_0084_OD_DNR_BKA339,
+						0,
+						REG_0084_OD_DNR_BKA339_REG_F2_DNR_CORE_EN_0084);
+			}
+		}
+		else
+		{
+			W2BYTEMSK(
+					REG_0080_OD_1ST_BKA336_V004,
+					0,
+					REG_0080_OD_1ST_BKA336_V004_REG_OD_NR_EN_0080);
+			W2BYTEMSK(
+					REG_0084_OD_DNR_BKA339,
+					0,
+					REG_0084_OD_DNR_BKA339_REG_F2_DNR_CORE_EN_0084);
+		}
+	}
+}
+
 void _set_od_enable(struct udevice *dev, bool bEnable)
 {
 #if SUPPORT_OVERDRIVE
@@ -945,8 +1069,7 @@ void _set_od_enable(struct udevice *dev, bool bEnable)
     // OD mode
     // OD used user weight to output blending directly
     // OD Enable
-    if (bEnable)
-    {
+
 		u16Taget_BR = (u8PixBitNum * DEC_64) + DEC_3;//Formula = 64*bits_per_pixel + 3
         //Target bit rate of compression engine output for 4 bit compression
         W2BYTEMSK(REG_00B4_OD_1ST_BKA336_V004, u16Taget_BR, REG_00B4_OD_1ST_BKA336_V004_REG_TARGET_BR_00B4);
@@ -977,8 +1100,11 @@ void _set_od_enable(struct udevice *dev, bool bEnable)
 #if OVERDRIVE_ENABLE_VAC_HSCALING
         _overdriver_vac_hscaling_setting(dev);
 #endif
+		_overdriver_set_od_dnr(priv->pnl_lib_version, bEnable);
 		_overdriver_set_od_mode(u8OdModeType);
         // rd suggest enable od at last
+    if (bEnable)
+    {
         //OD enable
         W2BYTEMSK(REG_0040_OD_1ST_BKA336_V004, 0x1, REG_0040_OD_1ST_BKA336_V004_REG_OD_EN_0040);
     }
@@ -1848,7 +1974,7 @@ bool mtk_tcon_od_setting(struct udevice *dev)
                 {
                     _mtk_tcon_od_reg_setting(dev, stInfo.pu8Table);
                 }
-			_set_od_enable(dev, priv->tcon_info.bvrr_od_en ? FALSE : TRUE);
+				_set_od_enable(dev, priv->tcon_info.bvrr_od_en ? FALSE : TRUE);
             }
             else
             {

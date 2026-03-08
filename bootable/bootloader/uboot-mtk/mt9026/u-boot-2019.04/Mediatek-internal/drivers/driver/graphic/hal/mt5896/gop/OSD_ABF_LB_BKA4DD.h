@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #define OSD_ABF_LB_BKA4DD 0x0149BA00
 
 //Page OSD_ABF_LB_BKA4DD

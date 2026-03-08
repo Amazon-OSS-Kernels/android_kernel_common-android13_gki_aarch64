@@ -21,6 +21,8 @@ typedef enum
     EN_AUTOPGAMMA_CSOT_TYPE7,   /* for CSOT 120Hz   spi flash  offset 0xFE000  size 42 bytes update GAMMA/VCOM1/VCOM2*/
     EN_AUTOPGAMMA_CHOT_TYPE,   /* for CHOT panel   spi flash  offset 0xFE000  size 25 bytes update GAMMA/VCOM1*/
     EN_AUTOPGAMMA_H_K_C_TYPE2,     /* for H_K_C panel    spi flash  offset 0x00000  size 32  bytes update GAMMA/VCOM*/
+    EN_AUTOPGAMMA_H_K_C_TYPE3,     /* for H_K_C panel    spi flash  offset 0x00000  size 31  bytes update GAMMA/VCOM*/
+    EN_AUTOPGAMMA_CSOT_TYPE8,   /* for CSOT panel   spi flash  offset  0xFE000  size 42 bytes update GAMMA/VCOM1/VCOM2, Conversion algorithm for IML_1946 PMIC*/
     EN_AUTOPGAMMA_TYPE_MAX,
 } EN_AUTOPGAMMA_TYPE;
 

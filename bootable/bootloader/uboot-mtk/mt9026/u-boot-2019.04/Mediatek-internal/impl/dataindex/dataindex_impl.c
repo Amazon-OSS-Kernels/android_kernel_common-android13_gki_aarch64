@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <command.h>
@@ -20,6 +20,9 @@
 #include <fdt_support.h>
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef CONFIG_ANDROID_CN_PLATFORM
 #define CUSDATA_DEFAULT_PROJECT_PARTITION_1     "project_id"
 #define CUSDATA_DEFAULT_PROJECT_PARTITION_2     "config"
@@ -31,7 +34,15 @@
 #define CUSDATA_DEFAULT_PROJECT_PARTITION_2     "project_id"
 #endif
 
-#define DEFAULT_DATAINDEX_LABEL   "default"
+#define DEFAULT_DATAINDEX_LABEL                 "default"
+
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+#define ODMTVCONFIG_CHECKNODE_FILEPATH              "/mnt/vendor/bootdata/dtb/odmtvconfig_dtbo_rule"
+#define DTBO_TARGET_OFFSET                      2
+#define KEY_WORDLIST_SIZE                       256
+extern int dtbo_verify(const char * partition , const char * path, char * *dtbo_buffer , loff_t * size_p);
+#endif
+
 struct dataindex_partition {
     char partition[INI_INFO_SIZE];
     char mount[FILE_PATH_SIZE];
@@ -442,7 +453,142 @@ int dataindex_resolve_path(char *partition, int size,
     return ERR_DATAINDEX_FAIL;
 }
 
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+/**
+ * dataindex_dtbo_check:
+ * 1. check dtbo overlay whitelist
+ * 2. check the node name of target dtbo file in dataindex multi_dtbo folder
+ *
+ * @dtbo[in]: the pointer of dtbo file
+ * @key[in]: include dtbo overlay whitelist and the full path filename of checklist file
+ *
+ * Returns 0 if successful,
+ *         negative if an error occurs
+ *     Notice: default_str is copied if default_str is not NULL and
+ *     the the key is missing
+ */
+static int dataindex_dtbo_check(unsigned char *dtbo, unsigned int dtbo_size, const char *key)
+{
+    int fixups_offset = fdt_path_offset(dtbo, "/__fixups__");
+    int nextproperty_offset = 0;
+    const struct fdt_property *property;
+    const char *name;
+    loff_t size = 0;
+    int ret = 0;
+
+    char partition[INI_INFO_SIZE] = {0};
+    iniparser_handle_t ini_handle = NULL;
+    struct section *section_entry = NULL;;
+    struct section *section_entry_2 = NULL;;
+    unsigned char *ini_file_buf = NULL;
+    char keyword[KEY_WORDLIST_SIZE] = {0};
+    const char *relpath = NULL;
+
+    UBOOT_TRACE("IN \n");
+    ret = dataindex_resolve_path(partition, PART_NAME_SIZE, &relpath, ODMTVCONFIG_CHECKNODE_FILEPATH);
+    if (ret)
+    {
+        UBOOT_ERROR("resolve path=%s fail!\n", relpath);
+        return ret;
+    }
+
+    ini_file_buf = read_storage_file_to_memory(partition, (char *)relpath, &size);
+    if (ini_file_buf == NULL)
+    {
+        UBOOT_ERROR("Error: Read ini file to DRAM failure, relpath=%s\n", relpath);
+        ret = ERR_DATAINDEX_NOT_FOUND;
+        return ret;
+    }
+
+    ret = iniparser_create((uchar*)ini_file_buf, size, &ini_handle);
+    free(ini_file_buf);
+    if (ret < 0)
+    {
+        UBOOT_ERROR("Error: parse file [%s] failure\n", ODMTVCONFIG_CHECKNODE_FILEPATH);
+        ret = ERR_DATAINDEX_INI_PARSE;
+        return ret;
+    }
+
+    ret = iniparser_get_section(ini_handle, "odmtvconfig_dtbo_whitelist", &section_entry);
+    if (ret != 1) {
+        UBOOT_ERROR("Error: get ini section[%s] failure\n", "odmtvconfig_dtbo_whitelist");
+        return ret;
+    }
+
+    ret = iniparser_getstring(section_entry, &key[DTBO_TARGET_OFFSET], "", keyword, KEY_WORDLIST_SIZE);
+    if (ret != 1) {
+        iniparser_destroy(ini_handle);
+        UBOOT_ERROR("Error: get ini setting %s failure\n", &key[DTBO_TARGET_OFFSET]);
+        return ret;
+    }
+
+    if (!strcmp(key, keyword)) {
+        UBOOT_DEBUG("odmtvconfig dtbo overlay whitelist check OK for [%s]=[%s] \n", key, keyword);
+    } else {
+        UBOOT_ERROR("odmtvconfig dtbo overlay whitelist check FAIL, right is [%s], isn't [%s] \n", keyword, key);
+        return -1;
+    }
+
+    ret = iniparser_get_section(ini_handle, "odmtvconfig_dtbo_node", &section_entry_2);
+    if (ret != 1)
+    {
+        UBOOT_ERROR("Error: get ini section[%s] failure\n", "odmtvconfig_dtbo_node");
+        ret = ERR_DATAINDEX_SECTION;
+        return ret;
+    }
+
+    ret = iniparser_getstring(section_entry_2, &key[DTBO_TARGET_OFFSET], "", keyword, KEY_WORDLIST_SIZE);
+    if (ret != 1)
+    {
+        iniparser_destroy(ini_handle);
+        UBOOT_ERROR("Error: get ini setting %s failure\n", &key[DTBO_TARGET_OFFSET]);
+        return ERR_DATAINDEX_KEY;
+    }
+
+    if (fdt_check_header(dtbo) != 0)
+    {
+        UBOOT_ERROR("Error: Bad device tree blob header\n");
+        return ERR_DATAINDEX_KEY;
+    }
+
+    if (fixups_offset < 0)
+    {
+        UBOOT_ERROR("Could not find /__fixups__ in the DTBO\n");
+        return ERR_DATAINDEX_NOT_FOUND;
+    }
+
+    fdt_for_each_property_offset(nextproperty_offset, dtbo, fixups_offset)
+    {
+        property = fdt_get_property_by_offset(dtbo, nextproperty_offset, NULL);
+        if (!property)
+        {
+            UBOOT_ERROR("Error getting property\n");
+            continue;
+        }
+        name = fdt_string(dtbo, fdt32_to_cpu(property->nameoff));
+        UBOOT_INFO("nextproperty_offset: [%d] / Node name: [%s]\n", nextproperty_offset, name);
+        UBOOT_INFO("Checking Node name in keyword list: %s\n", keyword);
+        if (!strstr(keyword, name))
+        {
+            UBOOT_ERROR("Node name %s  is invalid\n", name);
+            return ERR_DATAINDEX_KEY;
+        }
+        else
+        {
+            UBOOT_INFO("Node name %s is allowed\n", name);
+        }
+    }
+
+    UBOOT_INFO("Check file successfully\n");
+    UBOOT_TRACE("OK \n");
+    return 0;
+}
+
+
+static int __load_and_overlay_dtbo(char *ft_addr, const char *filepath, const char *key)
+#else
 static int __load_and_overlay_dtbo(char *ft_addr, const char *filepath)
+#endif
 {
     struct fdt_header *source = (struct fdt_header *)ft_addr;
     const char *relpath;
@@ -451,6 +597,8 @@ static int __load_and_overlay_dtbo(char *ft_addr, const char *filepath)
     unsigned char *blob;
     int ret;
 
+
+    UBOOT_TRACE("IN \n");
     ret = dataindex_resolve_path(part, PART_NAME_SIZE, &relpath, filepath);
     if (ret)
     {
@@ -465,6 +613,25 @@ static int __load_and_overlay_dtbo(char *ft_addr, const char *filepath)
         UBOOT_ERROR("read %s:%s file fail!\n", part, relpath);
         return -ERR_DATAINDEX_LOAD_FILE;
     }
+
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+    blob = NULL;
+    ret = dtbo_verify("odmtvconfig", relpath, (char **)&blob, &blob_len);
+
+    if (blob == NULL || blob_len <= 0) {
+        UBOOT_ERROR("dtbo verify FAIL\n");
+        free(blob);
+        return 0;
+    }
+    printf("dtbo_verify status = %d\n", ret);
+    // check the dtbo file with keyword list
+    if (dataindex_dtbo_check(blob, blob_len, key))
+    {
+        UBOOT_ERROR("Failed on checking node/white list of file!\n");
+        free(blob);
+        return -ERR_DATAINDEX_FAIL;
+    }
+#endif
 
 #ifdef CONFIG_LIBUFDT_OVERLAY
     source = ufdt_apply_overlay(source, fdt32_to_cpu(source->totalsize),
@@ -492,6 +659,7 @@ static int __load_and_overlay_dtbo(char *ft_addr, const char *filepath)
         return -ERR_DATAINDEX_FAIL;
     }
 #endif
+    UBOOT_TRACE("OK \n");
     return -ERR_DATAINDEX_FAIL;
 }
 
@@ -511,8 +679,10 @@ int dataindex_dtbo_overlay(char *ft_addr, char mode)
     int ret = -ERR_DATAINDEX_OK;
     char filepath[FILE_PATH_SIZE];
     char *dtbo_str;
+    u64 start = 0, end = 0;
 
     UBOOT_TRACE("IN \n");
+    start = get_timer(0);
     dtbo_str = env_get(ENV_DATAINDEX_DTBO);
     if (dtbo_str && (dtbo_str[0] == '0' || dtbo_str[0] == 'n'))
     {
@@ -543,13 +713,19 @@ int dataindex_dtbo_overlay(char *ft_addr, char mode)
                 continue;
             iniparser_unescape_string(filepath, keyval_entry->value, sizeof(filepath));
             UBOOT_INFO("%s: overlay %s\n", __func__, filepath);
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+            if (__load_and_overlay_dtbo(ft_addr, filepath, key))
+#else
             if (__load_and_overlay_dtbo(ft_addr, filepath))
+#endif
             {
                 UBOOT_ERROR("Cannot overlay dtbo file: %s\n", filepath);
                 ret = -ERR_DATAINDEX_FAIL;
             }
         }
     }
+    end = get_timer(0);
+    UBOOT_BOOTTIME("[%s][start:%llu][end:%llu][total time:%llu]\n", __func__, start, end, end - start);
 
     UBOOT_TRACE("OK \n");
     return ret;

@@ -718,4 +718,10 @@ config TPL_ENV_IS_IN_FLASH
 
 endif
 
+config UENV_INTEGRITY_CHECK
+	bool "Enable AMZ uenv integrity check"
+ 	default n
+ 	help
+ 	  Enabling this option will enable uenv integrity check
+
 endmenu

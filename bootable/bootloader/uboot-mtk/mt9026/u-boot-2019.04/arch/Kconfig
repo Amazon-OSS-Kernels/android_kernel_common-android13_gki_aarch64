@@ -237,7 +237,14 @@ config CUSTOMER_NAME
 	string "CUSTOMER_NAME"
 	help
 	  This option should contain the customer name.
-	  If it is set for customized source code compilied.
+	  If it is set for customized source code compiled.
+	  This name should be set correctly for customer.
+
+config CUSTOMER2_NAME
+	string "CUSTOMER2_NAME"
+	help
+	  This option should contain the customer name.
+	  If it is set for customized source code compiled.
 	  This name should be set correctly for customer.
 
 config ANDROID_WW_PLATFORM

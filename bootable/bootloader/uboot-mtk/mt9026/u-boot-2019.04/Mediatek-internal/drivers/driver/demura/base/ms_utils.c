@@ -1,56 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #include <stdio.h>
 #include "common.h"
 #include "command.h"
@@ -91,6 +43,10 @@ extern smp_spin_lock_t fs_spin_lock;
 
 #define MSPI_DRIVER_NOT_READY
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#define MAX_CUST_PATH_LEN   (128)
+#endif
+
 struct mstar_crc_hdr {
 	char magic[12];
 	MS_U32  dat_offset;
@@ -101,6 +57,44 @@ struct mstar_crc_hdr {
 static MS_U8 gu8_demurabin_type = E_MS_UTIL_BIN_TYPE_MAIN;
 static MS_U8 gu8_demurabin_act = E_MS_UTIL_BIN_ACT_OFF;
 static MS_U8 gu8_demurabin_file = E_MS_UTIL_BIN_FILE_NORMAL;
+static MS_U8 gu8_demura_block_size = E_MS_UTIL_BLOCK_SIZE_H8V8;
+
+static void backlight_demura_file_sys_read(const char *file_name, char **cfg_partition)
+{
+    UBOOT_TRACE("IN\n");
+
+    if ((E_MS_UTIL_BIN_FILE_NORMAL == get_demura_file()) && (env_get(DEMURA_ENV_PARTITION) != NULL))
+    {
+        *cfg_partition = env_get(DEMURA_ENV_PARTITION);
+    }
+    else if ((E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file()) && (env_get(DEMURA_ENV_PARTITION_BACKLIGHT) != NULL) && \
+        (strcmp(DEMEURA_BIN_FILE_PATH, file_name) != 0) && (strcmp(DEMEURA_BIN_FILE_PATH_DLG, file_name) != 0))
+    {
+        *cfg_partition = env_get(DEMURA_ENV_PARTITION_BACKLIGHT);
+    }
+    else if (((E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file()) || (E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY == get_demura_file())) && \
+        (strcmp(DEMEURA_BIN_FILE_PATH, file_name) != 0) && (strcmp(DEMEURA_BIN_FILE_PATH_DLG, file_name) != 0))
+    {
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+        st_cust_dmc_info st_cust_dmc_info;
+        memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+        parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+        UBOOT_TRACE("backlight demura is %s\n", st_cust_dmc_info.bl_dmc_enable ? "enable" : "disable");
+        UBOOT_TRACE("backlight demura partiton %s.\n", st_cust_dmc_info.bl_dmc_partiton);
+        if (((E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file()) || (E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY == get_demura_file())) && \
+            (st_cust_dmc_info.bl_dmc_enable))
+        {
+            *cfg_partition = st_cust_dmc_info.bl_dmc_partiton;
+        }
+#else
+        UBOOT_TRACE("dmura partition is %s\n", DEMURA_PARTITION_NAME);
+#endif
+    }
+    else
+    {
+        UBOOT_TRACE("dmura partition is %s\n", DEMURA_PARTITION_NAME);
+    }
+}
 
 static MS_BOOL file_sys_read(const char *file_name, MS_U8 *pdat, MS_U32 pos, MS_U32 dat_len)
 {
@@ -112,13 +106,15 @@ static MS_BOOL file_sys_read(const char *file_name, MS_U8 *pdat, MS_U32 pos, MS_
 //    int ret;
     loff_t act_read = 0;
 //    int rc;
-    char *cfg_partition = env_get(DEMURA_ENV_PARTITION);
+    char *cfg_partition = NULL;
+
+    UBOOT_TRACE("IN\n");
+
+    backlight_demura_file_sys_read(file_name, &cfg_partition);
 #ifdef CONFIG_MULTICORES_PLATFORM
     unsigned long irq_flag = 0;
 #endif
-
-    UBOOT_TRACE("IN\n");
-    UBOOT_TRACE("file: %s in " DEMURA_PARTITION_NAME ", pos = %d, dat_len = %d\n", file_name, pos, dat_len);
+    UBOOT_TRACE("file: %s in %s, pos = %d, dat_len = %d\n", file_name, cfg_partition, pos, dat_len);
 
     if(pdat == NULL)
     {
@@ -143,7 +139,7 @@ static MS_BOOL file_sys_read(const char *file_name, MS_U8 *pdat, MS_U32 pos, MS_
             return FALSE;
         }
     }
-    else if(sys_get_storage_info(device, DEMURA_PARTITION_NAME, storage_info) < 0)
+    else if (sys_get_storage_info(device, DEMURA_PARTITION_NAME, storage_info) < 0)
     {
         UBOOT_ERROR("Error: sys_get_storage_info failure\n");
         return FALSE;
@@ -240,7 +236,7 @@ static MS_BOOL file_sys_write(const char *file_name, MS_U8 *pdat, MS_U32 partiti
             return FALSE;
         }
     }
-    else if(sys_get_storage_info(device, DEMURA_PARTITION_NAME,storage_info) < 0)
+    else if (sys_get_storage_info(device, DEMURA_PARTITION_NAME, storage_info) < 0)
     {
         UBOOT_ERROR("Error: sys_get_storage_info failure\n");
         return FALSE;
@@ -291,6 +287,11 @@ MS_BOOL init_spi_flash(void)
     {
         return TRUE;
     }
+    if ((get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT) || (get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
+    {
+        return TRUE;
+    }
+
     if (sf_init_flag == FALSE)
     {
         memset(cmd, 0, sizeof(cmd));
@@ -318,35 +319,159 @@ MS_BOOL init_spi_flash(void)
     return TRUE;
 }
 
+void read_backlight_vendor_bin(char **cfg_vendorbin, char *backlight_vendorbin)
+{
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    st_cust_dmc_info st_cust_dmc_info;
+
+    UBOOT_TRACE("IN\n");
+
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+
+    if (st_cust_dmc_info.bl_dmc_enable)
+    {
+        memcpy(backlight_vendorbin, st_cust_dmc_info.bl_dmc_vendor_bin, \
+            ((strlen(st_cust_dmc_info.bl_dmc_vendor_bin) - strlen(".bin")) > MAX_CUST_PATH_LEN) \
+            ? MAX_CUST_PATH_LEN : \
+            (strlen(st_cust_dmc_info.bl_dmc_vendor_bin) - strlen(".bin")));
+
+        if (E_MS_UTIL_BLOCK_SIZE_H4V4 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H4V4.bin", sizeof("_H4V4.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H4V8 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H4V8.bin", sizeof("_H4V8.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H4V16 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H4V16.bin", sizeof("_H4V16.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H8V4 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H8V4.bin", sizeof("_H8V4.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+/*
+        else if (E_MS_UTIL_BLOCK_SIZE_H8V8 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H8V8.bin", sizeof("_H8V8.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+*/
+        else if (E_MS_UTIL_BLOCK_SIZE_H8V16 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H8V16.bin", sizeof("_H8V16.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H16V4 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H16V4.bin", sizeof("_H16V4.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H16V8 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H16V8.bin", sizeof("_H16V8.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else if (E_MS_UTIL_BLOCK_SIZE_H16V16 == get_demura_block_size())
+        {
+            strncat(backlight_vendorbin, "_H16V16.bin", sizeof("_H16V16.bin"));
+            *cfg_vendorbin = backlight_vendorbin;
+        }
+        else
+        {
+            *cfg_vendorbin = st_cust_dmc_info.bl_dmc_vendor_bin;
+        }
+    }
+#else
+    UBOOT_TRACE("dmura partition is %s\n", DEMURA_PARTITION_NAME);
+#endif
+}
+
 MS_BOOL read_spi_flash(MS_U8 *pBuf, MS_U32 pos, MS_U32 length)
 {
     char cmd[256];
     char *cfg_bypass_spi = env_get(DEMURA_ENV_BYPASS_SPI);
-    char *cfg_vendorbin;
+    char *cfg_vendorbin = NULL;
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *backlight_vendorbin = NULL;
+#endif
+
     UBOOT_TRACE("IN\n");
 
-    if (cfg_bypass_spi)
+    backlight_vendorbin = malloc(MAX_CUST_PATH_LEN);
+    memset(backlight_vendorbin, 0x00, MAX_CUST_PATH_LEN);
+
+    if ((cfg_bypass_spi) && (get_demura_file() == E_MS_UTIL_BIN_FILE_NORMAL))
     {
         cfg_vendorbin = env_get(DEMURA_ENV_VENDOR_BIN);
-        if (cfg_vendorbin)
+    }
+    else if ((get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT) && (env_get(DEMURA_ENV_VENDOR_BACKLIGHT_BIN) != NULL))
+    {
+        cfg_vendorbin = env_get(DEMURA_ENV_VENDOR_BACKLIGHT_BIN);
+    }
+    else if ((get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT) || (get_demura_file() == E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
+    {
+        read_backlight_vendor_bin(&cfg_vendorbin, backlight_vendorbin);
+    }
+    if (cfg_vendorbin)
+    {
+        UBOOT_TRACE("demura: read \"%s\"\n", cfg_vendorbin);
+        if (file_sys_read(cfg_vendorbin, pBuf, pos, length))
         {
-            UBOOT_TRACE("demura: read \"%s\"\n", cfg_vendorbin);
-            if (file_sys_read(cfg_vendorbin, pBuf, pos, length))
+            UBOOT_TRACE("OK\n");
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+            if (backlight_vendorbin != NULL)
             {
-                return TRUE;
+                free(backlight_vendorbin);
             }
+#endif
+            return TRUE;
+        }
+        else
+        {
+            if (backlight_vendorbin != NULL)
+            {
+                free(backlight_vendorbin);
+            }
+            return FALSE;
         }
     }
+
     memset(cmd, 0, sizeof(cmd));
     if (snprintf(cmd, sizeof(cmd), "sf read %p 0x%x 0x%x", pBuf, (unsigned int)pos, (unsigned int)length) < 0)
     {
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    if (backlight_vendorbin != NULL)
+    {
+        free(backlight_vendorbin);
+    }
+#endif
         return FALSE;
     }
     if (run_command(cmd, 0) != 0)
     {
         printf("command(%s) error\n", cmd);
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+        if (backlight_vendorbin != NULL)
+        {
+            free(backlight_vendorbin);
+        }
+#endif
         return FALSE;
     }
+    UBOOT_TRACE("OK\n");
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    if (backlight_vendorbin != NULL)
+    {
+        free(backlight_vendorbin);
+    }
+#endif
     return TRUE;
 }
 #else //Use file system read to replace spi_read
@@ -751,3 +876,24 @@ MS_U8 get_demura_file(void)
 {
     return gu8_demurabin_file;
 }
+
+MS_BOOL get_demura_dlg_is_enable(void)
+{
+    st_cust_dmc_info st_cust_dmc_info;
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+    UBOOT_TRACE("backlight demura is %s\n", st_cust_dmc_info.bl_dmc_enable ? "enable" : "disable");
+
+    return st_cust_dmc_info.bl_dmc_enable;
+}
+
+void set_demura_block_size(MS_U8 file)
+{
+    gu8_demura_block_size = file;
+}
+
+MS_U8 get_demura_block_size(void)
+{
+    return gu8_demura_block_size;
+}
+

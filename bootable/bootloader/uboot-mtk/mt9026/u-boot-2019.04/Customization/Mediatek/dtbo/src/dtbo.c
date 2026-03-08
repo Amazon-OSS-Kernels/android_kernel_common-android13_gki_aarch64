@@ -40,6 +40,201 @@ extern smp_spin_lock_t fs_spin_lock;
 
 #include <asm/gpio.h>
 
+#ifdef CONFIG_VBYONE_CUSTOMIZED
+#include <idme.h>
+#include <amzn_tv_common.h>
+#include <usb.h>
+char new_path[STRING_BUFFER_SIZE];
+int usb_file_exist(const char *file_name)
+{
+	static int iCheckedValue = -1;
+	if (iCheckedValue != -1)
+	{
+		return iCheckedValue;
+	}
+
+	char file_path[STRING_BUFFER_SIZE];
+	if (snprintf(file_path, sizeof(file_path), "/%s", file_name) > sizeof(file_path)) {
+		UBOOT_ERROR("The size of usb file path is too long.\n");
+		iCheckedValue = 0;
+		return 0;
+	}
+	run_command("usb start", 0);
+	if (!file_exists("usb", "0", file_path, FS_TYPE_ANY))
+	{
+		UBOOT_ERROR("File not found.\n");
+		iCheckedValue = 0;
+		run_command("usb stop", 0);
+		return 0;
+	}
+	iCheckedValue = 1;
+	run_command("usb stop", 0);
+	return 1;
+}
+
+void model_name_factory_customized(const char **relpath)
+{
+	#define FACTORY_NAME_VAR_SIZE 16
+	char factory_name[FACTORY_NAME_VAR_SIZE] = "\0";
+	idme_get_oem_data_field("fac=", factory_name, FACTORY_NAME_VAR_SIZE);
+	if (strcmp(factory_name, "")) {
+		if (!strcmp(factory_name, "hisense")) {
+			#define HW_BUILD_NAME_NUM 6
+			#define HW_BUILD_NAME_LEN 3
+			char build_names[HW_BUILD_NAME_NUM][HW_BUILD_NAME_LEN] = {"PRO", "HVT", "EVT", "DVT", "PVT", "NUL"};
+			char *build_name_ptr = strchr(*relpath, '/') + 1;
+			char *model_name_ptr = strchr(*relpath, '_') + 1;
+			if (build_name_ptr == NULL || model_name_ptr == NULL) {
+                                UBOOT_ERROR("The format of model_name is wrong.\n");
+                                return;
+			}
+			for (int i = 0; i < HW_BUILD_NAME_NUM; i++)
+			{
+				if (i == (HW_BUILD_NAME_NUM - 1)) {
+					UBOOT_ERROR("The format of model_name is wrong.\n");
+					return;
+				}
+				if (strncmp(build_name_ptr, build_names[i], HW_BUILD_NAME_LEN) == 0) {
+					break;
+				}
+			}
+			if (snprintf(new_path, sizeof(new_path), "dtb/FAC_%s", model_name_ptr) > sizeof(new_path)) {
+				UBOOT_ERROR("The size of dtbo cfg file path is too long.\n");
+				return;
+			}
+			if (usb_file_exist(CONFIG_VBYONE_FLAG_NAME)) {
+				*relpath = new_path;
+				UBOOT_DEBUG("The usb flag exists and model_name updated to %s.\n", *relpath);
+			}
+		}
+	}
+}
+#endif
+
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+#include <smp/thread_info.h>
+#include <smp/thread.h>
+#include <system_impl.h>
+#include <spinlock.h>
+#include <time.h>
+#endif
+
+
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+struct list_head dtbo_queue_head;
+
+typedef struct dtbo_id_struct {
+	struct list_head links;
+	int id;
+	int index;
+	void * overlay_tree;
+	size_t overlay_size;
+} dtbo_id_t;
+
+extern DTB_INFO_T dtb_info;
+#define ADD_DTBO_QUEUE(dtbo)  APPEND_LINK(&(dtbo)->links, get_dtbo_queue_head())
+#define DEL_DEBO_RUNQ(dtbo)  REMOVE_LINK(&(dtbo)->links)
+
+extern int amazon_main_tree_ufdt_to_fdt(void);
+extern int amazon_dtbo_fdt_restore(void);
+extern void amazon_ufdt_destruct(void * tree);
+extern void amazon_free_main_tree(void);
+extern void amazon_destroy_ufdt_pool(void);
+
+
+extern int amazon_dtbo_overlay_sub(dtbo_id_t* p_id);
+extern int amazon_dtbo_overlaytree_ufdt(dtbo_id_t* p_id);
+
+struct list_head* get_dtbo_queue_head(void)
+{
+	return &dtbo_queue_head;
+}
+void amazon_init_dtbo_queue(void)
+{
+	INIT_LIST(get_dtbo_queue_head());
+	return;
+}
+int g_amazon_dtbo_num = 0;
+
+void amazon_add_one_dtbo_id(int id)
+{
+	dtbo_id_t* p_dtbo_id = NULL;
+	p_dtbo_id = malloc(sizeof(dtbo_id_t));
+	if (p_dtbo_id == NULL) {
+		printf("amazon: cpuid = %d, %s,%d, MALLOC p_dtbo_id FAILED!\n", get_cpu_id(), __func__, __LINE__);
+		goto error;
+	}
+	p_dtbo_id->id = id;
+	p_dtbo_id->index = g_amazon_dtbo_num;
+	g_amazon_dtbo_num++;
+	ADD_DTBO_QUEUE(p_dtbo_id);
+error:
+	return;
+}
+
+void amazon_free_dtbo_id(dtbo_id_t* p_id)
+{
+	amazon_ufdt_destruct(p_id->overlay_tree);
+	free(p_id);
+}
+void amazon_free_dtbo_queue(void)
+{
+	struct list_head*  head = get_dtbo_queue_head();
+	dtbo_id_t* tmp_id = NULL;
+	dtbo_id_t* last_id = NULL;
+
+	list_for_each_entry(tmp_id, head, links){
+		if (last_id != NULL)
+		{
+			amazon_free_dtbo_id(last_id);
+		}
+		last_id = tmp_id;
+		DEL_DEBO_RUNQ(tmp_id);
+	}
+	if (last_id != NULL)
+	{
+		amazon_free_dtbo_id(last_id);
+	}
+	return;
+}
+
+void amazon_dtbo_thread_sub_work(int cpuid)
+{
+	struct list_head*  head = get_dtbo_queue_head();
+	dtbo_id_t* tmp_id = NULL;
+	list_for_each_entry(tmp_id, head, links){
+		amazon_dtbo_overlaytree_ufdt(tmp_id);
+	}
+	return;
+}
+void amazon_final_dtbo_overlay(void)
+{
+	struct list_head*  head = get_dtbo_queue_head();
+	dtbo_id_t* tmp_id = NULL;
+	list_for_each_entry(tmp_id, head, links){
+		amazon_dtbo_overlay_sub(tmp_id);
+	}
+	amazon_main_tree_ufdt_to_fdt();
+
+	amazon_dtbo_fdt_restore();
+
+	amazon_free_dtbo_queue();
+	amazon_free_main_tree();
+	amazon_destroy_ufdt_pool();
+}
+void *amazon_dtbo_thread(void *arg)
+{
+	int cpuid = get_cpu_id();
+	amazon_dtbo_thread_sub_work(cpuid);
+	return NULL;
+}
+void amazon_dtbo_threads_work(void)
+{
+	amazon_dtbo_thread_sub_work(0);
+	return ;
+}
+#endif
+
 static iniparser_handle_t dtbo_mapping = NULL;
 static iniparser_handle_t dtbo_selection = NULL;
 static iniparser_handle_t dtbo_whitelist = NULL;
@@ -356,6 +551,17 @@ static int read_dtbo_ini_info(enum INI_FILE_TYPE type, char *part, char *env_nam
 	 **/
 	if (type == CFG_SELECT) {
 		relpath = env_get(env_name);
+#ifdef CONFIG_VBYONE_CUSTOMIZED
+		char bootmode[COMMAND_BUF_SIZE] = "\0";
+		if (idme_get_var_external("bootmode", bootmode, sizeof(bootmode) - 1)){
+			UBOOT_ERROR("idme bootmode read failed! Skip vbyone customization.\n");
+		}
+		else {
+			if (simple_strtoul(bootmode, NULL, 10) == IDME_BOOTMODE_DIAG) {
+				model_name_factory_customized(&relpath);
+			}
+		}
+#endif
 		if (relpath) {
 			if (!strncmp(relpath, DEFAULT_DTB_CFG_LABEL, sizeof(DEFAULT_DTB_CFG_LABEL)))
 				relpath = _get_default_dtbo_cfg(relpath);
@@ -1050,6 +1256,10 @@ int dtbo_selection_and_overlay(void)
 {
 	int ret = -1;
 	int id;
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+//	uint64_t start,end;
+//	uint64_t t1,t2;
+#endif
 	UBOOT_TRACE("IN\n");
 #ifdef CONFIG_MULTIPLE_DTB_SELECTION
 	const char *ptr;
@@ -1115,6 +1325,14 @@ int dtbo_selection_and_overlay(void)
 	if(uboot_dtbo == false)
 		INIT_LIST_HEAD(&dtbo_idx_list);
 	UBOOT_DEBUG("%s\n", uboot_dtbo?"Doing u-boot dtb overlay":"Doing kernel dtb overlay");
+
+
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+if(uboot_dtbo == false){
+	size_t start, end;
+	start = get_timer(0);
+	amazon_init_dtbo_queue();
+
 	iniparser_for_each_section(dtbo_selection, section_entry) {
 		iniparser_for_each_keyval(section_entry, keyval_entry) {
 			UBOOT_DEBUG("[%s=%s]\n", keyval_entry->key, keyval_entry->value);
@@ -1125,6 +1343,51 @@ int dtbo_selection_and_overlay(void)
 						if((uboot_dtbo == true && (strncmp(keyval_entry_wl->value, "U", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))
 						|| (uboot_dtbo == false && (strncmp(keyval_entry_wl->value, "K", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))){
 							UBOOT_DEBUG("[%s=%s]\n", keyval_entry_wl->key, keyval_entry_wl->value);
+							id = get_device_id(keyval_entry->key, keyval_entry->value);
+							if(id < 0){
+								UBOOT_ERROR("dtb_overlay id:%d is invaild\n",id);
+								return -1;
+							}
+
+							amazon_add_one_dtbo_id(id);
+
+							if(uboot_dtbo == false){
+								dtbo_idx = (DTBO_IDX_T *)malloc(sizeof(DTBO_IDX_T));
+								if(dtbo_idx != NULL){
+									kernel_dtb_num++;
+									dtbo_idx->dtbo_id = id;
+									UBOOT_DEBUG("[%d] add dtbo_id:%d\n", kernel_dtb_num, dtbo_idx->dtbo_id);
+									list_add_tail(&dtbo_idx->list,&dtbo_idx_list);
+								}
+							}
+							//printf("amazon:cpuid=%d, %s, %d, dtbo_id:key_value=%d:%s\n",get_cpu_id(), __func__, __LINE__, id, keyval_entry_wl->key);
+						}else{
+							UBOOT_DEBUG("%s value %s not match\n", keyval_entry_wl->key, keyval_entry_wl->value);
+						}
+					}else{
+						UBOOT_DEBUG("Target:%s Source:%s\n", keyval_entry->key, keyval_entry_wl->key);
+					}
+				}
+			}
+		}
+	}
+	amazon_dtbo_threads_work();
+	amazon_final_dtbo_overlay();
+	end = get_timer(0);
+	printf("[amazon overlay]: time total %ld\n", end - start);
+}
+else{
+	iniparser_for_each_section(dtbo_selection, section_entry) {
+		iniparser_for_each_keyval(section_entry, keyval_entry) {
+			UBOOT_DEBUG("[%s=%s]\n", keyval_entry->key, keyval_entry->value);
+			iniparser_for_each_section(dtbo_whitelist, section_entry_wl) {
+				iniparser_for_each_keyval(section_entry_wl, keyval_entry_wl) {
+					UBOOT_DEBUG("[%s=%s]\n", keyval_entry_wl->key, keyval_entry_wl->value);
+					if(strncmp(keyval_entry_wl->key, keyval_entry->key, strlen((keyval_entry->key))) == 0 && strlen(keyval_entry_wl->key) == strlen(keyval_entry->key)){
+						if((uboot_dtbo == true && (strncmp(keyval_entry_wl->value, "U", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))
+						|| (uboot_dtbo == false && (strncmp(keyval_entry_wl->value, "K", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))){
+							UBOOT_DEBUG("[%s=%s]\n", keyval_entry_wl->key, keyval_entry_wl->value);
+
 							id = get_device_id(keyval_entry->key, keyval_entry->value);
 							if(id < 0){
 								UBOOT_ERROR("dtb_overlay id:%d is invaild\n",id);
@@ -1155,6 +1418,51 @@ int dtbo_selection_and_overlay(void)
 			}
 		}
 	}
+
+}
+#else
+	iniparser_for_each_section(dtbo_selection, section_entry) {
+		iniparser_for_each_keyval(section_entry, keyval_entry) {
+			UBOOT_DEBUG("[%s=%s]\n", keyval_entry->key, keyval_entry->value);
+			iniparser_for_each_section(dtbo_whitelist, section_entry_wl) {
+				iniparser_for_each_keyval(section_entry_wl, keyval_entry_wl) {
+					UBOOT_DEBUG("[%s=%s]\n", keyval_entry_wl->key, keyval_entry_wl->value);
+					if(strncmp(keyval_entry_wl->key, keyval_entry->key, strlen((keyval_entry->key))) == 0 && strlen(keyval_entry_wl->key) == strlen(keyval_entry->key)){
+						if((uboot_dtbo == true && (strncmp(keyval_entry_wl->value, "U", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))
+						|| (uboot_dtbo == false && (strncmp(keyval_entry_wl->value, "K", 1) == 0 || strncmp(keyval_entry_wl->value, "*", 1) == 0))){
+							UBOOT_DEBUG("[%s=%s]\n", keyval_entry_wl->key, keyval_entry_wl->value);
+
+							id = get_device_id(keyval_entry->key, keyval_entry->value);
+							if(id < 0){
+								UBOOT_ERROR("dtb_overlay id:%d is invaild\n",id);
+								return -1;
+							}
+
+							ret = dtb_overlay(id);
+							if(ret != 0){
+								UBOOT_ERROR("dtb_overlay execute failure with %d\n",id);
+								return -1;
+							}
+							if(uboot_dtbo == false){
+								dtbo_idx = (DTBO_IDX_T *)malloc(sizeof(DTBO_IDX_T));
+								if(dtbo_idx != NULL){
+									kernel_dtb_num++;
+									dtbo_idx->dtbo_id = id;
+									UBOOT_DEBUG("[%d] add dtbo_id:%d\n", kernel_dtb_num, dtbo_idx->dtbo_id);
+									list_add_tail(&dtbo_idx->list,&dtbo_idx_list);
+								}
+							}
+						}else{
+							UBOOT_DEBUG("%s value %s not match\n", keyval_entry_wl->key, keyval_entry_wl->value);
+						}
+					}else{
+						UBOOT_DEBUG("Target:%s Source:%s\n", keyval_entry->key, keyval_entry_wl->key);
+					}
+				}
+			}
+		}
+	}
+#endif
 	if(uboot_dtbo == false)
 		add_dtbo_idx_to_bootargs(kernel_dtb_num);
 

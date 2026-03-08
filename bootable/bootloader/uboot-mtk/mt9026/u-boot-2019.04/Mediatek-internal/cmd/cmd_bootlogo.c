@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <exports.h>
@@ -11,6 +11,7 @@
 #include <debug_impl.h>
 #include <iniutility.h>
 #include <jpd_impl.h>
+#include <boot_impl.h>
 #include <mtk_jpd.h>
 #include <mtk_gegop.h>
 #include <mtk_panel.h>
@@ -213,6 +214,8 @@ U_BOOT_CMD(
 );
 #endif
 
+extern int uboot_boot_mode;
+
 int do_showlogo (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
     int ret = 0;
@@ -246,6 +249,13 @@ int do_showlogo (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
     if(pm_check_back_ground_active() == 1)
     {
         printf("pm_check_back_ground_active skip boot logo !!!! \n");
+        return 0;
+    }
+
+    UBOOT_DEBUG("uboot_boot_mode is 0x%X\n", uboot_boot_mode);
+    if (uboot_boot_mode == EN_BOOT_MODE_USB_UPGRADE)
+    {
+        printf("USB upgrade mode, skip boot logo !!!!!\n");
         return 0;
     }
 

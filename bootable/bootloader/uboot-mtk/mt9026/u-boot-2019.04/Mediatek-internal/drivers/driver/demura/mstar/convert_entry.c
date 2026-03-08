@@ -1,56 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #include <command.h>
 #include <common.h>
 #include <malloc.h>
@@ -67,7 +19,41 @@
 #include <demura_config.h>
 #include <ms_utils.h>
 #include <vendor/decoder_input.h>
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#include <dts_parser.h>
+#include <panel_impl.h>
+#endif
 
+#define DEC_2 (2)
+#define DEC_3 (3)
+#define DEC_16 (16)
+#define HEX_FFFF (0xFFFF)
+
+#define ABS(x)   ((x) > 0 ? (x) : -(x))
+
+void memadd(int *arr1, int *arr2, int len)
+{
+    int i;
+    for (i = 0; i < (len >> DEC_2); i++)
+    {            //int add is 4 bytes
+        *(arr1 + i) = *(arr1 + i) + *(arr2 + i);
+    }
+}
+
+void strgb_structInfo_memaddsub(strgb_structInfo *arr1, strgb_structInfo *arr2, int sub, int len)
+{
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        *(&(arr1[i].r)) = *(&(arr1[i].r)) + *(&(arr2[i].r)) - sub;
+        *(&(arr1[i].g)) = *(&(arr1[i].g)) + *(&(arr2[i].g)) - sub;
+        *(&(arr1[i].b)) = *(&(arr1[i].b)) + *(&(arr2[i].b)) - sub;
+
+        // *(&(arr1[i].dbr)) = *(&(arr1[i].dbr)) + *(&(arr2[i].dbr)) - sub;
+        // *(&(arr1[i].dbg)) = *(&(arr1[i].dbg)) + *(&(arr2[i].dbg)) - sub;
+        // *(&(arr1[i].dbb)) = *(&(arr1[i].dbb)) + *(&(arr2[i].dbb)) - sub;
+    }
+}
 
 MS_BOOL init_demura_heap(void)
 {
@@ -173,6 +159,100 @@ MS_BOOL Alloc_LutIn_Space(void *pdat_info, BinOutputInfo *pbin_info)
     return TRUE;
 }
 
+int demura_generate_bin_file(interface_info *DataInfo, BinOutputInfo *pbin_info,
+    EN_DEMURA_MULTI_VENDOR multi_vendor)
+{
+    int ret = TRUE;
+
+    memset(DataInfo, 0, sizeof(interface_info));
+
+    if (multi_vendor == EN_DEMURA_MULTI_AUO)
+    {
+        ret = Decode_To_Mstar_Format_AUO((void *)DataInfo, pbin_info);
+    }
+    else if ((multi_vendor > EN_DEMURA_MULTI_LGD_START) && (multi_vendor < EN_DEMURA_MULTI_LGD_END))
+    {
+        ret = Decode_To_Mstar_Format_LGD((void *)DataInfo, pbin_info, multi_vendor);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_NOVA)
+    {
+        ret = Decode_To_Mstar_Format_NOVA((void *)DataInfo, pbin_info, multi_vendor, NOVA_Shift);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_HI_SILICON)
+    {
+        ret = Decode_To_Mstar_Format_CSOT_HI_SILICON((void *)DataInfo, pbin_info);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_HIMAX)
+    {
+        ret = Decode_To_Mstar_Format_CSOT_HIMAX((void *)DataInfo, pbin_info);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_SDC)
+    {
+        ret = Decode_To_Mstar_Format_SDC((void *)DataInfo, pbin_info);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_INX)
+    {
+        ret = Decode_To_Mstar_Format_INX((void *)DataInfo, pbin_info);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_CSOT_CSOT)
+    {
+        ret = Decode_To_Mstar_Format_CSOT_CSOT((void *)DataInfo, pbin_info);
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_HKC_NOVA)
+    {
+        ret = Decode_To_Mstar_Format_NOVA((void *)DataInfo, pbin_info, multi_vendor, H_K_C_NOVA_Shift); //H_K_C's demura use NOVA format, just offset 0x1000
+    }
+    else if (multi_vendor == EN_DEMURA_MULTI_BOE_ESWIN)
+    {
+        ret = Decode_To_Mstar_Format_BOE_ESWIN((void *)DataInfo, pbin_info);
+    }
+    else
+    {
+        switch (multi_vendor)
+        {
+            case EN_DEMURA_MULTI_H_K_C_NOVA_120HZ:
+                ret = Decode_To_Mstar_Format_NOVA((void *)DataInfo, pbin_info, multi_vendor, H_K_C_NOVA_Shift_120HZ); //H_K_C's demura use NOVA format, just offset 0x2000
+                break;
+            case EN_DEMURA_MULTI_SIO:
+                ret = Decode_To_Mstar_Format_SIO((void *)DataInfo, pbin_info);
+                break;
+            default:
+                ret = FALSE;
+                break;
+        }
+    }
+    return ret;
+}
+
+int init_backlight_demura_bin_info(interface_info *DataInfo, BinOutputInfo *pbin_info)
+{
+    int ret = TRUE;
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    st_cust_dmc_info st_cust_dmc_info;
+
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+    if ((st_cust_dmc_info.bl_dmc_enable || env_get(DEMURA_ENV_VENDORID_BACKLIGHT)) && (get_demura_file() != E_MS_UTIL_BIN_FILE_BACKLIGHT_ONLY))
+    {
+#if defined(CONFIG_DEMURA_URSA11)
+        memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info) * DEC_3);
+#elif defined(CONFIG_DEMURA_URSA13)
+        memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_M7622)
+        memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_M7632)
+        memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_MT5896)
+        memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#endif
+
+        return 0;
+    }
+
+#endif
+    return ret;
+}
+
 #if defined(CONFIG_DEMURA_VENDOR_MULTI)
 int do_demura_convert(BinOutputInfo *pbin_info, EN_DEMURA_MULTI_VENDOR multi_vendor)
 {
@@ -198,57 +278,34 @@ int do_demura_convert(BinOutputInfo *pbin_info, EN_DEMURA_MULTI_VENDOR multi_ven
 
 //================================ Generate Demura Bin ===============================
 
-    #if defined (CONFIG_DEMURA_URSA11)
-        interface_info DataInfo[3];
-    #elif defined (CONFIG_DEMURA_URSA13)
-        interface_info DataInfo;
-    #elif (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632) || defined (CONFIG_DEMURA_MT5896))
-        interface_info DataInfo;
-    #else
-        #error "Unkown DEMURA_URSA_TYPE !"
-    #endif
+#if defined(CONFIG_DEMURA_URSA11)
+    interface_info DataInfo[DEC_3];
+#elif defined(CONFIG_DEMURA_URSA13)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_M7622)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_M7632)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_MT5896)
+    interface_info DataInfo;
+#endif
 
-    memset(&DataInfo, 0, sizeof(DataInfo));
-
-    if(multi_vendor == EN_DEMURA_MULTI_AUO)
-        ret = Decode_To_Mstar_Format_AUO((void *)&DataInfo, pbin_info);
-    else if((multi_vendor > EN_DEMURA_MULTI_LGD_START) && (multi_vendor < EN_DEMURA_MULTI_LGD_END))
-        ret = Decode_To_Mstar_Format_LGD((void *)&DataInfo, pbin_info, multi_vendor);
-    else if(multi_vendor == EN_DEMURA_MULTI_NOVA)
-        ret = Decode_To_Mstar_Format_NOVA((void *)&DataInfo, pbin_info, multi_vendor, NOVA_Shift);
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_HISILICON)
-        ret = Decode_To_Mstar_Format_CSOT_HISILICON((void *)&DataInfo, pbin_info);
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_HIMAX)
-        ret = Decode_To_Mstar_Format_CSOT_HIMAX((void *)&DataInfo, pbin_info);
-    else if(multi_vendor == EN_DEMURA_MULTI_SDC)
-        ret = Decode_To_Mstar_Format_SDC((void *)&DataInfo, pbin_info);
-    else if(multi_vendor == EN_DEMURA_MULTI_INX)
-        ret = Decode_To_Mstar_Format_INX((void *)&DataInfo, pbin_info);
-    else if(multi_vendor == EN_DEMURA_MULTI_CSOT_CSOT)
-        ret = Decode_To_Mstar_Format_CSOT_CSOT((void *)&DataInfo, pbin_info);
-    else if(multi_vendor == EN_DEMURA_MULTI_HKC_NOVA)
-        ret = Decode_To_Mstar_Format_NOVA((void *)&DataInfo, pbin_info, multi_vendor, HKC_NOVA_Shift); //HKC's demura use NOVA format, just offset 0x1000
-    else if(multi_vendor == EN_DEMURA_MULTI_BOE_ESWIN)
-        ret = Decode_To_Mstar_Format_BOE_ESWIN((void *)&DataInfo, pbin_info);
-    else
-    {
-        switch (multi_vendor)
-        {
-            case EN_DEMURA_MULTI_H_K_C_NOVA_120HZ:
-                ret = Decode_To_Mstar_Format_NOVA((void *)&DataInfo, pbin_info, multi_vendor, H_K_C_NOVA_Shift_120HZ); //H_K_C's demura use NOVA format, just offset 0x2000
-                break;
-            case EN_DEMURA_MULTI_SIO:
-                ret = Decode_To_Mstar_Format_SIO((void *)&DataInfo, pbin_info);
-                break;
-            default:
-                ret = FALSE;
-                break;
-        }
-    }
+    ret = demura_generate_bin_file((interface_info *)&DataInfo, pbin_info, multi_vendor);
 
     if (ret == FALSE)
     {
         UBOOT_ERROR("Decode_To_Mstar_Format error\n");
+        return -1;
+    }
+
+    if (!init_backlight_demura_bin_info((interface_info *)&DataInfo, pbin_info))
+    {
+        return 0;
+    }
+
+    if ((pbin_info->HNode > HEX_FFFF) || (pbin_info->VNode > HEX_FFFF))
+    {
+        UBOOT_ERROR("HNode(%d)/VNode(%d) size over spec!\n", pbin_info->HNode, pbin_info->VNode);
         return -1;
     }
 
@@ -306,15 +363,19 @@ int do_demura_convert(BinOutputInfo *pbin_info)
 
 //================================ Generate Demura Bin ===============================
 
-    #if defined (CONFIG_DEMURA_URSA11)
-        interface_info DataInfo[3];
-    #elif defined (CONFIG_DEMURA_URSA13)
-        interface_info DataInfo;
-    #elif (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-        interface_info DataInfo;
-    #else
-        #error "Unkown DEMURA_URSA_TYPE !"
-    #endif
+#if defined(CONFIG_DEMURA_URSA11)
+    interface_info DataInfo[DEC_3];
+#elif defined(CONFIG_DEMURA_URSA13)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_M7622)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_M7632)
+    interface_info DataInfo;
+#elif defined(CONFIG_DEMURA_MT5896)
+    interface_info DataInfo;
+#else
+    #error "Unkown DEMURA_URSA_TYPE !"
+#endif
 
     memset(&DataInfo, 0, sizeof(DataInfo));
 
@@ -327,6 +388,24 @@ int do_demura_convert(BinOutputInfo *pbin_info)
         UBOOT_ERROR("Decode_To_Mstar_Format error\n");
         return -1;
     }
+
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+#if defined(CONFIG_DEMURA_URSA11)
+    memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info) * DEC_3);
+#elif defined(CONFIG_DEMURA_URSA13)
+    memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_M7622)
+    memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_M7632)
+    memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#elif defined(CONFIG_DEMURA_MT5896)
+    memcpy(&(pbin_info->Info), DataInfo, sizeof(interface_info));
+#else
+    #error "Unkown DEMURA_URSA_TYPE !"
+#endif
+
+    return 0;
+#endif
 
     mstar_demura_interface((interface_info *)&DataInfo, pbin_info);
 
@@ -354,6 +433,261 @@ int do_demura_convert(BinOutputInfo *pbin_info)
     return 0;
 }
 #endif
+
+void demura_merge_by_pnl_bin_level(BinOutputInfo *bin_info, BinOutputInfo *bin_backlight_info, MS_U16 layer_bound)
+{
+    MS_U32 idx;
+    MS_U16 bound = layer_bound;
+
+    for (idx=0; idx < bin_backlight_info->LevelCount; idx++)
+    {
+        switch (idx)
+        {
+            case BL_LEVEL_CNT_0:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level1, bin_backlight_info->Info.reg_dmc_plane_level1);
+                if (ABS(bin_info->Info.reg_dmc_plane_level1 - bin_backlight_info->Info.reg_dmc_plane_level1) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level1 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_1:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level2, bin_backlight_info->Info.reg_dmc_plane_level2);
+                if (ABS(bin_info->Info.reg_dmc_plane_level2 - bin_backlight_info->Info.reg_dmc_plane_level2) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level2 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_2:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level3, bin_backlight_info->Info.reg_dmc_plane_level3);
+                if (ABS(bin_info->Info.reg_dmc_plane_level3 - bin_backlight_info->Info.reg_dmc_plane_level3) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level3 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_3:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level4, bin_backlight_info->Info.reg_dmc_plane_level4);
+                if (ABS(bin_info->Info.reg_dmc_plane_level4 - bin_backlight_info->Info.reg_dmc_plane_level4) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level4 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_4:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level5, bin_backlight_info->Info.reg_dmc_plane_level5);
+                if (ABS(bin_info->Info.reg_dmc_plane_level5 - bin_backlight_info->Info.reg_dmc_plane_level5) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level5 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_5:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level6, bin_backlight_info->Info.reg_dmc_plane_level6);
+                if (ABS(bin_info->Info.reg_dmc_plane_level6 - bin_backlight_info->Info.reg_dmc_plane_level6) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level6 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_6:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level7, bin_backlight_info->Info.reg_dmc_plane_level7);
+                if (ABS(bin_info->Info.reg_dmc_plane_level7 - bin_backlight_info->Info.reg_dmc_plane_level7) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level7 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_7:
+                UBOOT_DEBUG("plane_level[%d] panel demura=[0x%x], backlight demura=[0x%x]\n",
+                    idx, bin_info->Info.reg_dmc_plane_level8, bin_backlight_info->Info.reg_dmc_plane_level8);
+                if (ABS(bin_info->Info.reg_dmc_plane_level8 - bin_backlight_info->Info.reg_dmc_plane_level8) <= bound)
+                {
+                    strgb_structInfo_memaddsub(bin_info->Info.Lut_in[idx],
+                        bin_backlight_info->Info.Lut_in[idx],
+                        (bin_backlight_info->Info.reg_dmc_plane_level8 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            default:
+                break;
+        }
+        if (bin_backlight_info->Info.Lut_in[idx] != NULL)
+        {
+            dfree(bin_backlight_info->Info.Lut_in[idx]);
+            bin_backlight_info->Info.Lut_in[idx] = NULL;
+        }
+    }
+}
+
+void demura_merge_by_backlight_bin_level(BinOutputInfo *bin_info, BinOutputInfo *bin_backlight_info, MS_U16 layer_bound)
+{
+    MS_U32 idx;
+    MS_U16 bound = layer_bound;
+
+    for (idx = 0; idx < bin_info->LevelCount; idx++)
+    {
+        switch (idx)
+        {
+            case BL_LEVEL_CNT_0:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level1, bin_info->Info.reg_dmc_plane_level1);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level1 - bin_info->Info.reg_dmc_plane_level1) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level1 = bin_info->Info.reg_dmc_plane_level1;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level1 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_1:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level2, bin_info->Info.reg_dmc_plane_level2);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level2 - bin_info->Info.reg_dmc_plane_level2) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level2 = bin_info->Info.reg_dmc_plane_level2;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level2 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_2:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level3, bin_info->Info.reg_dmc_plane_level3);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level3 - bin_info->Info.reg_dmc_plane_level3) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level3 = bin_info->Info.reg_dmc_plane_level3;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level3 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_3:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level4, bin_info->Info.reg_dmc_plane_level4);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level4 - bin_info->Info.reg_dmc_plane_level4) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level4 = bin_info->Info.reg_dmc_plane_level4;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level4 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_4:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level5, bin_info->Info.reg_dmc_plane_level5);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level5 - bin_info->Info.reg_dmc_plane_level5) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level5 = bin_info->Info.reg_dmc_plane_level5;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level5 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_5:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level6, bin_info->Info.reg_dmc_plane_level6);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level6 - bin_info->Info.reg_dmc_plane_level6) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level6 = bin_info->Info.reg_dmc_plane_level6;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level6 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_6:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level7, bin_info->Info.reg_dmc_plane_level7);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level7 - bin_info->Info.reg_dmc_plane_level7) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level7 = bin_info->Info.reg_dmc_plane_level7;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level7 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            case BL_LEVEL_CNT_7:
+                UBOOT_DEBUG("plane_level[%d] backlight demura=[0x%x], panel demura=[0x%x]\n",
+                    idx, bin_backlight_info->Info.reg_dmc_plane_level8, bin_info->Info.reg_dmc_plane_level8);
+                if (ABS(bin_backlight_info->Info.reg_dmc_plane_level8 == bin_info->Info.reg_dmc_plane_level8) <= bound)
+                {
+                    bin_backlight_info->Info.reg_dmc_plane_level8 = bin_info->Info.reg_dmc_plane_level8;
+                    strgb_structInfo_memaddsub(bin_backlight_info->Info.Lut_in[idx],
+                        bin_info->Info.Lut_in[idx],
+                        (bin_info->Info.reg_dmc_plane_level8 >> DEC_2),
+                        (bin_info->HNode*bin_info->VNode));
+                }
+                break;
+            default:
+                break;
+        }
+        if (bin_info->Info.Lut_in[idx] != NULL)
+        {
+            dfree(bin_info->Info.Lut_in[idx]);
+            bin_info->Info.Lut_in[idx] = NULL;
+        }
+    }
+}
+
+int do_demura_merge(BinOutputInfo *bin_info, BinOutputInfo *bin_backlight_info, MS_U16 layer_bound)
+{
+    if (bin_info->Info.reg_dmc_rgb_mode != bin_backlight_info->Info.reg_dmc_rgb_mode)
+    {
+        UBOOT_DEBUG("mode is not matched. panel/bl demura is [%s][%s]\n", bin_info->Info.reg_dmc_rgb_mode ? "rgb" : "mono", \
+                                                                          bin_backlight_info->Info.reg_dmc_rgb_mode ? "rgb" : "mono");
+        return -1;
+    }
+    if (bin_info->HNode == bin_backlight_info->HNode && bin_info->VNode == bin_backlight_info->VNode)
+    {
+        UBOOT_DEBUG("LevelCount panel demura=[%d], backlight demura=[%d]\n", bin_info->LevelCount, bin_backlight_info->LevelCount);
+        if (bin_info->LevelCount >= bin_backlight_info->LevelCount)
+        {
+            demura_merge_by_pnl_bin_level(bin_info, bin_backlight_info, layer_bound);
+            //dfree(bin_backlight_info->bin_buf);
+        }
+        else
+        {
+            demura_merge_by_backlight_bin_level(bin_info, bin_backlight_info, layer_bound);
+            //dfree(bin_info->bin_buf);
+            memcpy(bin_info, bin_backlight_info, sizeof(BinOutputInfo));
+        }
+    }
+    else
+    {
+        UBOOT_DEBUG("block size is not matched. panel demura HVnode[%d][%d], bl demura HVnode[%d][%d]\n", bin_info->HNode, bin_info->VNode, bin_backlight_info->HNode, bin_backlight_info->VNode);
+        return -1;
+    }
+    return 0;
+}
 
 
 void set_demura_version(int version)

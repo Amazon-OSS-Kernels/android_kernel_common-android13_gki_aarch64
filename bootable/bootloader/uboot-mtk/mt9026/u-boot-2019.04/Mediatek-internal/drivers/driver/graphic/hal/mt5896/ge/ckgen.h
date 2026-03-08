@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #define ckgen00 0x00204000
 
 #define REG_14E4_CKGEN00 (ckgen00 + 0x14E4)

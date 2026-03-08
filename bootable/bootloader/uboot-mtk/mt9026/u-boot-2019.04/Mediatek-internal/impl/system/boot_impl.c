@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <string.h>
 #include <common.h>
@@ -14,6 +14,7 @@
 #include <standby_impl.h>
 #include <partition.h>
 #include <dm/ofnode.h>
+#include <utility.h>
 #if defined(CONFIG_MTK_PM)
 #include <mtk-pm.h>
 #endif
@@ -43,13 +44,23 @@ int uboot_boot_mode = EN_BOOT_MODE_UNKNOWN;
 
 static bool bKeypadLongPress = false;
 static bool bPowerButtonPress = false;
+static bool bResetButtonPress = false;
 
 bool IsPowerButtonPressed(void)
 {
     return bPowerButtonPress;
 }
+
+bool IsResetButtonPressed(void)
+{
+    return bResetButtonPress;
+}
+
 #if defined(CONFIG_MT58XX_SARADC)
 #define KEYPAD_HOLD_VALUE               1100  // 1100 -> 1.1 seconds
+#define RESET_HOLD_VALUE_MS             5000
+#define RESET_HOLD_VALUE_INTER_MS       500
+
 
 extern int adc_channel_single_shot(const char *name, int channel, unsigned int *data);
 
@@ -117,6 +128,86 @@ void long_press_sar_key_detect(void)
     }
     else {
         UBOOT_INFO("No Keypad Press detect \n");
+    }
+out:
+    UBOOT_TRACE("OK\n");
+    return;
+}
+
+bool check_sar_reset_key_press(void)
+{
+    unsigned int KeypadValue = 0;
+    static unsigned int channel = 0;
+    ofnode node;
+    bool bStatus = false;
+    static bool bInit = false;
+    int len;
+
+    if (bInit == false) {
+        node = ofnode_path("/sar@1c020a00");
+        if (!ofnode_valid(node)) {
+            UBOOT_DEBUG("cannot get sar dts\n");
+            return bStatus;
+        }
+        if (!ofnode_get_property(node, "sar_reset-ch", &len)) {
+            UBOOT_DEBUG("no property named sar_reset-ch\n");
+            return bStatus;
+        }
+        if (ofnode_read_u32(node, "sar_reset-ch", &channel)) {
+            UBOOT_DEBUG("cannot get sar_reset-ch\n");
+            return bStatus;
+        }
+        bInit = true;
+    }
+
+    if(adc_channel_single_shot("sar", channel, &KeypadValue)) {
+        UBOOT_DEBUG("reset key press adc %d\n", KeypadValue);
+        bStatus = true;
+    }
+
+    return bStatus;
+}
+
+void long_press_sar_reset_key_detect(void)
+{
+    unsigned int pre_time = 0;
+    unsigned int cur_time = 0;
+    unsigned int interval = 0;
+    unsigned int tick = 0;
+    int ret = -1;
+
+    UBOOT_TRACE("IN\n");
+    if(check_sar_reset_key_press() == true) {
+        bResetButtonPress = true;
+        pre_time = get_timer(0);
+        UBOOT_INFO("Pressing the RESET KEY\n");
+        UBOOT_INFO("Ticking: ");
+        while (interval < RESET_HOLD_VALUE_MS) {
+            if (check_sar_reset_key_press() != true) {
+                UBOOT_INFO("\nStop Pressing the RESET KEY\n");
+                bResetButtonPress = false;
+                goto out;
+            }
+            cur_time = get_timer(0);
+            interval = cur_time - pre_time;
+            if (tick != interval/RESET_HOLD_VALUE_INTER_MS) {
+                tick = interval/RESET_HOLD_VALUE_INTER_MS;
+                printf("#");
+            }
+        }
+        UBOOT_INFO("\nStart factory reset due to long pressing reset\n");
+        /* perform factory reset if long pressing reset key */
+        ret = wipe_user_data();
+        if (ret < 0) {
+            UBOOT_ERROR("Failed to perform factory reset after long pressing reset\n");
+            goto out;
+        }
+        if (run_command("reset", 0) != CMD_RET_SUCCESS) {
+            UBOOT_ERROR("Failed to reset.\n");
+            goto out;
+        }
+    } else {
+        UBOOT_INFO("No RESET KEY Press detected \n");
     }
 out:
     UBOOT_TRACE("OK\n");
@@ -528,8 +619,12 @@ void print_bootreason(int boot_reason)
     }
 }
 
+extern unsigned int g_TCONLESS_FORCE_RESET_FLAG;
+
 static void get_bootreason(void)
 {
+    char *rd_buf = NULL;
+
     UBOOT_TRACE("IN\n");
 #if defined(CONFIG_MTK_PM)
     int boot_reason;
@@ -537,6 +632,7 @@ static void get_bootreason(void)
     char bootreason_kernel_panic[] = "androidboot.bootreason=kernel_panic";
     char bootreason_quiescent[] = "androidboot.bootreason=quiescent";
     char bootreason_reboot[] = "androidboot.bootreason=reboot";
+    char newstr[COMMAND_BUF_SIZE] = {0};
 
 #if (CONFIG_MTK_ANDROID_HEADER_VERSION > 3)
     char *quiescent = env_get("bootconfig");
@@ -544,6 +640,22 @@ static void get_bootreason(void)
     char *quiescent = env_get("bootargs");
 #endif
     boot_reason = pm_get_boot_reason();
+    /* Check TCONLESS_FORCE_RESET */
+    if (boot_reason == PM_BR_TCONLESS_FORCE_RESET) {
+        /* restore saved boot reason and set g_TCONLESS_FORCE_RESET_FLAG */
+        UBOOT_INFO("boot reason is PM_BR_TCONLESS_FORCE_RESET.\n");
+        g_TCONLESS_FORCE_RESET_FLAG = 1;
+        rd_buf = env_get("save_boot_reason");
+        if (rd_buf) {
+            boot_reason = (int)(*rd_buf);
+            UBOOT_INFO("Restore the saved boot reason, 0x%X.\n", boot_reason);
+            pm_set_boot_reason(boot_reason);
+        }
+        else {
+            UBOOT_ERROR("Failed to read the saved boot reason.\n");
+        }
+    }
+
     if(quiescent != NULL) {
         if(boot_reason == PM_BR_PANIC) {
             printf("Add Android bootreason %s\n",bootreason_kernel_panic);
@@ -563,6 +675,16 @@ static void get_bootreason(void)
         }
     }
     print_bootreason(boot_reason);
+    if (boot_reason == PM_BR_SECONDARY) {
+        int snprintf_len;
+
+        snprintf_len = snprintf(newstr, sizeof(newstr), "androidboot.wakeup_reason=%s", pm_get_wakeup_reason_str());
+        if (snprintf_len > COMMAND_BUF_SIZE) {
+            UBOOT_ERROR("The array size is too small(%d), snprintf fail\n", snprintf_len);
+        } else {
+            add_bootargs("androidboot.wakeup_reason", newstr, false);
+        }
+    }
 #endif
     UBOOT_TRACE("OK\n");
 
@@ -616,13 +738,13 @@ int upgrade_mode_check(void)
     if (boot_mode == EN_BOOT_MODE_USB_UPGRADE)
     {
         uboot_boot_mode = EN_BOOT_MODE_USB_UPGRADE;
-        ret = run_command("usb start;mtkupgrade usb ", 0);
+        ret = run_command("mtkupgrade usb ", 0);
     }
     else if (boot_mode == EN_BOOT_MODE_POWERKEYLONGPRESS)
     {
         uboot_boot_mode = EN_BOOT_MODE_USB_UPGRADE;
         UBOOT_DEBUG("Try to download the image in USB disk.\n");
-        if(run_command("usb start;mtkupgrade usb ", 0))
+        if(run_command("mtkupgrade usb ", 0))
         {
             UBOOT_DEBUG("No USB disk or no vaild image. Enter Recovery Mode.\n");
             uboot_boot_mode = EN_BOOT_MODE_RECOVERY;

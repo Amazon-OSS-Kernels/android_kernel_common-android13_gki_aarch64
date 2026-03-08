@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #include <command.h>
 #include <common.h>
 #include <stdio.h>
@@ -522,27 +527,27 @@ MS_BOOL LG_Set_U13_Format(int n_Hnode, int n_Vnode, interface_info *info, EN_DEM
             {
             if ((multi_vendor == EN_DEMURA_MULTI_LGD_V19_COLOR) || (multi_vendor == EN_DEMURA_MULTI_LGD_SQ18_19_COLOR))
             {
-                    info->Lut_in[t][j * n_Hnode + i].dbr = (double)(data[j][i][0][t] >> 1) + nLayer;
+                    //info->Lut_in[t][j * n_Hnode + i].dbr = (double)(data[j][i][0][t] >> 1) + nLayer;
                     info->Lut_in[t][j * n_Hnode + i].r   = (data[j][i][0][t] >> 1) + nLayer;
-                    info->Lut_in[t][j * n_Hnode + i].dbg = (double)(data[j][i][1][t] >> 1) + nLayer;
+                    //info->Lut_in[t][j * n_Hnode + i].dbg = (double)(data[j][i][1][t] >> 1) + nLayer;
                     info->Lut_in[t][j * n_Hnode + i].g   = (data[j][i][1][t] >> 1) + nLayer;
-                    info->Lut_in[t][j * n_Hnode + i].dbb = (double)(data[j][i][2][t] >> 1) + nLayer;
+                    //info->Lut_in[t][j * n_Hnode + i].dbb = (double)(data[j][i][2][t] >> 1) + nLayer;
                     info->Lut_in[t][j * n_Hnode + i].b   = (data[j][i][2][t] >> 1) + nLayer;
                 #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                    info->Lut_in[t][j * n_Hnode + i].dbw = (double)(data[j][i][3][t] >> 1) + nLayer;
+                    //info->Lut_in[t][j * n_Hnode + i].dbw = (double)(data[j][i][3][t] >> 1) + nLayer;
                     info->Lut_in[t][j * n_Hnode + i].w   = (data[j][i][3][t] >> 1) + nLayer;
                 #endif
             }
             else
             {
-                info->Lut_in[t][j * n_Hnode + i].dbr = (double)(data[j][i][3][t] >> 1) + nLayer;
+                //info->Lut_in[t][j * n_Hnode + i].dbr = (double)(data[j][i][3][t] >> 1) + nLayer;
                 info->Lut_in[t][j * n_Hnode + i].r   = (data[j][i][3][t] >> 1) + nLayer;
-                info->Lut_in[t][j * n_Hnode + i].dbg = (double)(data[j][i][3][t] >> 1) + nLayer;
+                //info->Lut_in[t][j * n_Hnode + i].dbg = (double)(data[j][i][3][t] >> 1) + nLayer;
                 info->Lut_in[t][j * n_Hnode + i].g   = (data[j][i][3][t] >> 1) + nLayer;
-                info->Lut_in[t][j * n_Hnode + i].dbb = (double)(data[j][i][3][t] >> 1) + nLayer;
+                //info->Lut_in[t][j * n_Hnode + i].dbb = (double)(data[j][i][3][t] >> 1) + nLayer;
                 info->Lut_in[t][j * n_Hnode + i].b   = (data[j][i][3][t] >> 1) + nLayer;
                 #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                    info->Lut_in[t][j * n_Hnode + i].dbw = (double)(data[j][i][3][t] >> 1) + nLayer;
+                    //info->Lut_in[t][j * n_Hnode + i].dbw = (double)(data[j][i][3][t] >> 1) + nLayer;
                     info->Lut_in[t][j * n_Hnode + i].w   = (data[j][i][3][t] >> 1) + nLayer;
                 #endif
             }

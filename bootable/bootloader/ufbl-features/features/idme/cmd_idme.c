@@ -756,10 +756,10 @@ void idme_fastboot_register(void)
         defined(UFBL_PROJ_ABC) || \
         defined(UFBL_PROJ_ABCT) || \
 	defined(UFBL_PROJ_abc123) || \
-	defined(UFBL_PROJ_ABC) || \
 	defined(UFBL_PROJ_abc123) || \
-	defined(UFBL_PROJ_ABC) || \
-	defined(UFBL_PROJ_ABC) || \
+	defined(UFBL_PROJ_abc123) || \
+	defined(UFBL_PROJ_abc123) || \
+	defined(UFBL_PROJ_abc123) || \
 	defined(UFBL_PROJ_ABC) || \
 	defined(UFBL_PROJ_ABC)
 	fastboot_register("oem idme", cmd_idme, TRUE, FALSE);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <command.h>
@@ -44,6 +44,19 @@ U_BOOT_CMD(
     "command: keypadlongdetect\n"
 );
 
+int do_reset_key_long_press_detect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+#if defined(CONFIG_MT58XX_SARADC)
+    long_press_sar_reset_key_detect();
+#endif
+    return 0;
+}
+
+U_BOOT_CMD(
+    resetkeylongdetect,    1,    1,     do_reset_key_long_press_detect,
+    "reset key long press detect command",
+    "command: resetkeylongdetect\n"
+);
 
 int do_upgrade_mode_check(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {

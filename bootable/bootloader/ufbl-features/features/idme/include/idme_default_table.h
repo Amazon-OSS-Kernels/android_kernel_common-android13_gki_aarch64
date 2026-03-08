@@ -129,8 +129,8 @@
 #include "idme_default_table_ABC.h"
 #endif
 
-#if defined(UFBL_PROJ_ABC)
-#include "idme_default_table_ABC.h"
+#if defined(UFBL_PROJ_abc123)
+#include "idme_default_table_abc123.h"
 #endif
 
 #if defined(UFBL_PROJ_AML_T96XD4)
@@ -229,20 +229,20 @@
 #include "idme_default_table_mt8183_echo.h"
 #endif
 
-#ifdef UFBL_PROJ_ABC
-#include "idme_default_table_ABC.h"
-#endif
-
-#ifdef UFBL_PROJ_ABC
-#include "idme_default_table_ABC.h"
+#ifdef UFBL_PROJ_abc123
+#include "idme_default_table_abc123.h"
 #endif
 
 #ifdef UFBL_PROJ_abc123
 #include "idme_default_table_abc123.h"
 #endif
 
-#ifdef UFBL_PROJ_ABC
-#include "idme_default_table_ABC.h"
+#ifdef UFBL_PROJ_abc123
+#include "idme_default_table_abc123.h"
+#endif
+
+#ifdef UFBL_PROJ_abc123
+#include "idme_default_table_abc123.h"
 #endif
 
 #ifdef UFBL_PROJ_ABC

@@ -7,6 +7,7 @@ UBOOTINCLUDE += -I$(srctree)/Mediatek-internal/drivers/include/ \
                 -I$(srctree)/Mediatek-internal/drivers/include/chip/ \
                 -I$(srctree)/Mediatek-internal/impl/system/include/ \
                 -I$(srctree)/Mediatek-internal/impl/panel/ \
+                -I$(srctree)/Mediatek-internal/impl/demura/ \
                 -I$(srctree)/Mediatek-internal/impl/gop/ \
                 -I$(srctree)/Mediatek-internal/impl/jpd/ \
                 -I$(srctree)/Mediatek-internal/impl/standby_mode/ \

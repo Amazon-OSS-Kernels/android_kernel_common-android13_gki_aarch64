@@ -105,6 +105,7 @@ config ENV_VARS_UBOOT_CONFIG
 	  - CONFIG_SYS_VENDOR
 	  - CONFIG_SYS_SOC
 	  - CONFIG_CUSTOMER_NAME
+	  - CONFIG_CUSTOMER2_NAME
 
 config NR_DRAM_BANKS
 	int "Number of DRAM banks"
@@ -565,6 +566,35 @@ config IDME_PARTITION_NUM
         help
           This option sets eMMC partition number used for IDME
           By default, boot1, with partition number 2 is used
+
+config AMAZON_UBOOT_SMP_OPTIMIZATION
+        bool "Enable amazon uboot smp optimization feature"
+        default n
+        help 
+          This feature can be used to speed up uboot flow.
+
+config VBYONE_CUSTOMIZED
+	bool "Enable vbyone customized feature"
+	help
+	  Enabling this option will enable vbyone customized feature which loads
+	  the VBYONE_DTBO_CFG_NAME while VBYONE_FLAG_NAME exists in USB disk.
+	  The VBYONE_DTBO_CFG_NAME and VBYONE_FLAG_NAME will be defined by device.mk.
+
+config VBYONE_DTBO_CFG_NAME
+	string "Set VBYONE config name"
+	help
+	  Set VBYONE_DTBO_CFG_NAME while VBYONE_FLAG_NAME exists in USB disk.
+
+config VBYONE_FLAG_NAME
+	string "Set VBYONE flag name"
+	help
+	  Set VBYONE_FLAG_NAME which stores in USB disk.
+
+config TRANS_SCREEN_CUSTOMIZED
+	bool "Enable trans screen customized feature"
+	help
+	  Enabling this option will enable transition screen customized feature which shows
+	  red screen in 3 seconds then turns to green screen if anti-rollback is disabled.
 
 endmenu		# Boot images
 

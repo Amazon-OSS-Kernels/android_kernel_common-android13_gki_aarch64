@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <debug_impl.h>
@@ -51,14 +51,24 @@ int do_basic_command_register(void)
     mtk_add_command_table("propagate_mmap_filename", 0, BEFORE_CONSOLE_INPUT);
     mtk_add_command_table("setup_kernelcore_size", 0, BEFORE_CONSOLE_INPUT);
     mtk_add_command_table("keypadlongdetect", 0, AFTER_UBOOT_INIT);
+    mtk_add_command_table("resetkeylongdetect",0,AFTER_UBOOT_INIT);
 
-#ifndef CONFIG_MULTICORES_PLATFORM
     mtk_add_command_table("panel_pre_init", 0, BEFORE_CONSOLE_INPUT);
+#ifndef CONFIG_MULTICORES_PLATFORM
 #ifdef CONFIG_MTK_PANEL
     mtk_add_command_table("panel_mute 1", 0, BEFORE_CONSOLE_INPUT);
     mtk_add_command_table("panel_enable 1", 0, BEFORE_CONSOLE_INPUT);
 #endif
 #endif
+
+#ifdef CONFIG_MULTICORES_PLATFORM
+#if !defined(CONFIG_BOOTPMU_EARLY)
+#if defined(CONFIG_MTK_PMU)
+    mtk_add_command_table("boot_pmu", 0, BEFORE_CONSOLE_INPUT);
+#endif
+#endif
+#endif
+
 #ifdef CONFIG_OAD_UPGRADE
     mtk_add_command_table("check_upgrade_mode", 0, AFTER_CONSOLE_INPUT);
 #endif
@@ -150,11 +160,24 @@ int do_before_boot_kernel(void)
 /*
  * read fos_flags from idme
  */
+static void simple_strlwr(char str[])
+{
+    int i = 0;
+    while (str[i]) {
+        if (str[i] >= 'A' && str[i] <= 'Z') {
+            str[i] = str[i] + ('a' - 'A');
+        }
+        i++;
+    }
+}
+
+#define FOS_BUF_LEN	16
 unsigned long get_fos_flags(void)
 {
     unsigned long flags = 0;
 
-    char fos_buf[16];
+    char fos_buf[FOS_BUF_LEN] = "\0";
+    char fos_buf2[FOS_BUF_LEN] = "\0";
     int ret = 0;
 #ifdef UFBL_FEATURE_IDME
     ret = idme_get_var_external("fos_flags", fos_buf, sizeof(fos_buf));
@@ -165,6 +188,18 @@ unsigned long get_fos_flags(void)
         return 0;
     }
     flags = simple_strtoul(fos_buf, NULL, 16);
+
+    /* protection from invalid fos_flags value */
+    snprintf(fos_buf2, sizeof(fos_buf2), "%lx", flags);
+    simple_strlwr(fos_buf);
+    if(strncmp(fos_buf, fos_buf2, FOS_BUF_LEN) != 0) {
+        printf("WARN: trying to update the fos_flags %s as %s\n", fos_buf, fos_buf2);
+        if(idme_update_var_ex("fos_flags", fos_buf2, FOS_BUF_LEN) >= 0) {
+            printf("SUCCESS: updated converted fos_flags=%s\n", fos_buf2);
+        } else {
+            printf("FAIL: fail to update converted fos_flags=%s\n", fos_buf2);
+        }
+    }
 
     printf("fos_flags=%lx\n", flags);
     return flags;
@@ -206,6 +241,7 @@ int do_jump_to_kernel(void)
 {
     run_command("checkteesuccess", 0);
 #if (CONFIG_CMD_AVB == 1)
+
     run_command("avb init 0", 0);
     if (amzn_dm_verity_is_off() == 0) {
 

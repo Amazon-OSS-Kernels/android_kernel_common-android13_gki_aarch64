@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <command.h>
 #include <common.h>
@@ -43,6 +43,12 @@
 #define DEMURA_DITHER       0x1
 #define DEMURA_TRUNCATE     0x2
 
+#define DEC_2    (2)
+#define DEC_15   (15)
+#define DEC_16   (16)
+#define DEC_1024 (1024)
+#define HEX_ALL  (0xFFFFFFFF)
+
 #if(FORCE_TO_4_LAYER)
 static MS_U8 SDC_Select_Layer[4] = {2,4,5,6};
 #endif
@@ -79,6 +85,70 @@ char get_env_demura_dither(void)
     }
 }
 
+static MS_BOOL Gen_Sf_Signature(char* strbuf, MS_U32 strlen)
+{
+    if ((get_demura_act() == E_MS_UTIL_BIN_ACT_ON) || (get_demura_act() == E_MS_UTIL_BIN_ACT_NO_DLG))
+    {
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+        if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+        {
+            if (env_get(ENV_DEMURA_SIG_BL) == NULL)
+            {
+                UBOOT_TRACE("creat backlight signature to env: %s\n", strbuf);
+                env_set(ENV_DEMURA_SIG_BL, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+                env_save();
+#endif
+            }
+            else if (strncmp(strbuf, env_get(ENV_DEMURA_SIG_BL), strlen) != 0)
+            {
+                UBOOT_TRACE("write backlight signature to env: %s\n", strbuf);
+                env_set(ENV_DEMURA_SIG_BL, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+                env_save();
+#endif
+            }
+        }
+        else
+        {
+            if (env_get(ENV_DEMURA_SIG) == NULL)
+            {
+                UBOOT_TRACE("creat signature to env: %s\n", strbuf);
+                env_set(ENV_DEMURA_SIG, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+                env_save();
+#endif
+            }
+            else if (strncmp(strbuf, env_get(ENV_DEMURA_SIG), strlen) != 0)
+            {
+                UBOOT_TRACE("write signature to env: %s\n", strbuf);
+                env_set(ENV_DEMURA_SIG, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+                env_save();
+#endif
+            }
+        }
+#else
+        if (env_get(ENV_DEMURA_SIG) == NULL)
+        {
+            UBOOT_TRACE("creat signature to env: %s\n", strbuf);
+            env_set(ENV_DEMURA_SIG, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+            env_save();
+#endif
+        }
+        else if (strncmp(strbuf, env_get(ENV_DEMURA_SIG), strlen) != 0)
+        {
+            UBOOT_TRACE("write signature to env: %s\n", strbuf);
+            env_set(ENV_DEMURA_SIG, strbuf);
+#if CONFIG_DEMURA_ENV_SAVEENV
+            env_save();
+#endif
+        }
+#endif
+    }
+    return TRUE;
+}
 
 extern E_COLOR_MODE Demura_Original_Mode;
 #if defined (CONFIG_DEMURA_URSA11)
@@ -154,12 +224,12 @@ static MS_BOOL INX_set_u13_interface(Vendor2Mstar_Info *pv2m, void *pDataInfo, B
         {
             for (j = 0; j < n_Hnode ; j++)
             {
-                (*pInfo_Out).Lut_in[idx][idx_image_size].dbr   = layer_value_lut[i][j] + nLayer;
-                (*pInfo_Out).Lut_in[idx][idx_image_size].dbg   = layer_value_lut[i][j] + nLayer;
-                (*pInfo_Out).Lut_in[idx][idx_image_size].dbb   = layer_value_lut[i][j] + nLayer;
-                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                (*pInfo_Out).Lut_in[idx][idx_image_size].dbw   = layer_value_lut[i][j] + nLayer;
-                #endif
+                //(*pInfo_Out).Lut_in[idx][idx_image_size].dbr   = layer_value_lut[i][j] + nLayer;
+                //(*pInfo_Out).Lut_in[idx][idx_image_size].dbg   = layer_value_lut[i][j] + nLayer;
+                //(*pInfo_Out).Lut_in[idx][idx_image_size].dbb   = layer_value_lut[i][j] + nLayer;
+                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                //(*pInfo_Out).Lut_in[idx][idx_image_size].dbw   = layer_value_lut[i][j] + nLayer;
+                //#endif
 
                 (*pInfo_Out).Lut_in[idx][idx_image_size].r   = (int)(layer_value_lut[i][j] + nLayer);
                 (*pInfo_Out).Lut_in[idx][idx_image_size].g   = (int)(layer_value_lut[i][j] + nLayer);
@@ -180,6 +250,7 @@ MS_BOOL INX_Decode_To_Mstar_Format(Vendor2Mstar_Info *pv2m, void *pDataInfo, Bin
     MS_BOOL bRet = FALSE;
     DeCmpxInfo cmpx;
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     char  strbuf[1024];
 
     int    n_Hnode         =  pv2m->hblock_num;
@@ -262,16 +333,14 @@ MS_BOOL INX_Decode_To_Mstar_Format(Vendor2Mstar_Info *pv2m, void *pDataInfo, Bin
         goto done;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)pv2m->data_checksum, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)pv2m->data_checksum, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
+
     dfree(buffer);
     pv2m->input_buf = NULL;
 
@@ -442,7 +511,20 @@ MS_BOOL If_Need_Decode_INX(void)
         return FALSE;
     }
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         INX_Dump_Decode_Info();
@@ -571,6 +653,7 @@ static MS_BOOL Gen_Sf_Signature_CSOT_HIMAX(CSOT_Himax_Demura_Header *phdr)
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer;
@@ -582,25 +665,33 @@ static MS_BOOL Gen_Sf_Signature_CSOT_HIMAX(CSOT_Himax_Demura_Header *phdr)
         return FALSE;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
-
 
 MS_BOOL If_Need_Decode_CSOT_HIMAX(void)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -1020,12 +1111,12 @@ static MS_BOOL CSOT_Himax_Set_U13_Format(CSOT_Himax_Demura_Header *phdr, interfa
 
                 LUT_data = ((double)data/4.0) + ((double)nLayer/4.0); // 10bit data + layer (12bit to 10bit)
 
-                pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
-                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                pinfo->Lut_in[k][idx_image_size].dbw   = (double)LUT_data;
-                #endif
+                //pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
+                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                //pinfo->Lut_in[k][idx_image_size].dbw   = (double)LUT_data;
+                //#endif
 
                 //LUT_data = LUT_data>>4; // 14bit -> 10bit
                 pinfo->Lut_in[k][idx_image_size].r   = (int)LUT_data;
@@ -1163,6 +1254,7 @@ static MS_BOOL Gen_Sf_Signature_SDC(SDC_Demura_Header *phdr)
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer;
@@ -1174,16 +1266,13 @@ static MS_BOOL Gen_Sf_Signature_SDC(SDC_Demura_Header *phdr)
         return FALSE;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
 
@@ -1191,8 +1280,20 @@ static MS_BOOL Gen_Sf_Signature_SDC(SDC_Demura_Header *phdr)
 MS_BOOL If_Need_Decode_SDC(void)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -1590,12 +1691,12 @@ static MS_BOOL SDC_Set_U13_Format(SDC_Demura_Header *phdr, interface_info *pinfo
                 LUT_data = (double)(data*4*Value_1) + (double)(nLayer/4.0);
                 idx_image_size = i*phdr->DEMURA_TBL_H+j;
 
-                pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
-                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                pinfo->Lut_in[k][idx_image_size].dbw   = (double)LUT_data;
-                #endif
+                //pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
+                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                //pinfo->Lut_in[k][idx_image_size].dbw   = (double)LUT_data;
+                //#endif
 
                 //LUT_data = LUT_data>>4; // 14bit -> 10bit
                 pinfo->Lut_in[k][idx_image_size].r   = (int)LUT_data;
@@ -1745,6 +1846,7 @@ static MS_BOOL Gen_Sf_Signature_CSOT_HISILICON(CSOT_Hisilicon_Demura_Header *phd
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer;
@@ -1756,25 +1858,32 @@ static MS_BOOL Gen_Sf_Signature_CSOT_HISILICON(CSOT_Hisilicon_Demura_Header *phd
         return FALSE;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
 
-
-MS_BOOL If_Need_Decode_CSOT_HISILICON(void)
+MS_BOOL If_Need_Decode_CSOT_HI_SILICON(void)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -2189,12 +2298,12 @@ static MS_BOOL CSOT_Hisilicon_Set_U13_Format(CSOT_Hisilicon_Demura_Header *phdr,
 
                 LUT_data = (data/4) + (nLayer/4);
 
-                pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
-                pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
-                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                pinfo->Lut_in[k][idx_image_size].dbw   = LUT_data;
-                #endif
+                //pinfo->Lut_in[k][idx_image_size].dbr   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbg   = (double)LUT_data;
+                //pinfo->Lut_in[k][idx_image_size].dbb   = (double)LUT_data;
+                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                //pinfo->Lut_in[k][idx_image_size].dbw   = LUT_data;
+                //#endif
 
                 pinfo->Lut_in[k][idx_image_size].r   = LUT_data;
                 pinfo->Lut_in[k][idx_image_size].g   = LUT_data;
@@ -2230,7 +2339,7 @@ static MS_BOOL CSOT_Hisilicon_Decode_To_Mstar_Format(CSOT_Hisilicon_Demura_Heade
 }
 
 
-MS_BOOL Decode_To_Mstar_Format_CSOT_HISILICON(void *pDataInfo, BinOutputInfo *pbin_info)
+MS_BOOL Decode_To_Mstar_Format_CSOT_HI_SILICON(void *pDataInfo, BinOutputInfo *pbin_info)
 {
     MS_BOOL bRet = FALSE;
     CSOT_Hisilicon_Demura_Header header;
@@ -2305,7 +2414,7 @@ MS_BOOL Decode_To_Mstar_Format_CSOT_HISILICON(void *pDataInfo, BinOutputInfo *pb
 */
 
     pbin_info->reg_base_addr  =  0x7700;
-    pbin_info->project_id     =  ((MSTAR_CHIP_ID << 16) + (1ULL << 15) + EN_DEMURA_MULTI_CSOT_HISILICON);
+    pbin_info->project_id     =  ((MSTAR_CHIP_ID << DEC_16) + (1ULL << DEC_15) + EN_DEMURA_MULTI_CSOT_HI_SILICON);
     pbin_info->data_type      =  IC_DRAM;
     pbin_info->Gain_type      =  10;
     pbin_info->Sep_type       =  0;
@@ -2318,10 +2427,12 @@ MS_BOOL Decode_To_Mstar_Format_CSOT_HISILICON(void *pDataInfo, BinOutputInfo *pb
 // End CSOT_Hisi
 
 // NOVA
+#define _0XFFFF 0xFFFF
 static MS_BOOL Gen_Sf_Signature_NOVA(CHOT_Demura_Header *phdr)
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer + phdr->lut_offset;
@@ -2333,16 +2444,13 @@ static MS_BOOL Gen_Sf_Signature_NOVA(CHOT_Demura_Header *phdr)
         return FALSE;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC & 0xFFFF, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC & _0XFFFF, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
 
@@ -2350,11 +2458,23 @@ static MS_BOOL Gen_Sf_Signature_NOVA(CHOT_Demura_Header *phdr)
 MS_BOOL If_Need_Decode_NOVA(MS_U32 flash_offset)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
-        UBOOT_DEBUG("Empty Board, should decoding data\n");
+        UBOOT_TRACE("Empty Board, should decoding data\n");
         UBOOT_TRACE("OK\n");
         return TRUE;
     }
@@ -2367,12 +2487,12 @@ MS_BOOL If_Need_Decode_NOVA(MS_U32 flash_offset)
 
         lut_checksum_sf = get_lut_checksum_chot(flash_offset);
 
-        UBOOT_DEBUG("sig_str = %s\n", sig_str);
+        UBOOT_TRACE("sig_str = %s\n", sig_str);
         if(2 == sscanf(sig_str, "0x%x:0x%x", &lut_checksum_bd, &sample_crc32))
         {
-            UBOOT_DEBUG("lut_checksum_sf = 0x%x\n", (uint)lut_checksum_sf);
-            UBOOT_DEBUG("lut_checksum_bd = 0x%x\n", (uint)lut_checksum_bd);
-            UBOOT_DEBUG("sample_crc32  = 0x%x\n",   (uint)sample_crc32);
+            UBOOT_TRACE("lut_checksum_sf = 0x%x\n", (uint)lut_checksum_sf);
+            UBOOT_TRACE("lut_checksum_bd = 0x%x\n", (uint)lut_checksum_bd);
+            UBOOT_TRACE("sample_crc32  = 0x%x\n",   (uint)sample_crc32);
 
             if (read_spi_flash(buf, (flash_offset + (CHOT_LUT_START + SAMPLE_DAT_START)), SAMPLE_DAT_LEN) == TRUE)
             {
@@ -2896,13 +3016,14 @@ static MS_BOOL NOVA_Set_U13_Format(CHOT_Demura_Header *phdr, interface_info *pin
             for (j = 0; j < n_Hnode ; j++)
             {
                 LUT_data = (double)(((((Lut_buffer[idx][i][j]))/4) + (nLayer/4)));//(double)(((((Lut_buffer[idx][i][j])&0xFFF)>>2) + (nLayer>>2))&0x3FF); // 12bit to 10bit
+                // Lut_buffer is S12, nLayer is U12
 
-                pinfo->Lut_in[idx][idx_image_size].dbr   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
-                pinfo->Lut_in[idx][idx_image_size].dbg   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
-                pinfo->Lut_in[idx][idx_image_size].dbb   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
-                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                pinfo->Lut_in[idx][idx_image_size].dbw   = LUT_data;
-                #endif
+                //pinfo->Lut_in[idx][idx_image_size].dbr   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
+                //pinfo->Lut_in[idx][idx_image_size].dbg   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
+                //pinfo->Lut_in[idx][idx_image_size].dbb   = LUT_data;//(double)(Lut_buffer[idx][i][j] + nLayer);
+                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                //pinfo->Lut_in[idx][idx_image_size].dbw   = LUT_data;
+                //#endif
 
                 //(pinfo->Lut_in[idx]+idx_image_size)->r   = (Lut_buffer[idx][i][j] + nLayer);//(pinfo->Lut_in[idx])->r   = (Lut_buffer[idx][i][j] + nLayer);
                 pinfo->Lut_in[idx][idx_image_size].r   = (int)LUT_data;//(Lut_buffer[idx][i][j] + nLayer);
@@ -3029,8 +3150,20 @@ MS_BOOL If_Need_Decode_LGD(EN_DEMURA_MULTI_VENDOR multi_vendor)
         UBOOT_DEBUG("init_spi_flash error!\n");
         return TRUE;
     }
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Can not find env(%s)\n", ENV_DEMURA_SIG);
@@ -3674,9 +3807,9 @@ static MS_BOOL set_u13_interface(AUO_Demura_Header *phdr, dmc_registers *pdmc_re
         int cnt_idx;
         for (cnt_idx = 0; cnt_idx < Mstar_lut_h_size*Mstar_lut_v_size; cnt_idx++)
         {
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbr = 0.0;
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbg = 0.0;
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbb = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbr = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbg = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbb = 0.0;
 
             (*pInfo_Out).Lut_in[idx][cnt_idx].r = 0;
             (*pInfo_Out).Lut_in[idx][cnt_idx].g = 0;
@@ -3792,9 +3925,9 @@ static MS_BOOL set_u13_interface(AUO_Demura_Header *phdr, dmc_registers *pdmc_re
                     }
 
                     int cnt_idx = auo_dmc_lut_address_idx;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_lut_in_double  + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_lut_in_double  + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_lut_in_double + layer_level;
 
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].r       = (int)mstar_lut_in_double + layer_level;
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].g       = (int)mstar_lut_in_double + layer_level;
@@ -3813,9 +3946,9 @@ static MS_BOOL set_u13_interface(AUO_Demura_Header *phdr, dmc_registers *pdmc_re
 
                     int cnt_idx = (int)((double)auo_dmc_lut_address_idx/(double)3);
 
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_r_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_g_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_b_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_r_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_g_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_b_lut_in_double + layer_level;
 
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].r       = (int)mstar_r_lut_in_double + layer_level;
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].g       = (int)mstar_g_lut_in_double + layer_level;
@@ -3982,9 +4115,9 @@ printf("[%ds:%d] (reg_dmc_rgb_mode = %d, layer_level_num = %d\n", __FUNCTION__, 
         int cnt_idx;
         for (cnt_idx = 0; cnt_idx < Mstar_lut_h_size*Mstar_lut_v_size; cnt_idx++)
         {
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbr = 0.0;
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbg = 0.0;
-            (*pInfo_Out).Lut_in[idx][cnt_idx].dbb = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbr = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbg = 0.0;
+            //(*pInfo_Out).Lut_in[idx][cnt_idx].dbb = 0.0;
 
             (*pInfo_Out).Lut_in[idx][cnt_idx].r = 0;
             (*pInfo_Out).Lut_in[idx][cnt_idx].g = 0;
@@ -4100,9 +4233,9 @@ printf("[%ds:%d] (reg_dmc_rgb_mode = %d, layer_level_num = %d\n", __FUNCTION__, 
                     }
 
                     int cnt_idx = auo_dmc_lut_address_idx;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_lut_in_double  + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_lut_in_double  + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_lut_in_double + layer_level;
 
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].r       = (int)mstar_lut_in_double + layer_level;
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].g       = (int)mstar_lut_in_double + layer_level;
@@ -4121,9 +4254,9 @@ printf("[%ds:%d] (reg_dmc_rgb_mode = %d, layer_level_num = %d\n", __FUNCTION__, 
 
                     int cnt_idx = (int)((double)auo_dmc_lut_address_idx/(double)3);
 
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_r_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_g_lut_in_double + layer_level;
-                    (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_b_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbr     = mstar_r_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbg     = mstar_g_lut_in_double + layer_level;
+                    //(*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].dbb     = mstar_b_lut_in_double + layer_level;
 
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].r       = (int)mstar_r_lut_in_double + layer_level;
                     (*pInfo_Out).Lut_in[layer_level_idx-1][cnt_idx].g       = (int)mstar_g_lut_in_double + layer_level;
@@ -4529,26 +4662,17 @@ MS_BOOL AUO_Decode_To_Mstar_Format(AUO_Demura_Header *phdr, void *pDataInfo, Bin
 
     //---------------------- DMC LUT Mapping to Mstar LUT end ----------------------//
 
-    UBOOT_DEBUG("get_demura_act = %d\n", get_demura_act());
-    if ((get_demura_act() == E_MS_UTIL_BIN_ACT_LAST)
-        || (get_demura_act() == E_MS_UTIL_BIN_ACT_NO_DLG))
-    {
-        // Free AUO DMC Buffer
-        dfree(phdr->hdr_buffer);
-        phdr->hdr_buffer = NULL;
-        phdr->hdr_offset = 0;
-        phdr->hdr_length = 0;
+    // Free AUO DMC Buffer
+    dfree(phdr->hdr_buffer);
+    phdr->hdr_buffer = NULL;
+    phdr->hdr_offset = 0;
+    phdr->hdr_length = 0;
 
-        dfree(phdr->lut_buffer);
-        phdr->lut_buffer = NULL;
-        phdr->lut_offset = 0;
-        phdr->lut_length = 0;
-        UBOOT_DEBUG("free hdr_buffer\n");
-    }
-    else
-    {
-        UBOOT_DEBUG("wait next demura convert, keep hdr_buffer\n");
-    }
+    dfree(phdr->lut_buffer);
+    phdr->lut_buffer = NULL;
+    phdr->lut_offset = 0;
+    phdr->lut_length = 0;
+    UBOOT_DEBUG("free hdr_buffer\n");
 
     return bRet;
 }
@@ -4560,32 +4684,28 @@ MS_BOOL Decode_To_Mstar_Format_AUO(void *pDataInfo, BinOutputInfo *pbin_info)
     static AUO_Demura_Header header;
 
     UBOOT_DEBUG("IN\n");
-    if ((get_demura_act() == E_MS_UTIL_BIN_ACT_FIRST)
-        || (get_demura_act() == E_MS_UTIL_BIN_ACT_NO_DLG)
-        || !header.hdr_buffer)
-    {
-        // Parse header information
-        memset(&header, 0, sizeof(header));
-        if (load_vendor_header(&header) != TRUE)
-        {
-            UBOOT_ERROR("load_vendor_header Error\n");
-            return FALSE;
-        }
-        UBOOT_TRACE("&header = 0x%p\n", &header);
-        if (parse_vendor_header(&header) != TRUE)
-        {
-            UBOOT_ERROR("parse_vendor_header Error\n");
-            return FALSE;
-        }
-        dump_vendor_header(&header);
 
-        if (load_vendor_lut(&header) != TRUE)
-        {
-            UBOOT_ERROR("load_vendor_lut Error\n");
-            dfree(header.hdr_buffer);
-            header.hdr_buffer = NULL;
-            return FALSE;
-        }
+    // Parse header information
+    memset(&header, 0, sizeof(header));
+    if (load_vendor_header(&header) != TRUE)
+    {
+        UBOOT_ERROR("load_vendor_header Error\n");
+        return FALSE;
+    }
+    UBOOT_TRACE("&header = 0x%p\n", &header);
+    if (parse_vendor_header(&header) != TRUE)
+    {
+        UBOOT_ERROR("parse_vendor_header Error\n");
+        return FALSE;
+    }
+    dump_vendor_header(&header);
+
+    if (load_vendor_lut(&header) != TRUE)
+    {
+        UBOOT_ERROR("load_vendor_lut Error\n");
+        dfree(header.hdr_buffer);
+        header.hdr_buffer = NULL;
+        return FALSE;
     }
 
     if (!header.hdr_buffer)
@@ -4635,6 +4755,7 @@ static MS_BOOL Gen_Sf_Signature_AUO(AUO_Demura_Header *phdr)
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer + phdr->lut_offset;
@@ -4646,16 +4767,13 @@ static MS_BOOL Gen_Sf_Signature_AUO(AUO_Demura_Header *phdr)
         return FALSE;
     }
     memset(strbuf, 0, sizeof(strbuf));
-    if(snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->lut_checksum, (unsigned int)sample_crc32) < 0)
-        return FALSE;
-
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->lut_checksum, (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
+        return FALSE;
     }
+
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
 
@@ -4663,8 +4781,19 @@ static MS_BOOL Gen_Sf_Signature_AUO(AUO_Demura_Header *phdr)
 MS_BOOL If_Need_Decode_AUO(void)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -4721,6 +4850,7 @@ static MS_BOOL Gen_Sf_Signature_CSOT_CSOT(CSOT_CSOT_Demura_Header *phdr)
 {
     char   strbuf[1024];
     MS_U32 sample_crc32;
+    MS_S32 strlen;
     MS_U8  *buffer;
 
     buffer = phdr->lut_buffer[0];
@@ -4733,19 +4863,13 @@ static MS_BOOL Gen_Sf_Signature_CSOT_CSOT(CSOT_CSOT_Demura_Header *phdr)
     }
     memset(strbuf, 0, sizeof(strbuf));
 
-    if (snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC[0]
-        , (unsigned int)sample_crc32) < 0)
+    strlen = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->TABLE_CRC[0], (unsigned int)sample_crc32);
+    if (strlen < 0)
     {
         UBOOT_ERROR("Record CRC Fail\n");
        return FALSE;
     }
-    if (get_demura_act() == E_MS_UTIL_BIN_ACT_ON)
-    {
-        env_set(ENV_DEMURA_SIG, strbuf);
-#if CONFIG_DEMURA_ENV_SAVEENV
-        env_save();
-#endif
-    }
+    Gen_Sf_Signature(strbuf, strlen);
     return TRUE;
 }
 
@@ -4753,7 +4877,20 @@ MS_BOOL If_Need_Decode_CSOT_CSOT(void)
 {
     UBOOT_TRACE("IN\n");
 
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -5313,17 +5450,17 @@ MS_BOOL CSOT_CSOT_Set_U13_Format(CSOT_CSOT_Demura_Header *phdr, interface_info *
                             if (phdr->DEMURA_MODE == 1) // RGB mode
                             {
                                 // R data
-                                pinfo->Lut_in[k][idx_image_size].dbr   = LUT_data;
+                                //pinfo->Lut_in[k][idx_image_size].dbr   = LUT_data;
                                 pinfo->Lut_in[k][idx_image_size].r   = (int)LUT_data;
                             }
                             else
                             {
-                                pinfo->Lut_in[k][idx_image_size].dbr   = LUT_data;
-                                pinfo->Lut_in[k][idx_image_size].dbg   = LUT_data;
-                                pinfo->Lut_in[k][idx_image_size].dbb   = LUT_data;
-                                #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                                pinfo->Lut_in[k][idx_image_size].dbw   = LUT_data;
-                                #endif
+                                //pinfo->Lut_in[k][idx_image_size].dbr   = LUT_data;
+                                //pinfo->Lut_in[k][idx_image_size].dbg   = LUT_data;
+                                //pinfo->Lut_in[k][idx_image_size].dbb   = LUT_data;
+                                //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+                                //pinfo->Lut_in[k][idx_image_size].dbw   = LUT_data;
+                                //#endif
 
                                 pinfo->Lut_in[k][idx_image_size].r   = (int)LUT_data;
                                 pinfo->Lut_in[k][idx_image_size].g   = (int)LUT_data;
@@ -5336,18 +5473,18 @@ MS_BOOL CSOT_CSOT_Set_U13_Format(CSOT_CSOT_Demura_Header *phdr, interface_info *
                         else if (c == _1)
                         {
                             // G data
-                            pinfo->Lut_in[k][idx_image_size].dbg   = LUT_data;
+                            //pinfo->Lut_in[k][idx_image_size].dbg   = LUT_data;
                             pinfo->Lut_in[k][idx_image_size].g   = (int)LUT_data;
                         }
                         else if (c == _2)
                         {
                             // B data
-                            pinfo->Lut_in[k][idx_image_size].dbb   = LUT_data;
+                            //pinfo->Lut_in[k][idx_image_size].dbb   = LUT_data;
                             pinfo->Lut_in[k][idx_image_size].b   = (int)LUT_data;
                             #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                            pinfo->Lut_in[k][idx_image_size].dbw   = (pinfo->Lut_in[k][idx_image_size].dbr
-                                + pinfo->Lut_in[k][idx_image_size].dbg
-                                + pinfo->Lut_in[k][idx_image_size].dbb)/_3;
+                            //pinfo->Lut_in[k][idx_image_size].dbw   = (pinfo->Lut_in[k][idx_image_size].dbr
+                            //    + pinfo->Lut_in[k][idx_image_size].dbg
+                            //    + pinfo->Lut_in[k][idx_image_size].dbb)/_3;
                             pinfo->Lut_in[k][idx_image_size].w   = (int)pinfo->Lut_in[k][idx_image_size].dbw;
                             #endif
                         }
@@ -5466,8 +5603,20 @@ MS_BOOL Decode_To_Mstar_Format_CSOT_CSOT(void *pDataInfo, BinOutputInfo *pbin_in
 MS_BOOL If_Need_Decode_BOE_ESWIN(void)
 {
     UBOOT_TRACE("IN\n");
-
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
     char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
     if (sig_str == NULL)
     {
         UBOOT_DEBUG("Empty Board, should decoding data\n");
@@ -5591,11 +5740,11 @@ static void BOE_ESWIN_Parse_Lut(BOE_ESWIN_Demura_Header *phdr, MS_U8 *pLine, int
             {
                 nLayer = BOE_ESWIN_GET_LAYER(plane, pinfo);
                 LUT_data = BOE_ESWIN_GET_LUT_DATA(j, u8Data) - BOE_ESWIN_DATA_BASE + nLayer;
-                pinfo->Lut_in[plane][idx_image_size + hnode].dbr   = (double)LUT_data;
-                pinfo->Lut_in[plane][idx_image_size + hnode].dbg   = (double)LUT_data;
-                pinfo->Lut_in[plane][idx_image_size + hnode].dbb   = (double)LUT_data;
+                //pinfo->Lut_in[plane][idx_image_size + hnode].dbr   = (double)LUT_data;
+                //pinfo->Lut_in[plane][idx_image_size + hnode].dbg   = (double)LUT_data;
+                //pinfo->Lut_in[plane][idx_image_size + hnode].dbb   = (double)LUT_data;
 #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-                pinfo->Lut_in[plane][idx_image_size + hnode].dbw   = (double)LUT_data;
+                //pinfo->Lut_in[plane][idx_image_size + hnode].dbw   = (double)LUT_data;
 #endif
                 pinfo->Lut_in[plane][idx_image_size + hnode].r   = LUT_data;
                 pinfo->Lut_in[plane][idx_image_size + hnode].g   = LUT_data;
@@ -5889,6 +6038,112 @@ MS_BOOL Decode_To_Mstar_Format_SIO(void *pDataInfo, BinOutputInfo *pbin_info)
 // } SIO End
 
 // { SIO start
+static MS_BOOL Gen_Sf_Signature_SIO(SIO_DEMURA_BIN_HEADER *phdr)
+{
+    char   strbuf[DEC_1024];
+    MS_U32 sample_crc32;
+    MS_U8  *buffer;
+    MS_S32 s32Ret = 0;
+
+    buffer = phdr->lut_buffer;
+    sample_crc32 = MDrv_CRC32_Cal_DeMura(buffer + SAMPLE_DAT_START, SAMPLE_DAT_LEN);
+    if (sample_crc32 == HEX_ALL)
+    {
+        UBOOT_ERROR("MDrv_CRC32_Cal_DeMura error\n");
+        return FALSE;
+    }
+    memset(strbuf, 0, sizeof(strbuf));
+    s32Ret = snprintf(strbuf, sizeof(strbuf)-1, "0x%x:0x%x", (unsigned int)phdr->HEADER_LUT_CHECKSUM, (unsigned int)sample_crc32);
+    if ((s32Ret < 0) || (s32Ret >= sizeof(strbuf)-1))
+    {
+        UBOOT_ERROR("size %d \n", s32Ret);
+        return FALSE;
+    }
+    Gen_Sf_Signature(strbuf, s32Ret);
+    return TRUE;
+}
+
+MS_BOOL If_Need_Decode_SIO(void)
+{
+    UBOOT_TRACE("IN\n");
+    if (init_spi_flash() != TRUE)
+    {
+        UBOOT_DEBUG("init_spi_flash error!\n");
+        return TRUE;
+    }
+#if defined(CONFIG_DEMURA_VENDOR_BACKLIGHT)
+    char *sig_str;
+    if (E_MS_UTIL_BIN_FILE_BACKLIGHT == get_demura_file())
+    {
+        sig_str = env_get(ENV_DEMURA_SIG_BL);
+    }
+    else
+    {
+        sig_str = env_get(ENV_DEMURA_SIG);
+    }
+#else
+    char *sig_str = env_get(ENV_DEMURA_SIG);
+#endif
+
+    if (sig_str == NULL)
+    {
+        UBOOT_DEBUG("Empty Board, should decoding data\n");
+        UBOOT_TRACE("OK\n");
+        return TRUE;
+    }
+    else
+    {
+        MS_U16 lut_checksum_sf;
+        MS_U32 lut_checksum_bd;
+        MS_U32 sample_crc32, cal_crc32;
+        MS_U8  buf[SAMPLE_DAT_LEN];
+        SIO_DEMURA_BIN_HEADER header;
+
+        memset(&header, 0, sizeof(header));
+        if (load_vendor_header_sio(&header) != TRUE)
+        {
+            UBOOT_ERROR("load_vendor_header Error\n");
+            dfree(header.hdr_buffer);
+            return FALSE;
+        }
+        if (parse_vendor_header_sio(&header) != TRUE)
+        {
+            UBOOT_ERROR("parse_vendor_header Error\n");
+            dfree(header.hdr_buffer);
+            return FALSE;
+        }
+
+        lut_checksum_sf = header.HEADER_LUT_CHECKSUM;
+
+        UBOOT_DEBUG("sig_str = %s\n", sig_str);
+        if (DEC_2 == sscanf(sig_str, "0x%x:0x%x", &lut_checksum_bd, &sample_crc32))
+        {
+            UBOOT_DEBUG("lut_checksum_sf = 0x%x\n", (uint)lut_checksum_sf);
+            UBOOT_DEBUG("lut_checksum_bd = 0x%x\n", (uint)lut_checksum_bd);
+            UBOOT_DEBUG("sample_crc32  = 0x%x\n",   (uint)sample_crc32);
+
+            if (read_spi_flash(buf, (SIO_LUT_START + SAMPLE_DAT_START), SAMPLE_DAT_LEN) == TRUE)
+            {
+                cal_crc32 = MDrv_CRC32_Cal_DeMura(buf, SAMPLE_DAT_LEN);
+                UBOOT_DEBUG("cal_crc32     = 0x%x\n", (uint)cal_crc32);
+                if ((sample_crc32 == cal_crc32) && (lut_checksum_sf == lut_checksum_bd))
+                {
+                    UBOOT_DEBUG("Data Match, No Need to decode again\n");
+                    UBOOT_TRACE("OK\n");
+                    dfree(header.hdr_buffer);
+                    return FALSE;
+                }
+            }
+        }
+        UBOOT_TRACE("OK\n");
+        dfree(header.hdr_buffer);
+        return TRUE;
+    }
+
+    UBOOT_TRACE("OK\n");
+    return FALSE;
+}
+
 static MS_BOOL SIO_Decode_To_Mstar_Format(SIO_DEMURA_BIN_HEADER *phdr, interface_info *pinfo)
 {
     int idx_image_size;
@@ -5948,12 +6203,12 @@ static MS_BOOL SIO_Decode_To_Mstar_Format(SIO_DEMURA_BIN_HEADER *phdr, interface
                    LUT_data -= 256;
                }
                //LUT_data = max(min(1023, LUT_data), 0);
-               pinfo->Lut_in[p][idx_image_size].dbr   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
-               pinfo->Lut_in[p][idx_image_size].dbg   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
-               pinfo->Lut_in[p][idx_image_size].dbb   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
-               #if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
-               pinfo->Lut_in[p][idx_image_size].dbw   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
-               #endif
+               //pinfo->Lut_in[p][idx_image_size].dbr   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
+               //pinfo->Lut_in[p][idx_image_size].dbg   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
+               //pinfo->Lut_in[p][idx_image_size].dbb   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
+               //#if (defined (CONFIG_DEMURA_M7622) || defined (CONFIG_DEMURA_M7632))
+               //pinfo->Lut_in[p][idx_image_size].dbw   = (LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
+               //#endif
 
                pinfo->Lut_in[p][idx_image_size].r   = (int)(LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
                pinfo->Lut_in[p][idx_image_size].g   = (int)(LUT_data) + phdr->DEMURA_CTRL_REG_PLANE_LEVEL[p];
@@ -5965,6 +6220,8 @@ static MS_BOOL SIO_Decode_To_Mstar_Format(SIO_DEMURA_BIN_HEADER *phdr, interface
         }
     }
 
+    // Sign the SIO dmc data !
+    Gen_Sf_Signature_SIO(phdr);
 
     return TRUE;
 }
@@ -6039,7 +6296,7 @@ MS_BOOL Decode_To_Mstar_Format_SIO(void *pDataInfo, BinOutputInfo *pbin_info)
     #endif
 */
     pbin_info->reg_base_addr  =  0x7700;
-    pbin_info->project_id     =  ((MSTAR_CHIP_ID << 16) + (1ULL << 15) + EN_DEMURA_MULTI_CSOT_HIMAX);
+    pbin_info->project_id     =  ((MSTAR_CHIP_ID << DEC_16) + (1ULL << DEC_15) + EN_DEMURA_MULTI_SIO);
     pbin_info->data_type      =  IC_DRAM;
     pbin_info->Gain_type      =  10;
     #if defined (CONFIG_DEMURA_URSA13) || defined (CONFIG_DEMURA_URSA11)

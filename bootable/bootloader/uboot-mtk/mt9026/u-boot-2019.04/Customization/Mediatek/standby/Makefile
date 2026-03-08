@@ -3,6 +3,7 @@
 # Copyright (c) 2023 MediaTek Inc.
 #
 
+
 UBOOTINCLUDE += -I$(srctree)/Customization/$(CUSTOMER)/standby/include/
 
 ifeq ($(CONFIG_MTK_LED_SETTING),y)

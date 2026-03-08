@@ -1,56 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
 #include <MsTypes.h>
 #include <stdio.h>
 #include <linux/string.h>
@@ -301,13 +253,13 @@ void FIND_MIN_AND_MAX(int RGB_channel_idx, int block_width, int block_height, st
             switch (RGB_channel_idx)
             {
             case 0:  // R channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbr * 4;
+                val = layer_blk_img[posi_blk(CurV, CurH)].r * 4;
                 break;
             case 1:  // G channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbg * 4;
+                val = layer_blk_img[posi_blk(CurV, CurH)].g * 4;
                 break;
             case 2:  // B channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbb * 4;
+                val = layer_blk_img[posi_blk(CurV, CurH)].b * 4;
                 break;
             }
 
@@ -412,10 +364,10 @@ void FIND_MIN_AND_MAX_INT(int RGB_channel_idx, int block_width, int block_height
             switch (RGB_channel_idx)
             {
             case 0:  // R channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbr;
+                val = layer_blk_img[posi_blk(CurV, CurH)].r;
                 break;
             case 1:  // G channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbg;
+                val = layer_blk_img[posi_blk(CurV, CurH)].g;
 #if 0
                 if ((CurH < 10) || (CurH > (block_width - 10)))
                 {
@@ -424,11 +376,11 @@ void FIND_MIN_AND_MAX_INT(int RGB_channel_idx, int block_width, int block_height
 #endif
                 break;
             case 2:  // B channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbb;
+                val = layer_blk_img[posi_blk(CurV, CurH)].b;
                 break;
 #if defined CONFIG_DEMURA_RGBW
             case 3:  // W channel
-                val = layer_blk_img[posi_blk(CurV,CurH)].dbw;
+                val = layer_blk_img[posi_blk(CurV, CurH)].w;
                 break;
 #endif
             }
@@ -624,13 +576,13 @@ void LUT_SETTING_SUBFUNCTION_S7(int RGB_idx, int plane_idx, int block_width, int
             switch (RGB_idx)
             {
             case 0:  // R channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbr;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].r;
                 break;
             case 1:  // G channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbg;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].g;
                 break;
             case 2:  // B channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbb;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].b;
                 break;
             }
             rgb_tmp = rgb_tmp - rgb_max_min_avg;  // double 10bit - double 10bit
@@ -660,7 +612,7 @@ void LUT_SETTING_SUBFUNCTION_S7(int RGB_idx, int plane_idx, int block_width, int
                 break;
             }
 
-            int rgb_db = (int)(rgb_tmp*4)/4;
+            //int rgb_db = (int)(rgb_tmp*4)/4;
 
             int rgb_int = (int)(rgb_tmp);
 
@@ -669,15 +621,15 @@ void LUT_SETTING_SUBFUNCTION_S7(int RGB_idx, int plane_idx, int block_width, int
             switch (RGB_idx)
             {
             case 0:  // R channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbr = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbr = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].r   = rgb_int;
                 break;
             case 1:  // G channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbg = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbg = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].g   = rgb_int;
                 break;
             case 2:  // B channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbb = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbb = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].b   = rgb_int;
                 break;
             }
@@ -708,15 +660,15 @@ void LUT_SETTING_SUBFUNCTION_S11(int RGB_idx, int plane_idx, int block_width, in
             switch (RGB_idx)
             {
             case 0:  // R channel
-                layer_blk_img[posi_blk(CurV,CurH)].dbr *= 4;
+                //layer_blk_img[posi_blk(CurV,CurH)].dbr *= 4;
                 layer_blk_img[posi_blk(CurV,CurH)].r *= 4;
                 break;
             case 1:  // G channel
-                layer_blk_img[posi_blk(CurV,CurH)].dbg *= 4;
+                //layer_blk_img[posi_blk(CurV,CurH)].dbg *= 4;
                 layer_blk_img[posi_blk(CurV,CurH)].g *= 4;
                 break;
             case 2:  // B channel
-                layer_blk_img[posi_blk(CurV,CurH)].dbb *= 4;
+                //layer_blk_img[posi_blk(CurV,CurH)].dbb *= 4;
                 layer_blk_img[posi_blk(CurV,CurH)].b *= 4;
                 break;
             }
@@ -1070,13 +1022,13 @@ void LUT_SETTING_SUBFUNCTION_S11(int RGB_idx, int plane_idx, int block_width, in
             switch (RGB_idx)
             {
             case 0:  // R channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbr;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].r;
                 break;
             case 1:  // G channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbg;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].g;
                 break;
             case 2:  // B channel
-                rgb_tmp = layer_blk_img[posi_blk(CurV,CurH)].dbb;
+                rgb_tmp = layer_blk_img[posi_blk(CurV, CurH)].b;
                 break;
             }
             rgb_tmp = rgb_tmp - rgb_max_min_avg;  // double 10bit - double 10bit
@@ -1100,7 +1052,7 @@ void LUT_SETTING_SUBFUNCTION_S11(int RGB_idx, int plane_idx, int block_width, in
                 break;
             }
 
-            double rgb_db = (double)((double)((int)(rgb_tmp*4))/4.0);
+            //double rgb_db = (double)((double)((int)(rgb_tmp*4))/4.0);
 
             int rgb_int = (int)(rgb_tmp);
 
@@ -1109,15 +1061,15 @@ void LUT_SETTING_SUBFUNCTION_S11(int RGB_idx, int plane_idx, int block_width, in
             switch (RGB_idx)
             {
             case 0:  // R channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbr = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbr = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].r   = rgb_int;
                 break;
             case 1:  // G channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbg = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbg = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].g   = rgb_int;
                 break;
             case 2:  // B channel
-                layer_blk_img_out[posi_blk(CurV,CurH)].dbb = rgb_db;
+                //layer_blk_img_out[posi_blk(CurV,CurH)].dbb = rgb_db;
                 layer_blk_img_out[posi_blk(CurV,CurH)].b   = rgb_int;
                 break;
             }
@@ -1405,9 +1357,9 @@ void write_demuraLUT_to_HW_DRAM_FORMAT_S7(stlayer_info_structInfo *layer_info, s
                 null_val.r = 0;
                 null_val.g = 0;
                 null_val.b = 0;
-                null_val.dbr = 0;
-                null_val.dbg = 0;
-                null_val.dbb = 0;
+                //null_val.dbr = 0;
+                //null_val.dbg = 0;
+                //null_val.dbb = 0;
 
 
                 int lut_idx0 = MIN(lut_hidx*H_offset + 0, layer_info->dram_h_size);
@@ -2226,13 +2178,13 @@ MS_BOOL bit_mode_LPF(int plane_idx, int block_width, int block_height, strgb_str
             //double uuu = (double)minmax((double)sum / (double)64, -128, 127);
 
             // R channel
-            layer_blk_img_out[posi_blk(CurV,CurH)].dbr = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
+            //layer_blk_img_out[posi_blk(CurV,CurH)].dbr = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
             layer_blk_img_out[posi_blk(CurV,CurH)].r   = (int)minmax(sum / 64, -128, 127); // Clamp to s7
             // G channel
-            layer_blk_img_out[posi_blk(CurV,CurH)].dbg = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
+            //layer_blk_img_out[posi_blk(CurV,CurH)].dbg = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
             layer_blk_img_out[posi_blk(CurV,CurH)].g   = (int)minmax(sum / 64, -128, 127); // Clamp to s7
             // B channel
-            layer_blk_img_out[posi_blk(CurV,CurH)].dbb = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
+            //layer_blk_img_out[posi_blk(CurV,CurH)].dbb = (double)minmax((double)sum / (double)64, -128, 127); // Clamp to s7
             layer_blk_img_out[posi_blk(CurV,CurH)].b   = (int)minmax(sum / 64, -128, 127); // Clamp to s7
         }
     }

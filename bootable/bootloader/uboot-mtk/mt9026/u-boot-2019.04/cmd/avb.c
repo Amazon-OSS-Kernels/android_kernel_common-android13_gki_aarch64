@@ -19,7 +19,7 @@
 #ifdef UFBL_FEATURE_IDME
 #include <idme.h>
 #endif
-
+#include <amzn_tv_secure_boot.h>
 #define AVB_BOOTARGS	"avb_bootargs"
 #define DEVICESTATE_ISLOCKED_BASE           16
 static struct AvbOps *avb_ops;
@@ -130,6 +130,13 @@ static void get_verified_parts(const char* const* requested_partitions, AvbParti
 #if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 #include <program_efuse_rollback_index.h>
 #endif
+
+// Choose unused index 10 for PMU version rollback index
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+#include <program_rpmb_rollback_index.h>
+#define PMU_ROLLBACK_INDEX_LOCATION 10
+#endif
+
 #if (CONFIG_AB_SIDELOAD == 1)
 #define DTB_VERSION_STRUCT_MAGIC "avb_version     "
 #define DTB_VERSION_STRUCT_MAGIC_LEN 16
@@ -152,6 +159,9 @@ static int rollbackindexes_to_dtb(AvbSlotVerifyData* AvbData)
 		version.ta_avb_rollback_indexes[i] = AvbData->rollback_indexes[i];
 	}
 	version.pmu_rollback_indexes = get_pmu_rollback_index();
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+	version.ta_avb_rollback_indexes[PMU_ROLLBACK_INDEX_LOCATION] = version.pmu_rollback_indexes;
+#endif
 	UBOOT_DUMP(&version, sizeof(avb_version));
 	setup_avb_data_for_dtb((char*)(&version), sizeof(avb_version));
 	return 0;
@@ -446,6 +456,32 @@ int do_avb_verify_part(cmd_tbl_t *cmdtp, int flag,
 				AVB_HASHTREE_ERROR_MODE_RESTART_AND_INVALIDATE,
 				&out_data);
 
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+#define PMU_ROLLBACK_INDEX_LOCATION 10
+	u64 stored_pmu_rb_idx;
+	u64 pmu_rb_idx = get_pmu_rollback_index();
+	if (avb_ops->read_rollback_index(avb_ops, PMU_ROLLBACK_INDEX_LOCATION, &stored_pmu_rb_idx) !=
+	    AVB_IO_RESULT_OK) {
+				printf("Can't read PMU version number\n");
+				return CMD_RET_FAILURE;
+	}
+	if(stored_pmu_rb_idx < pmu_rb_idx){
+		bool b_update_rollback_index_needed = true;
+		if (is_update_rollback_index_needed(&b_update_rollback_index_needed) == AVB_IO_RESULT_OK) {
+			if (b_update_rollback_index_needed){
+				printf("Update pmu rollback index %llu\n", pmu_rb_idx);
+				if(avb_ops->write_rollback_index(avb_ops, PMU_ROLLBACK_INDEX_LOCATION,pmu_rb_idx) != AVB_IO_RESULT_OK)
+				{
+					printf("Can't update PMU version number\n");
+					return CMD_RET_FAILURE;
+				}
+			}
+		} else {
+			return CMD_RET_FAILURE;
+		}
+	}
+#endif
+
 avb_slot_verify_done:
 
 	switch (slot_result) {
@@ -562,7 +598,45 @@ avb_slot_verify_done:
 			if(check_android_boot_state(unlocked, out_data, slot_result, boot_hdr->os_version, avb_ops) != 0)	{
 				return CMD_RET_FAILURE;
 			}
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+			{
+			//If CONFIG_ROLLBACK_INDEX_IN_RPMB is defined, need to check whether rpmb_antiroback is enabled or not If enabled,
+			//send the rollbackindex to DTB, update the rollback index if trail boot successful. If not enabled, check the
+			//antirollback efuse bit (which is the already shipped devices), we need to invoke efuse programmer via ramlog
+			//TA to activate once-calling lock in TEE kernel according to b_update_rollback_index_needed.
+			//When b_update_rollback_index_needed is unset, UBoot doesn't invoke efuse program, and efuse program will be invoked
+			// in Kernel after a boot success.
+				bool b_update_rollback_index_needed = true;
+				//rollback feature is enabled by default
+				unsigned int rpmb_enabling_bit = 1;
+				int ret = get_rpmb_rollback_enabling_bit(&rpmb_enabling_bit);
+				if (ret == AVB_IO_RESULT_OK)
+				{
+					if (rpmb_enabling_bit)
+					{
+					//We are going to pack version numbers and send them to dtb as avb_slot_verify doesn't
+					//update version at this time in case of is_pass_rollback_index_info_needed() returns true).
+						if(is_pass_rollback_index_info_needed()) {
+							if(rollbackindexes_to_dtb(out_data)) {
+								return CMD_RET_FAILURE;
+							}
+						}
+           			}
+            		else{
 #if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+						if (is_update_rollback_index_needed(&b_update_rollback_index_needed) != AVB_IO_RESULT_OK)
+							return CMD_RET_FAILURE;
+
+						if (b_update_rollback_index_needed){
+							if (rollbackindexes_to_efuse(out_data))
+								return CMD_RET_FAILURE;
+						}
+#endif
+					}
+				}
+			}
+
+#elif (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 			//For CONFIG_ROLLBACK_INDEX_IN_EFUSE, we need to invoke efuse programmer via ramlog TA to activate
 			//once-calling lock in TEE kernel according to b_update_rollback_index_needed.
 			//When b_update_rollback_index_needed is unset, UBoot doesn't invoke efuse program,
@@ -598,7 +672,11 @@ avb_slot_verify_done:
 						printf("system force reset, don't exist dkernel partition\n\n");
 						run_command("reset", 0);
 					} else {
-						printf("no error for read dkernel partition\n\n");
+						if (is_lockdown()) {
+							run_command ("fastboot usb 0",0);
+						}else {
+							printf("no error for read dkernel partition\n\n");
+						}
 					}
 					diag_bootcmd = avb_replace(UBOOT_BOOTCMD," boot ", " dkernel ");
 					bootcmd = diag_bootcmd;

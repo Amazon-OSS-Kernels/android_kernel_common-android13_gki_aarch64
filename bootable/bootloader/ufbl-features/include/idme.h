@@ -37,7 +37,7 @@ int fastboot_idme(const char *cmd);
  * @brief Macro definition for fastboot_info and fastboot_fail, which have
  *        different parameter on different platform
  */
-#if defined(UFBL_PROJ_ABC) || defined(UFBL_PROJ_ABC) || defined(UFBL_PROJ_AML_T96XD4)
+#if defined(UFBL_PROJ_ABC) || defined(UFBL_PROJ_abc123) || defined(UFBL_PROJ_AML_T96XD4)
 #define UFBL_FASTBOOT_FAIL(response,buf) \
 	fastboot_info(buf,response)
 #define UFBL_FASTBOOT_INFO(response,buf) \

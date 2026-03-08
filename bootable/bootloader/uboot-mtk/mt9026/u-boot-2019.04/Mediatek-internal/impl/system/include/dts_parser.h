@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _MTK_DTS_PARSER_HEADER_
 #define _MTK_DTS_PARSER_HEADER_
@@ -28,8 +28,9 @@ void mmap_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_t
 void jpd_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
 void gop_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
 void pwm_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
-void cus_panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
 void panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
+void cus_panel_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
+void cus_demura_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
 void cust_pmic_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);
 void cust_pgamma_dt_parser(struct fdt_content *fdt_data, void *out, const char *field_target);

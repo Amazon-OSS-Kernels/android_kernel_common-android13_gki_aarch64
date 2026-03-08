@@ -8,7 +8,12 @@
 #include <utility.h>
 #include <unlock_pub_key.h>
 #include <amzn_tv_secure_boot.h>
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 #include <program_efuse_rollback_index.h>
+#endif
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+#include <program_rpmb_rollback_index.h>
+#endif
 
 #if defined(UFBL_FEATURE_REPLAY_PROTECTED_UNLOCK)
 #include <errno.h>
@@ -24,26 +29,48 @@ extern int secure_is_tee_fail(void);
 extern unsigned int CountBitsFromU32(unsigned int val);
 extern unsigned int EFuseBitsToVersion(unsigned int val, unsigned int *Is_Inconsistent);
 
-int anti_rollback_enabled(void)
+anti_rollback_status_type anti_rollback_enabled(void)
 {
-	/* In case that anti-rollback feature enabling bit is unset */
-	/* where anti-rollback feature is enabled by default */
-	unsigned int enabling_bit = 1;
+	unsigned int enabling_bit = 0;
+	static anti_rollback_status_type anti_rollback_status = AR_NOT_INITED;
 
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 	if (get_efuse_rollback_enabling_bit(&enabling_bit) == 0) {
-		if (!enabling_bit) {
-			return 0;
-		}
-	} else
-		printf("reading AR efuse failed\n");
+		anti_rollback_status |= (enabling_bit ? AR_ENABLED_EFUSE : 0);
+	} else {
+		UBOOT_ERROR("Reading AR efuse failed\n");
+		goto ar_failed;
+	}
+#endif
 
-	return 1;
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+	if (get_rpmb_rollback_enabling_bit(&enabling_bit) == 0) {
+		anti_rollback_status |= (enabling_bit ? AR_ENABLED_RPMB : 0);
+		UBOOT_INFO("[%s] RPMB AR enabling_bit:%d\n", __func__, enabling_bit);
+	} else {
+		UBOOT_ERROR("Reading AR RPMB failed\n");
+		goto ar_failed;
+	}
+#endif
+
+	if (anti_rollback_status == AR_NOT_INITED)
+		anti_rollback_status = AR_DISABLED;
+
+	UBOOT_INFO("[%s] anti_rollback_status:%d\n", __func__, (unsigned)anti_rollback_status);
+	return anti_rollback_status;
+
+ar_failed:
+	/* Reading anti-rollback flag is failed and it's assumed as anti-rollback is enabled */
+	anti_rollback_status = AR_ENABLED_ASSUMED;
+	UBOOT_ERROR("[%s] anti_rollback_status:%d\n", __func__, (unsigned)anti_rollback_status);
+	return anti_rollback_status;
 }
 
 int amzn_target_device_type(void)
 {
-	if (anti_rollback_enabled())
+	if ((anti_rollback_enabled() & (AR_ENABLED_EFUSE|AR_ENABLED_RPMB|AR_ENABLED_ASSUMED)) != AR_NOT_INITED) {
 		return AMZN_PRODUCTION_DEVICE;
+	}
 
 	return AMZN_ENGINEERING_DEVICE;
 }
@@ -62,10 +89,10 @@ int amzn_target_is_unlocked(void)
 #if defined(UFBL_FEATURE_UNLOCK)
 	unsigned char signed_code[SIGNED_UNLOCK_CODE_LEN] = { 0 };
 
-#if defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABCEU_BOARD)
-	/* For reference platform ABC, we don't need lock/unlock */
-	/* For ABC/ABCEU, separate unlock key should be added */
-	/* Implmenet unlock key for ABC/ABCEU at amzn_get_unlock_key first */
+#if defined(SBOOT_abc123_BOARD)||defined(SBOOT_abc123_BOARD)||defined(SBOOT_abc123EU_BOARD)
+	/* For reference platform abc123, we don't need lock/unlock */
+	/* For abc123/abc123EU, separate unlock key should be added */
+	/* Implmenet unlock key for abc123/abc123EU at amzn_get_unlock_key first */
 	return 1;
 #endif
 
@@ -167,14 +194,14 @@ int chk_cmd_lockdown(const char* command)
 const unsigned char *amzn_get_unlock_key(unsigned int *key_len)
 {
 	static const unsigned char unlock_key[] =
-#if (defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABC_BOARD)||defined(SBOOT_ABC_BOARD))
+#if (defined(SBOOT_abc123_BOARD)||defined(SBOOT_abc123_BOARD)||defined(SBOOT_abc123_BOARD))
 	{ MT9025_3P_UNLOCK_PUBKEY };
 #elif (defined(SBOOT_FLORIDA_BOARD))
 	{FLORIDA_UNLOCK_PUBKEY};
-#elif (defined(SBOOT_ABCEU_BOARD))
-	{ABCEU_UNLOCK_PUBKEY};
+#elif (defined(SBOOT_abc123EU_BOARD))
+	{abc123EU_UNLOCK_PUBKEY};
 #else
-	{ABC_UNLOCK_PUBKEY};
+	{abc123_UNLOCK_PUBKEY};
 #endif
 
 	const int unlock_key_size = sizeof(unlock_key);
@@ -443,18 +470,38 @@ int amzn_yk_get_pub_key_list(const amzn_yk_pub_key_t **key_list)
 {
 	// keys must end with {NULL, NULL, 0}
 	static const amzn_yk_pub_key_t keys[] = {
-#if defined(UFBL_PROJ_ABC)
-		{YUBIKEY_PUB_KEY_TAG_ABC_GM, g_yubikey_unlock_public_key_ABC_gm,
-				sizeof(g_yubikey_unlock_public_key_ABC_gm)},
-		{YUBIKEY_PUB_KEY_TAG_ABC_DT, g_yubikey_unlock_public_key_ABC_dt,
-				sizeof(g_yubikey_unlock_public_key_ABC_dt)},
-#elif defined(UFBL_PROJ_ABCEU)
-		{YUBIKEY_PUB_KEY_TAG_ABCEU_GM, g_yubikey_unlock_public_key_ABCeu_gm,
-				sizeof(g_yubikey_unlock_public_key_ABCeu_gm)},
-		{YUBIKEY_PUB_KEY_TAG_ABCEU_SP, g_yubikey_unlock_public_key_ABCeu_sp,
-				sizeof(g_yubikey_unlock_public_key_ABCeu_sp)},
-		{YUBIKEY_PUB_KEY_TAG_ABCEU_MT, g_yubikey_unlock_public_key_ABCeu_mt,
-				sizeof(g_yubikey_unlock_public_key_ABCeu_mt)},
+#if defined(UFBL_PROJ_abc123)
+		{YUBIKEY_PUB_KEY_TAG_abc123_GM, g_yubikey_unlock_public_key_abc123_gm,
+				sizeof(g_yubikey_unlock_public_key_abc123_gm)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_DT, g_yubikey_unlock_public_key_abc123_dt,
+				sizeof(g_yubikey_unlock_public_key_abc123_dt)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_OH, g_yubikey_unlock_public_key_abc123_oh,
+				sizeof(g_yubikey_unlock_public_key_abc123_oh)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_GA, g_yubikey_unlock_public_key_abc123_ga,
+				sizeof(g_yubikey_unlock_public_key_abc123_ga)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_HH, g_yubikey_unlock_public_key_abc123_hh,
+				sizeof(g_yubikey_unlock_public_key_abc123_hh)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_HB_H, g_yubikey_unlock_public_key_abc123_hb_h,
+				sizeof(g_yubikey_unlock_public_key_abc123_hb_h)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_HB_B, g_yubikey_unlock_public_key_abc123_hb_b,
+				sizeof(g_yubikey_unlock_public_key_abc123_hb_b)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_HB_T, g_yubikey_unlock_public_key_abc123_hb_t,
+				sizeof(g_yubikey_unlock_public_key_abc123_hb_t)},
+		{YUBIKEY_PUB_KEY_TAG_abc123_HB_M, g_yubikey_unlock_public_key_abc123_hb_m,
+				sizeof(g_yubikey_unlock_public_key_abc123_hb_m)},
+#elif defined(UFBL_PROJ_abc123EU)
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_GM, g_yubikey_unlock_public_key_abc123eu_gm,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_gm)},
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_SP, g_yubikey_unlock_public_key_abc123eu_sp,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_sp)},
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_MT, g_yubikey_unlock_public_key_abc123eu_mt,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_mt)},
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_NM, g_yubikey_unlock_public_key_abc123eu_nm,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_nm)},
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_BM, g_yubikey_unlock_public_key_abc123eu_bm,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_bm)},
+		{YUBIKEY_PUB_KEY_TAG_abc123EU_SV, g_yubikey_unlock_public_key_abc123eu_sv,
+				sizeof(g_yubikey_unlock_public_key_abc123eu_sv)},
 #elif defined(UFBL_PROJ_FLORIDA)
 		{YUBIKEY_PUB_KEY_TAG_FLORIDA_FF, g_yubikey_unlock_public_key_florida_ff,
 				sizeof(g_yubikey_unlock_public_key_florida_ff)},
@@ -468,6 +515,7 @@ int amzn_yk_get_pub_key_list(const amzn_yk_pub_key_t **key_list)
 
 #endif    // UFBL_FEATURE_YUBIKEY_UNLOCK_PUB_KEY_TAG
 
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 unsigned int amzn_antirollback_efuse_version(unsigned char *ar_vers)
 {
     struct ar_efuse_version_type *ar_efuse = (struct ar_efuse_version_type *)ar_vers;
@@ -532,3 +580,77 @@ unsigned int amzn_antirollback_efuse_version(unsigned char *ar_vers)
 	}
     return 1;
 }
+#endif
+
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+unsigned int amzn_antirollback_rpmb_version(unsigned char *ar_vers)
+{
+	#define RPMB_AVB_OFFSET RPMB_OPTEECUST_VERSION
+	uint64_t *version_out;
+	unsigned int i, rollback_index_slot;
+	AvbIOResult avb_io_result;
+	struct ar_rpmb_version_type *ar_rpmb = (struct ar_rpmb_version_type *)ar_vers;
+	AvbIOResult (*read_rpmb_version_fn)(size_t rollback_index_slot, u64 *out_rollback_index);
+
+	for (i = RPMB_H1L_VERSION; i < PMU_ROLLBACK_INDEX_LOCATION+1; i++) {
+		rollback_index_slot = i;
+		switch (i)	{
+			case RPMB_H1L_VERSION:
+				version_out = &ar_rpmb->hash1_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case RPMB_RL_VERSION:
+				version_out = &ar_rpmb->reeloader_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case RPMB_TL_VERSION:
+				version_out = &ar_rpmb->teeloader_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case RPMB_OPTEE_VERSION:
+				version_out = &ar_rpmb->optee_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case RPMB_ATF_VERSION:
+				version_out = &ar_rpmb->armfw_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case RPMB_UBOOT_VERSION:
+				version_out = &ar_rpmb->uboot_version;
+				read_rpmb_version_fn = read_sboot_rollback_index_by_rpmb;
+				break;
+			case (RPMB_AVB_OFFSET + VBMETA_ROLLBACK_INDEX_LOCATION):
+				version_out = &ar_rpmb->vbmeta_version;
+				read_rpmb_version_fn = read_avb_rollback_index_by_rpmb;
+				rollback_index_slot = i - RPMB_AVB_OFFSET;
+				break;
+			case (RPMB_AVB_OFFSET + RECOVERY_ROLLBACK_INDEX_LOCATION):
+				version_out = &ar_rpmb->recovery_version;
+				read_rpmb_version_fn = read_avb_rollback_index_by_rpmb;
+				rollback_index_slot = i - RPMB_AVB_OFFSET;
+				break;
+			case (RPMB_AVB_OFFSET + BOOT_ROLLBACK_INDEX_LOCATION):
+				version_out = &ar_rpmb->boot_version;
+				read_rpmb_version_fn = read_avb_rollback_index_by_rpmb;
+				rollback_index_slot = i - RPMB_AVB_OFFSET;
+				break;
+			case PMU_ROLLBACK_INDEX_LOCATION:
+				version_out = &ar_rpmb->pmufw_version;
+				read_rpmb_version_fn = read_avb_rollback_index_by_rpmb;
+				break;
+			default:
+				UBOOT_ERROR("RPMB anti-rollback version at index #%d is not suppored\n", i);
+				return 0;
+		}
+		*version_out = 0;
+		avb_io_result = read_rpmb_version_fn(rollback_index_slot, version_out);
+
+		if (avb_io_result != AVB_IO_RESULT_OK) {
+			UBOOT_ERROR("[%s], i:%d, rollback_index_slot:%d, version_out:%llu, avb_io_result:%d\n", \
+				__func__, i, rollback_index_slot, *version_out, (unsigned )avb_io_result);
+			return 0;
+		}
+	}
+	return 1;
+}
+#endif

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <config.h>
 #include <common.h>
@@ -29,6 +29,7 @@
 #include <utility.h>
 #ifdef CONFIG_ENABLE_DEMURA
 #include <demura_impl.h>
+#include <apiDemura.h>
 #endif
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
 #include <mtk_pnl_cust.h>
@@ -921,18 +922,23 @@ int mtk_panel_init(void)
 int mtk_panel_check_DLG_supported_version(int version)
 {
 	int ret = 0;
+    st_cust_dmc_info st_cust_dmc_info;
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
 
-	//manks, miffy, mokona
-	ret = (version == BOOT_PNL_VERSION0200) |
-		(version == BOOT_PNL_VERSION0203) |
-		(version == BOOT_PNL_VERSION0400) |
-		(version == BOOT_PNL_VERSION0500) |
-		(version == BOOT_PNL_VERSION0600);
-
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+    UBOOT_TRACE("dmc dlg is %s.\n", st_cust_dmc_info.dmc_dlg_enable ? "enable" : "disable");
+    if (st_cust_dmc_info.dmc_dlg_enable)
+    {
+        ret = (version == BOOT_PNL_VERSION0200) |
+              (version == BOOT_PNL_VERSION0203) |
+              (version == BOOT_PNL_VERSION0400) |
+              (version == BOOT_PNL_VERSION0500) |
+              (version == BOOT_PNL_VERSION0600);
+    }
 	return ret;
 }
 
-int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl)
+int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl, bool using_tcon_en)
 {
 	struct udevice *dev;
 	struct gpio_desc gpio_vcc;
@@ -946,7 +952,7 @@ int mtk_set_panel_vcc_cusctrl(MS_BOOL vcc_bl_cusctrl)
 		return -1;
 	}
 
-	if (pm_check_back_ground_active() == 0)
+	if ((pm_check_back_ground_active() == 0) || using_tcon_en)
 	{
 		//enable VCC gpio
 		if(vcc_bl_cusctrl != 1){
@@ -984,6 +990,9 @@ int mtk_panel_init_device(void)
     int nPropVal = 0;
 #endif
 	unsigned int pnl_lib_version = 0xFFFFFFFF;
+    st_cust_dmc_info st_cust_dmc_info;
+
+    memset(&st_cust_dmc_info, 0x00, sizeof(st_cust_dmc_info));
 
     ret = parse_dt("/video_out/panel_info",panel_dt_parser,(void*)&panelpara,NULL);
     if(ret < 0)
@@ -1008,6 +1017,8 @@ int mtk_panel_init_device(void)
         pnl_lib_version = 0xFFFFFFFF;
     }
 
+    parse_dt("/video_out", cus_demura_dt_parser, (void*)&st_cust_dmc_info, NULL);
+
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
     parse_dt("/video_out", cust_pmic_dt_parser, (void*)&multi_cust_ic, NULL);
     parse_dt("/video_out", cust_pgamma_dt_parser, (void*)&multi_cust_ic, NULL);
@@ -1029,7 +1040,7 @@ int mtk_panel_init_device(void)
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
     mtk_pnl_cust_settings_befor_vcc(&multi_cust_ic);
 #endif
-	mtk_set_panel_vcc_cusctrl(panelpara.m_bVccBlCusCtrl);
+	mtk_set_panel_vcc_cusctrl(panelpara.m_bVccBlCusCtrl, panelpara.using_tcon_en);
 
     uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     uclass_get_device_by_name(UCLASS_DISPLAY, "ext_video_out", &dev);
@@ -1039,47 +1050,7 @@ int mtk_panel_init_device(void)
 
     lVccOnTiming=get_timer(0);
 
-#ifdef CONFIG_ENABLE_CUST_IC_UPDATE
-    ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
-    if (!ret)
-    {
-        if (display_get_property(dev, E_PNL_PROP_VCOM_SEL, &nPropVal) == 0)
-        {
-            UBOOT_TRACE("Vcom sel=%d -> %d\n", multi_cust_ic.pmic_vcom_info.vcom_sel, nPropVal);
-            multi_cust_ic.pmic_vcom_info.vcom_sel = nPropVal;
-        }
-    }
-    else
-        UBOOT_ERROR("Get video out device is fail\n");
-    if (PnlData.btcon == TRUE)
-    {
-        //delay between vcc and pmic
-        UBOOT_DEBUG("Delay 0x%x ms from between vcc and pmic\n", panelpara.vcc_to_custic_delay);
-        if (panelpara.vcc_to_custic_delay > 0)
-        {
-            mdelay(panelpara.vcc_to_custic_delay);
-        }
-        if (pm_check_back_ground_active() == 0)
-        {
-            mtk_pnl_cust_settings_vcc_ontiming1(&multi_cust_ic);
-        }
-        else
-        {
-            UBOOT_INFO("QHB case, not run pnl_cust\n");
-        }
-    }
-    mtk_pnl_cust_set_panel_mode(&tcon_info);
-#endif
-
 #ifdef CONFIG_ENABLE_DEMURA
-#ifdef CONFIG_ENABLE_DEMURA_DLG
-    PnlData2.u16PanelWidth = panelpara.m_wPanelWidth;
-    PnlData2.u16PanelHeight = panelpara.m_wPanelHeight>>1;
-#endif
-    PnlData.u16PanelWidth = panelpara.m_wPanelWidth;
-    PnlData.u16PanelHeight = panelpara.m_wPanelHeight;
-    UBOOT_TRACE("%d sel=%d\n",__LINE__, genDemuraVendorSelect);
-
     //get tcon bin demura
     ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     if (!ret)
@@ -1102,6 +1073,47 @@ int mtk_panel_init_device(void)
     else
         UBOOT_ERROR("Get video out device is fail\n");
 
+    //if support demura, disable demura bypass first.
+    if (PnlData.bon || st_cust_dmc_info.bl_dmc_enable)
+    {
+        MApi_Demura_Bypass(FALSE);
+    }
+#endif
+
+#ifdef CONFIG_ENABLE_CUST_IC_UPDATE
+    ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
+    if (!ret)
+    {
+        if (display_get_property(dev, E_PNL_PROP_VCOM_SEL, &nPropVal) == 0)
+        {
+            UBOOT_TRACE("Vcom sel=%d -> %d\n", multi_cust_ic.pmic_vcom_info.vcom_sel, nPropVal);
+            multi_cust_ic.pmic_vcom_info.vcom_sel = nPropVal;
+        }
+    }
+    else
+        UBOOT_ERROR("Get video out device is fail\n");
+    if (PnlData.btcon == TRUE)
+    {
+        //delay between vcc and pmic
+        UBOOT_DEBUG("Delay 0x%x ms from between vcc and pmic\n", panelpara.vcc_to_custic_delay);
+        if (panelpara.vcc_to_custic_delay > 0)
+        {
+            mdelay(panelpara.vcc_to_custic_delay);
+        }
+        mtk_pnl_cust_settings_vcc_ontiming1(&multi_cust_ic);
+    }
+    mtk_pnl_cust_set_panel_mode(&tcon_info);
+#endif
+
+#ifdef CONFIG_ENABLE_DEMURA
+#ifdef CONFIG_ENABLE_DEMURA_DLG
+    PnlData2.u16PanelWidth = panelpara.m_wPanelWidth;
+    PnlData2.u16PanelHeight = panelpara.m_wPanelHeight>>1;
+#endif
+    PnlData.u16PanelWidth = panelpara.m_wPanelWidth;
+    PnlData.u16PanelHeight = panelpara.m_wPanelHeight;
+    UBOOT_TRACE("%d sel=%d\n",__LINE__, genDemuraVendorSelect);
+
 #ifdef DEMURA_EFUSE_CHECK //SW efuse mode
 	MS_BOOL efuse;
 
@@ -1112,22 +1124,27 @@ int mtk_panel_init_device(void)
 #ifdef CONFIG_ENABLE_DEMURA_DLG
 		if (mtk_panel_check_DLG_supported_version(pnl_lib_version)) {
 		#ifdef CONFIG_ENABLE_CUST_IC_UPDATE
-			if ((tcon_info.bVRR_HighFrameRateMode_Support)
-				&& (mtk_pnl_is_dlg_mode() == TRUE)) {
-				UBOOT_TRACE("[%d]Demura DLG mode ON \n", __LINE__);
-				PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
-				mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
-				PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
-				mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+			if (tcon_info.bVRR_HighFrameRateMode_Support) {
+				if (mtk_pnl_is_dlg_mode() == TRUE) {
+					UBOOT_TRACE("[%d]Demura DLG mode ON \n", __LINE__);
+					PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
+					mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
+					PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
+					mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+				} else {
+					UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
+					PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
+					mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+					PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
+					mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
+				}
 			} else {
-				UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
-				PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
-				mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
-				PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
-				mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
+				PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_NO_DLG;
+				MApi_Demura_Init(PnlData);
 			}
 		#else
-		    PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
+            UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
+            PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
 			mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
 			PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
 			mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
@@ -1151,21 +1168,26 @@ int mtk_panel_init_device(void)
 #ifdef CONFIG_ENABLE_DEMURA_DLG
 	if (mtk_panel_check_DLG_supported_version(pnl_lib_version)) {
 #ifdef CONFIG_ENABLE_CUST_IC_UPDATE
-		if ((tcon_info.bVRR_HighFrameRateMode_Support) &&
-			(mtk_pnl_is_dlg_mode() == TRUE)) {
-			UBOOT_TRACE("[%d]Demura DLG mode ON \n", __LINE__);
-			PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
-			mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
-			PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
-			mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+		if (tcon_info.bVRR_HighFrameRateMode_Support) {
+			if(mtk_pnl_is_dlg_mode() == TRUE) {
+				UBOOT_TRACE("[%d]Demura DLG mode ON \n", __LINE__);
+				PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
+				mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
+				PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
+				mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+			} else {
+				UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
+				PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
+				mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
+				PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
+				mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
+			}
 		} else {
-			UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
-			PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
-			mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
-			PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
+			PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_NO_DLG;
 			mtk_demura_init(PnlData, genDemuraVendorSelect, E_DEMURA_BIN_MAIN);
 		}
 #else
+        UBOOT_TRACE("[%d]Demura DLG mode OFF \n", __LINE__);
 		PnlData2.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_FIRST;
 		mtk_demura_init(PnlData2, genDemuraVendorSelect, E_DEMURA_BIN_DLG);
 		PnlData.u8DemuraBinOrder = E_DEMURA_BIN_ORDER_LAST;
@@ -1199,6 +1221,7 @@ int mtk_panel_enable(bool en)
     int ret = 0;
     unsigned long lCurrentTimer = 0;
     unsigned long lModOnDelayTime = 0;
+    bool bqhq_en = 0;
 
     //struct dm_display_ops *ops = display_get_ops(dev);
     struct display_timing timing;
@@ -1216,6 +1239,22 @@ int mtk_panel_enable(bool en)
         timing.flags = 1<<5; //set active high bit
     else
         timing.flags = 1<<4; //set active low bit
+
+    if ((pm_check_back_ground_active() == 1) &&
+        (panelpara.using_tcon_en == 0))
+    {
+        UBOOT_INFO("QHB case, do_panel_output_enable return\n");
+        bqhq_en = 1;
+    }
+    else
+    {
+        UBOOT_DEBUG("NOT QHB case, do_panel_output_enable continuous\n");
+    }
+
+    if (bqhq_en)
+    {
+        return 0;
+    }
 
     ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     if (!ret) {
@@ -1339,6 +1378,12 @@ int mtk_panel_mute(bool en)
         timing.flags = 1<<MUTE_ENABLE_BIT; //set active high bit
     else
         timing.flags = 1<<MUTE_DISABLE_BIT; //set active low bit
+
+    if ((pm_check_back_ground_active() == 1) &&
+	  panelpara.using_tcon_en && (en == false)) {
+	  UBOOT_DEBUG("[mtk_panel_mute] QHB+TCONLESS case, no need to disable mute\n");
+        return 0;
+    }
 
     ret = uclass_get_device_by_name(UCLASS_DISPLAY, "video_out", &dev);
     if (!ret) {

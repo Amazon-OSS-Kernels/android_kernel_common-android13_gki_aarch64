@@ -53,6 +53,12 @@ config MULTICORES_PLATFORM
 	  Enable multi core architecture on u-boot. It changes command base mode
 	  to task thread mode.
 
+config SMP_BOOT_TIMEOUT_RESET
+	bool "SMP boot timeout reset"
+	depends on MULTICORES_PLATFORM
+	default n
+	help
+	  Select this option will enable smp timeout reset when bootup.
 
 source "board/mediatek/mt7623/Kconfig"
 source "board/mediatek/mt7629/Kconfig"

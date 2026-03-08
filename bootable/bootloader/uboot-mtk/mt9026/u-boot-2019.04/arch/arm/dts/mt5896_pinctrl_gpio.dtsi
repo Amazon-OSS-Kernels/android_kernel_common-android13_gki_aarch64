@@ -17,6 +17,9 @@
 		vb1_pmux: vb1_pmux {
 		};
 
+		customize_pmux: customize_pmux {
+		};
+
 		/* i2c */
 		i2c0_pmux: i2c0_pmux {
 		};
@@ -290,10 +293,10 @@
 		ffm_dsp_pmux: ffm_dsp_pmux {
 		};
 		/* end of ffm */
-		/* abd123 */
-		abd123_spi_pmux: abd123_spi_pmux {
+		/* radar */
+		radar_spi_pmux: radar_spi_pmux {
 		};
-		/* end of abd123 */
+		/* end of radar */
 	};
 
 	pm_pinctrl: pinctrl@1c022000 {
@@ -996,6 +999,11 @@
 	customer_flag_gpios: customer-flag-gpios-node {
 		compatible = "mediatek,customer-flag-gpios";
 		customer-flag-gpios = <&pm_gpio0 4 0>;
+	};
+
+	pinctrl_narcos: pinctrl_narcos {
+		compatible = "mediatek,mt5896-pinctrl-narcos";
+		status = "disabled";
 	};
 
 };

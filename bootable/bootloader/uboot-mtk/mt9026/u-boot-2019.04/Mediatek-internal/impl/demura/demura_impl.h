@@ -1,11 +1,17 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _DEMURA_IMPL_HEADER_
 #define _DEMURA_IMPL_HEADER_
 #include <apiDemura.h>
+
+#ifdef MSOS_TYPE_LINUX_KERNEL
+#define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
+#else
+#define mst_atoi(str) strtoul(((str != NULL) ? str : ""), NULL, 0);
+#endif
 
 typedef enum
 {

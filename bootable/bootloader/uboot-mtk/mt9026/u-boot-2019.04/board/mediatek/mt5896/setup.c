@@ -75,46 +75,49 @@ sbvc_result sboot_version_check(char *sboot_buf, int sboot_len, int partition_nu
 	int prod_match = 0;
 	/* const version_bump: sboot version bumped can be different per device */
 	/* It should be updated whenever there's version bump for anti-rollback */
-#if defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#if defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABCEU_BOARD)
+#elif defined(SBOOT_abc123EU_BOARD)
 	const char *device_name = "GREU";
 	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABC_BOARD)
-	const char *device_name = "ABC";
+#elif defined(SBOOT_abc123_BOARD)
+	const char *device_name = "abc123";
 	const unsigned short version_bump = 0x108;
 #elif defined(SBOOT_FLORIDA_BOARD)
 	const char *device_name = "FLORIDA";
-	const unsigned short version_bump = 0;
-#elif defined(SBOOT_ABCEU_BOARD)
+	const unsigned short version_bump = 0x109;
+#elif defined(SBOOT_abc123EU_BOARD)
 	const char *device_name = "GIEU";
-	const unsigned short version_bump = 0;
+	const unsigned short version_bump = 0x10B;
+#elif defined(SBOOT_abc123LITE_BOARD)
+	const char *device_name = "GILT";
+	const unsigned short version_bump = 0x10C;
 #else
 	const char *device_name = "TORBERT";
 	const unsigned short version_bump = 0;
 #endif
 
 	// don't check sboot for non-secure device and T61P based devices
-#if (!defined(SBOOT_ABC_BOARD) && !defined(SBOOT_ABC_BOARD))
+#if (!defined(SBOOT_abc123_BOARD) && !defined(SBOOT_abc123_BOARD))
 	if (is_secure_cpu() == FALSE)
 #endif
 		return SBVC_MATCH;

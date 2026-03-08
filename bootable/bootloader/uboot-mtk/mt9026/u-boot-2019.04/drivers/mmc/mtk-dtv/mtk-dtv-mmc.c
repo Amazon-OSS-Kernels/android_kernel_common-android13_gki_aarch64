@@ -1381,6 +1381,196 @@ static int mtk_fcie_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
+static u32 mtk_fcie_read_blocks(struct mmc *mmc, void *dst, u32 start, u32 blkcnt)
+{
+	struct mmc_cmd cmd;
+	struct mmc_data data;
+
+	if (blkcnt > 1) {
+		cmd.cmdidx = MMC_CMD_SET_BLOCK_COUNT;
+		cmd.cmdarg = blkcnt;
+		cmd.cmdarg |= MMC_RELIABLE_WRITE_ARG;
+		cmd.resp_type = MMC_RSP_R1;
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+			emmc_debug(EMMC_DEBUG_LEVEL_ERROR, 0, "mmc fail to send set block count cmd\n");
+			return 0;
+		}
+	}
+
+	if (blkcnt > 1)
+		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;
+	else
+		cmd.cmdidx = MMC_CMD_READ_SINGLE_BLOCK;
+
+	if (mmc->high_capacity)
+		cmd.cmdarg = start;
+	else
+		cmd.cmdarg = start * mmc->read_bl_len;
+
+	cmd.resp_type = MMC_RSP_R1;
+
+	data.dest = dst;
+	data.blocks = blkcnt;
+	data.blocksize = mmc->read_bl_len;
+	data.flags = MMC_DATA_READ;
+
+	if (mmc_send_cmd(mmc, &cmd, &data))
+		return 0;
+
+	return blkcnt;
+}
+
+static u32 mtk_fcie_write_blocks(struct mmc *mmc, u32 start, u32 blkcnt, const void *src)
+{
+	struct mmc_cmd cmd;
+	struct mmc_data data;
+	int timeout_ms = 5000;
+
+	if ((start + blkcnt) > mmc_get_blk_desc(mmc)->lba)
+		return 0;
+
+	if (blkcnt == 0)
+		return 0;
+
+	if (blkcnt > 1) {
+		cmd.cmdidx = MMC_CMD_SET_BLOCK_COUNT;
+		cmd.cmdarg = blkcnt;
+		cmd.cmdarg |= MMC_RELIABLE_WRITE_ARG;
+		cmd.resp_type = MMC_RSP_R1;
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+			emmc_debug(EMMC_DEBUG_LEVEL_ERROR, 0, "mmc fail to send set block count cmd\n");
+			return 0;
+		}
+	}
+
+	if (blkcnt == 1)
+		cmd.cmdidx = MMC_CMD_WRITE_SINGLE_BLOCK;
+	else
+		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
+
+	if (mmc->high_capacity)
+		cmd.cmdarg = start;
+	else
+		cmd.cmdarg = start * mmc->write_bl_len;
+
+	cmd.resp_type = MMC_RSP_R1;
+
+	data.src = src;
+	data.blocks = blkcnt;
+	data.blocksize = mmc->write_bl_len;
+	data.flags = MMC_DATA_WRITE;
+
+	if (mmc_send_cmd(mmc, &cmd, &data)) {
+		emmc_debug(EMMC_DEBUG_LEVEL_ERROR, 0, "mmc write failed\n");
+		return 0;
+	}
+
+	/* Waiting for the ready status */
+	if (mmc_poll_for_busy(mmc, timeout_ms))
+		return 0;
+
+	return blkcnt;
+}
+
+u32 mtk_fcie_read_boot_part(void *data_buf, u32 data_byte_cnt, u32 blk_addr, u8 part_no)
+{
+	u32 err = 0, blk_cnt;
+	struct mtk_fcie_host *host = emmc_drv.host;
+	struct mmc *mmc = host->mmc;
+	u8 hwpart;
+
+	#ifdef CONFIG_MULTICORES_PLATFORM
+	unsigned long irq_flag = 0;
+
+	smp_spin_lock_save(&emmc_spin_lock, irq_flag);
+	#endif
+
+	#ifndef CONFIG_BLK
+	hwpart = mmc->block_dev.hwpart;
+	#else
+	hwpart = mmc_get_blk_desc(mmc)->hwpart;
+	#endif
+
+	if (!mmc->has_init) {
+		err = EMMC_ST_ERR_NOT_INIT;
+		goto LABE_END;
+	}
+
+	if (hwpart != 0)
+		emmc_debug(EMMC_DEBUG_LEVEL_ERROR, 1, "current partition %d is not USER!!!\n", hwpart);
+
+	err = mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_PART_CONF,
+			 (mmc->part_config & ~PART_ACCESS_MASK)
+			 | (part_no & PART_ACCESS_MASK));
+	if (err)
+		goto LABE_END;
+
+	blk_cnt = (data_byte_cnt >> EMMC_SECTOR_512BYTE_BITS) + ((data_byte_cnt & EMMC_SECTOR_512BYTE_MASK) ? 1 : 0);
+
+	mtk_fcie_read_blocks(mmc, data_buf, blk_addr, blk_cnt);
+
+	err = mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_PART_CONF,
+			 (mmc->part_config & ~PART_ACCESS_MASK)
+			 | (hwpart & PART_ACCESS_MASK));
+
+LABE_END:
+
+	#ifdef CONFIG_MULTICORES_PLATFORM
+	smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
+	#endif
+
+	return err;
+}
+
+u32 mtk_fcie_write_boot_part(const void *data_buf, u32 data_byte_cnt, u32 blk_addr, u8 part_no)
+{
+	u32 err = 0, blk_cnt;
+	struct mtk_fcie_host *host = emmc_drv.host;
+	struct mmc *mmc = host->mmc;
+	u8 hwpart;
+
+	#ifdef CONFIG_MULTICORES_PLATFORM
+	unsigned long irq_flag = 0;
+
+	smp_spin_lock_save(&emmc_spin_lock, irq_flag);
+	#endif
+
+	#ifndef CONFIG_BLK
+	hwpart = mmc->block_dev.hwpart;
+	#else
+	hwpart = mmc_get_blk_desc(mmc)->hwpart;
+	#endif
+
+	if (!mmc->has_init) {
+		err = EMMC_ST_ERR_NOT_INIT;
+		goto LABE_END;
+	}
+
+	if (hwpart != 0)
+		emmc_debug(EMMC_DEBUG_LEVEL_ERROR, 1, "current partition %d is not USER!!!\n", hwpart);
+
+	err = mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_PART_CONF,
+			 (mmc->part_config & ~PART_ACCESS_MASK)
+			 | (part_no & PART_ACCESS_MASK));
+
+	if (err)
+		goto LABE_END;
+
+	blk_cnt = (data_byte_cnt >> EMMC_SECTOR_512BYTE_BITS) + ((data_byte_cnt & EMMC_SECTOR_512BYTE_MASK) ? 1 : 0);
+	mtk_fcie_write_blocks(mmc, blk_addr, blk_cnt, data_buf);
+
+	err = mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_PART_CONF,
+			 (mmc->part_config & ~PART_ACCESS_MASK)
+			 | (hwpart & PART_ACCESS_MASK));
+LABE_END:
+
+	#ifdef CONFIG_MULTICORES_PLATFORM
+	smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
+	#endif
+
+	return err;
+}
+
 static int mtk_fcie_drv_bind(struct udevice *dev)
 {
 	struct mtk_fcie_plat *plat = dev_get_platdata(dev);

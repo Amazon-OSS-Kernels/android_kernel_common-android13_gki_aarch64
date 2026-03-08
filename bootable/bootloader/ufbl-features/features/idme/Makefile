@@ -23,7 +23,7 @@ else ifeq (yes,$(findstring yes,$(UFBL_PROJ_ABC) $(UFBL_PROJ_ABC) $(UFBL_PROJ_AB
     $(UFBL_PROJ_ABC) $(UFBL_PROJ_ABC) $(UFBL_PLAT_MTK_T31) $(UFBL_PROJ_ABC) $(UFBL_PROJ_MTK_T61P)))
 IDME_OBJECTS += idme_platform_mtktv.o
 else ifeq (yes, $(findstring yes, $(UFBL_PROJ_ABC) $(UFBL_PROJ_ABC) $(UFBL_PROJ_ABC) \
-    $(UFBL_PROJ_ABC) $(UFBL_PROJ_ABC) $(UFBL_PROJ_AML_T96XD4)))
+    $(UFBL_PROJ_ABC) $(UFBL_PROJ_abc123) $(UFBL_PROJ_AML_T96XD4)))
 
 IDME_OBJECTS += idme_platform_amlogic.o
 else ifeq (yes, $(findstring yes, $(UFBL_PROJ_ABC)))

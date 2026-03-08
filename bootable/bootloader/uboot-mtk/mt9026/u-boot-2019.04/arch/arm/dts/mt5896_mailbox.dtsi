@@ -12,7 +12,7 @@
 		/* fire bit# in reg host1/arm to host0/pm51 */
 		ipi-fire = <0>;
 		/* txdone timeout us(optional); no timeout, no txdone */
-		/* txdone-timeout = <5000000>; */
+		txdone-timeout = <50000>;
 		/* one mbox packet size include header(2) + data, default is 16 bytes */
 		packet-size = <16>;
 	};

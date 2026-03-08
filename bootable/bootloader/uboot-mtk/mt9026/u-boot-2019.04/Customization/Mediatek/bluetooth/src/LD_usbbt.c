@@ -1,56 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-only OR BSD-3-Clause */
-/******************************************************************************
- *
- * This file is provided under a dual license.  When you use or
- * distribute this software, you may choose to be licensed under
- * version 2 of the GNU General Public License ("GPLv2 License")
- * or BSD License.
- *
- * GPLv2 License
- *
- * Copyright(C) 2019 MediaTek Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
- *
- * BSD LICENSE
- *
- * Copyright(C) 2019 MediaTek Inc.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+/*****************************************************************************/
+
 #include <command.h>
 #include <common.h>
 #include <usb.h>
@@ -640,19 +593,103 @@ static void xhci_mtk_disable_non_bt(void)
 	}
 }
 
+#define MTK_DTV_XHCI_COMPAT "mediatek,mtk-dtv-xhci"
+#define VBUS_NUM 4
+
+static int xhci_mtk_init(struct gpio_desc **gpios, int *num_gpio)
+{
+	ofnode node;
+	struct gpio_desc *vbus_gpio;
+	struct gpio_desc temp_gpio = {};
+	int i, num = 0, count = 0, skip_count = 0;
+
+	vbus_gpio = kcalloc(VBUS_NUM, sizeof(*vbus_gpio), GFP_KERNEL);
+	if (!vbus_gpio)
+		return -ENOMEM;
+
+	node = ofnode_by_compatible(ofnode_null(), MTK_DTV_XHCI_COMPAT);
+	while (ofnode_valid(node)) {
+		/* Find the xhci node with vbus-gpios */
+		count = ofnode_count_phandle_with_args(node, "vbus-gpios", "#gpio-cells");
+		if (count <= 0) {
+			node = ofnode_by_compatible(node, MTK_DTV_XHCI_COMPAT);
+			continue;
+		}
+
+		if (count + num > VBUS_NUM) {
+			UBOOT_ERROR("gpio number %d is bigger than allocated size %d\n", count + num, VBUS_NUM);
+			break;
+		} else {
+			UBOOT_INFO("allocated %d vbus gpios from %s\n", count, ofnode_get_name(node));
+			for (i = 0; i < count; i++) {
+				/* 	Since some PCB use GPIO0 for both USB0/USB1 as 5V, the USB0 is defined as 0XFFFF(none),
+				so we have to skip this case which may cause gpio_request_by_name_nodev() returns error */
+				if (gpio_request_by_name_nodev(node, "vbus-gpios", i,
+					&temp_gpio, GPIOD_IS_OUT) < 0) {
+						skip_count ++;
+						UBOOT_INFO("skip_count %d\n", skip_count);
+				} else {
+					vbus_gpio[i+num-skip_count] = temp_gpio;
+				}
+			}
+			num += (count - skip_count);
+			skip_count = 0;
+			node = ofnode_by_compatible(node, MTK_DTV_XHCI_COMPAT);
+		}
+	}
+
+	*gpios = vbus_gpio;
+	*num_gpio = num;
+
+	return 0;
+}
+
+static void xhci_mtk_exit(struct gpio_desc *gpios, int num_gpio)
+{
+	gpio_free_list_nodev(gpios, num_gpio);
+	kfree(gpios);
+}
+
+static void xhci_mtk_set_value(struct gpio_desc *vbus_gpio, int count, int value)
+{
+	int i;
+
+	for (i = 0; i < count; i++) {
+		if (dm_gpio_is_valid(&vbus_gpio[i])) {
+			dm_gpio_set_value(&vbus_gpio[i], value);
+			UBOOT_INFO("set vbus gpio %d to: %d\n",gpio_get_number(&vbus_gpio[i]),value);
+		}
+	}
+}
+
 static int usb_for_each_root_dev(struct usb_device *dstudev, usb_dev_func_t func, usb_vid_pid *pmtk_dongle)
 {
 	struct udevice *bus;
 	int ret = 0;
+	struct gpio_desc *gpios;
+	int num_gpio;
 
 	usb_debug("%s begin\n", __func__);
+
+	if (xhci_mtk_init(&gpios, &num_gpio)) {
+		UBOOT_ERROR("Failed to obtain vbus-gpios\n");
+		return -1;
+	}
+
+	/* Enable all GPIOs */
+	xhci_mtk_set_value(gpios, num_gpio, 1);
+	mdelay(100);
 
 	// Control Wi-Fi reset pin
 	if(doWifiReset() < 0)
 	{
 		UBOOT_ERROR("doWifiReset failed\n");
+		xhci_mtk_exit(gpios, num_gpio);
 		return -1;
 	}
+
+	/* Release GPIOs */
+	xhci_mtk_exit(gpios, num_gpio);
 
 	// We can speed things up by skipping unneeded XHCI
 	xhci_mtk_disable_non_bt();

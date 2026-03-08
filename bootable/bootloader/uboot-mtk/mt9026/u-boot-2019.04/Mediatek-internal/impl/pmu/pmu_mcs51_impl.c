@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 /*****************************************************************************/
 #include <common.h>
@@ -22,9 +22,16 @@
 extern smp_spin_lock_t fs_spin_lock;
 #endif
 
+
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+#include <program_rpmb_rollback_index.h>
+#endif
+
 #if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
 #include <program_efuse_rollback_index.h>
 #endif
+
+
 
 /*****************************************************************************/
 #define PMU_FW_DEBUG		(0)
@@ -174,6 +181,12 @@ static int pmu_mcs51_verify_firmware(struct pmu_fw_info *fw)
 	u64 efuse_pmu_ver = 0;
 #endif
 
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+    u64 rpmb_pmu_ver = 0;
+#endif
+
+
+
 
 	int ret = 0;
 	st_secure_key key = {0};
@@ -214,14 +227,76 @@ static int pmu_mcs51_verify_firmware(struct pmu_fw_info *fw)
 		return -EPERM;
 	}
 	pmu_version =  (unsigned int) *(auth_data + PMU_FW_SIZE + (PMU_VERSION_SIZE -1));
-	UBOOT_DEBUG("pmu_version = %d\n", pmu_version);
 
-#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+
 	if (pmu_version > PMU_VERSION_MAX)
 	{
 		UBOOT_ERROR("Invalid pmu version from PM bin%d\n", pmu_version);
 		return -EPERM;
 	}
+
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+
+
+	unsigned int rpmb_enable_bit = 1;
+	if(get_rpmb_rollback_enabling_bit(&rpmb_enable_bit) == AVB_IO_RESULT_OK)
+	{
+		if(rpmb_enable_bit){
+			if(read_pmu_rollback_index_by_rpmb(&rpmb_pmu_ver) == 0){
+				UBOOT_DEBUG("RPMB pmu_version= %d --- Image pmu_version= %d \n", (unsigned int)rpmb_pmu_ver, pmu_version);
+				if ((unsigned int)rpmb_pmu_ver < pmu_version) {
+					set_pmu_rollback_index(pmu_version);
+					set_pass_rollback_indexes_needed();
+				}
+				else if (rpmb_pmu_ver > pmu_version) {
+					UBOOT_ERROR("RPMB Anti-rollback on PMU version check failed.\n");
+#ifdef CONFIG_AB_SIDELOAD
+					run_command("retrycount",0);
+					run_command("reset",0);
+#else
+					run_command("fastboot usb 0",0);
+#endif
+					return -EPERM;
+				}
+
+			}
+			else{
+				UBOOT_ERROR("Faild to get pmu version from RPMB.\n");
+				return -EPERM;
+			}
+		}
+		else{
+
+#if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+			if (read_pmu_rollback_index_by_efuse(&efuse_pmu_ver)==0)
+			{
+				UBOOT_DEBUG("Efuse pmu_version= %d --- Image pmu_version= %d\n", (unsigned int)efuse_pmu_ver, pmu_version);
+				if ((unsigned int)efuse_pmu_ver < pmu_version) {
+					set_pmu_rollback_index(pmu_version);
+					set_pass_rollback_indexes_needed();
+				}
+				else if (efuse_pmu_ver > pmu_version) {
+					UBOOT_ERROR("Efuse Anti-rollback on PMU version check failed.\n");
+#ifdef CONFIG_AB_SIDELOAD
+					run_command("retrycount",0);
+					run_command("reset",0);
+#else
+					run_command("fastboot usb 0",0);
+#endif
+					return -EPERM;
+				}
+			}
+
+#endif
+
+		}
+	}
+	else{
+		return -EPERM;
+	}
+
+#elif (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+
 	if (read_pmu_rollback_index_by_efuse(&efuse_pmu_ver)==0)
 	{
 		UBOOT_DEBUG("efuse pmu_version= %d\n", (unsigned int)efuse_pmu_ver);

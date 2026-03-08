@@ -31,12 +31,13 @@ ulong mmc_bread(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
 #if CONFIG_IS_ENABLED(MMC_WRITE)
 
 #if CONFIG_IS_ENABLED(BLK)
-ulong mmc_bwrite(struct udevice *dev, lbaint_t start, lbaint_t blkcnt,
-		 const void *src);
+ulong mmc_bwrite(struct udevice *dev, lbaint_t start, lbaint_t blkcnt, const void *src);
+ulong mmc_bwrite_without_muliti_core(struct udevice *dev, lbaint_t start, lbaint_t blkcnt, const void *src);
 ulong mmc_berase(struct udevice *dev, lbaint_t start, lbaint_t blkcnt);
 #else
 ulong mmc_bwrite(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
 		 const void *src);
+ulong mmc_bwrite_without_muliti_core(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt, const void *src);
 ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt);
 #endif
 

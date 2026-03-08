@@ -15,7 +15,11 @@
  */
 
 #include "libufdt.h"
-
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+#include <time.h>
+#include <common.h>
+#include <spinlock.h>
+#endif
 #include "ufdt_node_pool.h"
 #include "ufdt_prop_dict.h"
 
@@ -24,7 +28,11 @@ struct ufdt *ufdt_construct(void *fdtp, struct ufdt_node_pool *pool) {
 
   /* Inital size is 2, will be exponentially increased when it needed later.
      (2 -> 4 -> 8 -> ...) */
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+const int DEFAULT_MEM_SIZE_FDTPS = 32;
+#else
   const int DEFAULT_MEM_SIZE_FDTPS = 2;
+#endif
 
   void **fdtps = NULL;
   struct ufdt *res_ufdt = NULL;

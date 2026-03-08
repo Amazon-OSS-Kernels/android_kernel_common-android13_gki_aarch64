@@ -106,6 +106,7 @@ static inline void irq_disable(void)
 #if defined(CONFIG_MULTICORES_PLATFORM)
 /* Below functions should be defined in arch */
 extern volatile u32 SMP_init_done;
+extern volatile unsigned int spin_lock_count[NR_CPUS];
 #define SMP_INIT_MAGIC (0x534D50) //"SMP"
 void __cpu_spin_lock(void *lock);
 int __cpu_spin_trylock(void *lock);
@@ -121,8 +122,8 @@ extern smp_spin_lock_t g_sched_lock;
 static inline void smp_spin_lock(smp_spin_lock_t *lock)
 {
 	if (SMP_init_done == SMP_INIT_MAGIC) {
-		irq_disable();
 		__cpu_spin_lock((void *)&lock->lock);
+		spin_lock_count[get_cpu_id()] += 1;
 	}
 }
 
@@ -135,15 +136,33 @@ static inline void smp_spin_unlock(smp_spin_lock_t *lock)
 {
 	if (SMP_init_done == SMP_INIT_MAGIC) {
 		__cpu_spin_unlock((void *)&lock->lock);
-		irq_enable();
+		spin_lock_count[get_cpu_id()] -= 1;
 	}
 }
 
-#define smp_spin_lock_irq(lock)		do { irq_disable(); smp_spin_lock(lock); } while (0)
-#define smp_spin_unlock_irq(lock)	do { smp_spin_unlock(lock); irq_enable(); } while (0)
+#define smp_spin_lock_irq(lock) \
+	do { \
+		irq_disable(); \
+		smp_spin_lock(lock); \
+	} while (0)
+#define smp_spin_unlock_irq(lock) \
+	do { \
+		smp_spin_unlock(lock); \
+		irq_enable(); \
+	} while (0)
 
-#define smp_spin_lock_save(lock, flags)			do { flags = save_irq(); smp_spin_lock(lock); } while (0)
-#define smp_spin_unlock_restore(lock, flags)	do { smp_spin_unlock(lock); restore_irq(flags); } while (0)
+#define smp_spin_lock_save(lock, flags) \
+	do { \
+		flags = save_irq(); \
+		irq_disable(); \
+		smp_spin_lock(lock); \
+	} while (0)
+#define smp_spin_unlock_restore(lock, flags) \
+	do { \
+		smp_spin_unlock(lock); \
+		restore_irq(flags); \
+		irq_enable(); \
+	} while (0)
 
 #else
 #define smp_spin_lock_init(lock)	do {(void)lock; } while (0)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <malloc.h>
@@ -14,8 +14,11 @@
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
-
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+DTB_INFO_T dtb_info;
+#else
 static DTB_INFO_T dtb_info;
+#endif
 
 bool is_uboot_dtb(void)
 {
@@ -42,8 +45,11 @@ void init_dtbo_selection(void)
 {
 	UBOOT_INFO("init_dtbo_selection return\n");
 }
-
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+int dt_binary_selection(unsigned long dtbo_img_addr,int select_id,unsigned long *dtb_addr,unsigned long *dtb_size)
+#else
 static int dt_binary_selection(unsigned long dtbo_img_addr,int select_id,unsigned long *dtb_addr,unsigned long *dtb_size)
+#endif
 {
 	bool ret;
 	ret = android_dt_check_header(dtbo_img_addr);

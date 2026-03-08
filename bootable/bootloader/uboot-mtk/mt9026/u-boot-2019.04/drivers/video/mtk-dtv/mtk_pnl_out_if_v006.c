@@ -198,12 +198,23 @@
 #define CHIP_VERSION4 (4)
 
 #define DEC_2 (2)
+#define DEC_3 (3)
 #define DEC_4 (4)
 #define DEC_5 (5)
+#define DEC_6 (6)
+#define DEC_7 (7)
+#define DEC_8 (8)
+#define DEC_9 (9)
+#define DEC_10 (10)
+#define DEC_11 (11)
 #define DEC_100 (100)
 
 //MT5873 XCPLL PD_CLK
 #define XCPLL_REG_0004_SET (0x0010)
+
+#define MOD_BLOCKPATTERN_TBL_MAX_SIZE       (0x60)
+#define MOD_BLOCKPATTERN_TBL_LINE_SIZE      (0x18)
+#define MOD_BLOCKPATTERN_ADDR_STEP               (4)
 
 #ifdef MSOS_TYPE_LINUX_KERNEL
 #define mst_atoi(str) simple_strtoul(((str != NULL) ? str : ""), NULL, 0);
@@ -541,33 +552,79 @@ void mtk_pnl_out_en_v006(struct udevice *dev, bool en)
 	}
 }
 
+bool _mtk_pnl_set_mod_block_pattern_enable_v006(bool en)
+{
+	W2BYTEMSK(REG_0004_TCON_VCOM_PAT_V005, (en << 0), REG_0004_TCON_VCOM_PAT_V005_REG_BLOCK_TEST_EN_0004);
+	return true;
+}
+
+bool _mtk_pnl_set_mod_block_pattern_table_v006(u16 *pixel_tbl, u32 table_size, bool is_epi)
+{
+	u16 vcom_tbl[table_size];
+	u32 table_addr_1 = 0;
+	u32 table_addr_2 = 0;
+	u32 table_addr = 0;
+	u16 table_temp[table_size];
+
+	memset(vcom_tbl, 0, sizeof(u16) * table_size);
+	if (!pixel_tbl)
+		return false;
+
+	memcpy(vcom_tbl, pixel_tbl, sizeof(u16) * table_size);
+	memset(table_temp, 0, sizeof(u16) * table_size);
+	memcpy(table_temp, pixel_tbl, sizeof(u16) * table_size);
+	if (is_epi) {
+		for (table_addr_1 = 0; table_addr_1 < table_size; table_addr_1++) {
+			table_addr_2 = table_addr_1 + MOD_BLOCKPATTERN_TBL_LINE_SIZE;
+			while (table_addr_2 >= table_size)
+				table_addr_2 = table_addr_2 - table_size;
+
+			vcom_tbl[table_addr_2] = table_temp[table_addr_1];
+		}
+	}
+
+	if (table_size == MOD_BLOCKPATTERN_TBL_MAX_SIZE) {
+		for (table_addr = 0; table_addr < table_size; table_addr++) {
+			// reg_detect_table, masks are same so keep
+			W2BYTEMSK(REG_0020_TCON_VCOM_PAT_V005 + table_addr * MOD_BLOCKPATTERN_ADDR_STEP,
+			vcom_tbl[table_addr],
+			REG_0020_TCON_VCOM_PAT_V005_REG_LINE0_SUBP00_0020);
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+void _mtk_pnl_vcom_pattern_en_v006(bool en)
+{
+	u16 pixel_tbl[MOD_BLOCKPATTERN_TBL_MAX_SIZE];
+	u8 idx_num = 0;
+
+	// Vcom pattern
+	for (idx_num = 0; idx_num < MOD_BLOCKPATTERN_TBL_MAX_SIZE; idx_num++) {
+	     pixel_tbl[idx_num] = 0x00;
+	     idx_num++;
+	     pixel_tbl[idx_num] = 0x00;
+	     idx_num++;
+	     pixel_tbl[idx_num] = 0x00;
+	}
+
+	if (en)	{
+		if (_mtk_pnl_set_mod_block_pattern_table_v006(pixel_tbl, MOD_BLOCKPATTERN_TBL_MAX_SIZE, false)) {
+			_mtk_pnl_set_mod_block_pattern_enable_v006(true);
+		} else {
+			_mtk_pnl_set_mod_block_pattern_enable_v006(false);
+			UBOOT_DEBUG("set block pattern table fail!!\n");
+		}
+	} else {
+		_mtk_pnl_set_mod_block_pattern_enable_v006(false);
+	}
+}
+
 void mtk_pnl_mute_en_v006(struct udevice *dev, bool en)
 {
-	struct mtk_panel_priv *priv = dev_get_priv(dev);
-
-	if (!priv) {
-		printf("%s: priv is NULL\n", __func__);
-		return;
-	}
-
-	UBOOT_TRACE("(%s): panel version: %d\n",
-			en ? "MUTE" : "UNMUTE",
-			priv->pnl_lib_version);
-
-	// MOD pattern
-	if (en) {
-		W2BYTEMSK(REG_0198_MODV11_V005, 0x00, REG_0198_MODV11_V005_REG_TEST_COLOR_R_0198);
-		W2BYTEMSK(REG_019C_MODV11_V005, 0x00, REG_019C_MODV11_V005_REG_TEST_COLOR_G_019C);
-		W2BYTEMSK(REG_01A0_MODV11_V005, 0x00, REG_01A0_MODV11_V005_REG_TEST_COLOR_B_01A0);
-
-		W2BYTEMSK(REG_0184_MODV11_V005, 0xFFFF, REG_0184_MODV11_V005_REG_TEST_H_LINE_ST_0184);
-		W2BYTEMSK(REG_0188_MODV11_V005, 0xFFFF, REG_0188_MODV11_V005_REG_TEST_H_LINE_END_0188);
-		W2BYTEMSK(REG_0180_MODV11_V005, 0x01, REG_0180_MODV11_V005_REG_TEST_H_LINE_MODE_0180);
-		mdelay(10);
-		W2BYTEMSK(REG_0180_MODV11_V005, 0x01, REG_0180_MODV11_V005_REG_TEST_MODE_0180);
-	} else {
-		W2BYTEMSK(REG_0180_MODV11_V005, 0x00, REG_0180_MODV11_V005_REG_TEST_MODE_0180);
-	}
+	_mtk_pnl_vcom_pattern_en_v006(en);
 }
 
 void mtk_pnl_set_vby1_mft_hmirror_v006(struct udevice *dev)
@@ -2314,8 +2371,7 @@ static void _vby1_set_mft_v006(struct udevice *dev)
 {
 	struct mtk_panel_priv *priv = dev_get_priv(dev);
 	//mirror type , mirror_en
-	uint32_t mod_x = 0;
-	uint32_t de_align4Num = 0;
+	uint32_t de_align8Num = 0;
 
 	if (priv == NULL) {
 		debug("[%s] get device private fail\n", __func__);
@@ -2404,35 +2460,46 @@ static void _vby1_set_mft_v006(struct udevice *dev)
 	}
 
 	if (priv->linktype == E_LINK_LVDS) {
-		//prepare for h mirror case
-		mod_x = (priv->de_width)%4;
-		//de_width allign to 4
-		de_align4Num = (priv->de_width + 3) & ~3;
+		//de_width allign to 8
+		de_align8Num = (priv->de_width + DEC_7) & ~DEC_7;
 
 		//MFT DE Filter En = 1
 		W2BYTEMSK(REG_0118_MODV11, 1, REG_0118_MODV11_REG_MFT_DE_FILTER_EN);
-
 		if (priv->cus_info.hmirror_en == true) {
 			UBOOT_DEBUG("H Mirror CASE\n");
 			W2BYTEMSK(REG_0004_MODV11, 0x1, REG_0004_MODV11_REG_MFT_MODE);
-			W2BYTEMSK(REG_0040_MODV11, 0x558, REG_0040_MODV11_REG_HSIZE);
-			W2BYTEMSK(REG_0044_MODV11, 0x558, REG_0044_MODV11_REG_DIV_LEN);
+			W2BYTEMSK(REG_0040_MODV11, de_align8Num, REG_0040_MODV11_REG_HSIZE);
+			W2BYTEMSK(REG_0044_MODV11, de_align8Num, REG_0044_MODV11_REG_DIV_LEN);
 			W2BYTEMSK(REG_0048_MODV11, 0x0, REG_0048_MODV11_REG_BASE0_ADDR);
-			//mirror case start = x
-			W2BYTEMSK(REG_0118_MODV11, mod_x, REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
-			//mirror case end = de_align4Num
-			W2BYTEMSK(REG_011C_MODV11, de_align4Num, REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			if (priv->lanes == DEC_2) {
+				//mirror case start = (8align_DE - DE )/2
+				W2BYTEMSK(REG_0118_MODV11, (de_align8Num - priv->de_width) >> 1, REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
+				//mirror case end = de_align8Num/2 -1
+				W2BYTEMSK(REG_011C_MODV11, (de_align8Num >> 1) - 1, REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			} else {
+				//mirror case start =  8align_DE - DE
+				W2BYTEMSK(REG_0118_MODV11, (de_align8Num - priv->de_width), REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
+				//mirror case end = de_align8Num -1
+				W2BYTEMSK(REG_011C_MODV11, (de_align8Num - 1), REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			}
 		} else {
 			UBOOT_DEBUG("H non Mirror CASE\n");
 			//prepare for h non-mirror case
 			W2BYTEMSK(REG_0004_MODV11, 0x1, REG_0004_MODV11_REG_MFT_MODE);
-			W2BYTEMSK(REG_0040_MODV11, priv->de_width, REG_0040_MODV11_REG_HSIZE);
-			W2BYTEMSK(REG_0044_MODV11, priv->de_width, REG_0044_MODV11_REG_DIV_LEN);
+			W2BYTEMSK(REG_0040_MODV11, de_align8Num, REG_0040_MODV11_REG_HSIZE);
+			W2BYTEMSK(REG_0044_MODV11, de_align8Num, REG_0044_MODV11_REG_DIV_LEN);
 			W2BYTEMSK(REG_0048_MODV11, 0x0, REG_0048_MODV11_REG_BASE0_ADDR);
-			//mirror case start = 0
-			W2BYTEMSK(REG_0118_MODV11, mod_x, REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
-			//mirror case end = de_align4Num -mod_x
-			W2BYTEMSK(REG_011C_MODV11, (de_align4Num - mod_x), REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			if (priv->lanes == DEC_2) {
+				//non-mirror case start = 0
+				W2BYTEMSK(REG_0118_MODV11, 0, REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
+				//non-mirror case end = de_width/2 -1
+				W2BYTEMSK(REG_011C_MODV11, (priv->de_width >> 1) - 1, REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			} else {
+				//non-mirror case start = 0
+				W2BYTEMSK(REG_0118_MODV11, 0, REG_0118_MODV11_REG_MFT_DE_FILTER_ST);
+				//non-mirror case end = de_width -1
+				W2BYTEMSK(REG_011C_MODV11, priv->de_width - 1, REG_011C_MODV11_REG_MFT_DE_FILTER_END);
+			}
 		}
 	}
 #ifdef CONFIG_HAPS
@@ -2759,6 +2826,21 @@ static void _usr_def_free_swap_v006(struct udevice *dev)
 			  REG_01AC_MODOSD2_REG_VBY1_SWAP_CH07);
 
 
+	}
+
+	if (priv->linktype == E_LINK_LVDS) {
+		W2BYTEMSK(REG_0044_MODD1, priv->lane_info.lane_order[0], REG_0044_MODD1_REG_FREE_CH02_SWAP);
+		W2BYTEMSK(REG_0044_MODD1, priv->lane_info.lane_order[1], REG_0044_MODD1_REG_FREE_CH03_SWAP);
+		W2BYTEMSK(REG_0048_MODD1, priv->lane_info.lane_order[DEC_2], REG_0048_MODD1_REG_FREE_CH04_SWAP);
+		W2BYTEMSK(REG_0048_MODD1, priv->lane_info.lane_order[DEC_3], REG_0048_MODD1_REG_FREE_CH05_SWAP);
+		W2BYTEMSK(REG_004C_MODD1, priv->lane_info.lane_order[DEC_4], REG_004C_MODD1_REG_FREE_CH06_SWAP);
+		W2BYTEMSK(REG_004C_MODD1, priv->lane_info.lane_order[DEC_5], REG_004C_MODD1_REG_FREE_CH07_SWAP);
+		W2BYTEMSK(REG_0050_MODD1, priv->lane_info.lane_order[DEC_6], REG_0050_MODD1_REG_FREE_CH08_SWAP);
+		W2BYTEMSK(REG_0050_MODD1, priv->lane_info.lane_order[DEC_7], REG_0050_MODD1_REG_FREE_CH09_SWAP);
+		W2BYTEMSK(REG_0054_MODD1, priv->lane_info.lane_order[DEC_8], REG_0054_MODD1_REG_FREE_CH10_SWAP);
+		W2BYTEMSK(REG_0054_MODD1, priv->lane_info.lane_order[DEC_9], REG_0054_MODD1_REG_FREE_CH11_SWAP);
+		W2BYTEMSK(REG_0058_MODD1, priv->lane_info.lane_order[DEC_10], REG_0058_MODD1_REG_FREE_CH12_SWAP);
+		W2BYTEMSK(REG_0058_MODD1, priv->lane_info.lane_order[DEC_11], REG_0058_MODD1_REG_FREE_CH13_SWAP);
 	}
 }
 

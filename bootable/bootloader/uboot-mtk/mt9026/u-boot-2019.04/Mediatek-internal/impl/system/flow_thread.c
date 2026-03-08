@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <system_impl.h>
@@ -50,11 +50,13 @@ int do_after_uboot_init_task_create(void)
 
 int do_before_console_input_task_create(void)
 {
+#if 0 // Move panel pre-init to before console and out of thread to avoid race condition
     panel_pre_init_thread_id = thread_create_ex("p_pre_init", panel_pre_init_thread_entry, NULL, 0, MUTLI_CORE_CPU_TWO, panel_priority, 1);
     if (panel_pre_init_thread_id == NULL )
     {
         UBOOT_DEBUG("panel_pre_init thread create fail...\n");
     }
+#endif
 
 #if defined(CONFIG_REMOTEPROC_MTK_VAD_CORTEX_M4)
     pmu_priority--;
@@ -87,6 +89,7 @@ int do_before_console_input_task_create(void)
         UBOOT_DEBUG("panel_enable thread create fail...\n");
     }
 
+#if 0
 #if defined(CONFIG_MTK_PMU)
     pmu_priority--;
     boot_pmu_thread_id = thread_create_ex("boot_pmu", boot_pmu_thread_entry, NULL, 0, MUTLI_CORE_CPU_THREE, pmu_priority, 1);
@@ -94,6 +97,7 @@ int do_before_console_input_task_create(void)
     {
         UBOOT_DEBUG("boot_pmu thread create fail...\n");
     }
+#endif
 #endif
 
 #if defined(CONFIG_MTK_LED_SETTING)

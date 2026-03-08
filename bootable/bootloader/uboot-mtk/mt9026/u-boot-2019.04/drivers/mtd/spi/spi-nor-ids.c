@@ -312,5 +312,8 @@ const struct flash_info spi_nor_ids[] = {
 #ifdef CONFIG_SPI_FLASH_BOYA		/* BOYA */
     { INFO("BY25D80", 0x684014, 0, 64 * 1024, 16, SECT_4K | SPI_NOR_DUAL_READ) },
 #endif
+#ifdef CONFIG_SPI_FLASH_FUDAN		/* FUDAN */
+    { INFO("FM25Q08B", 0xa14014, 0, 64 * 1024, 16, SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
+#endif
 	{ },
 };

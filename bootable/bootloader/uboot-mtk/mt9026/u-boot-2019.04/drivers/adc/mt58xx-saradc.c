@@ -34,6 +34,7 @@ struct mt58xx_sar_priv {
 	u32 sarkey_ch;
 	u32 sarkey_lb;
 	u32 adc[SAR_KEY_NUMS];
+	u32 resetkey_ch;
 };
 
 
@@ -123,6 +124,14 @@ static int mt58xx_saradc_ofdata_to_platdata(struct udevice *dev)
 	if (ret) {
 		dev_err(dev, "Read 'sar_keypad-ch' from DTS fail (%d)\n", ret);
 		return -EINVAL;
+	}
+	if (!dev_read_string(dev, "sar_reset-ch")) {
+		debug("Reset key property doesn't exist, skip\n");
+	} else {
+		ret = dev_read_u32(dev, "sar_reset-ch", &priv->resetkey_ch);
+		if (ret) {
+			dev_err(dev, "Read 'sar_reset-ch' from DTS fail (%d)\n", ret);
+		}
 	}
 	ret = dev_read_u32(dev, "sar_keypad-lb", &priv->sarkey_lb);
 	if (ret) {

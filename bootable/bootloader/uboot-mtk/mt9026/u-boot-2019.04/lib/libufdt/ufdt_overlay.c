@@ -31,6 +31,12 @@
 #include "libufdt.h"
 #include "ufdt_node_pool.h"
 #include "ufdt_overlay_internal.h"
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+#include <time.h>
+#include <common.h>
+#include <fdt.h>
+#include <spinlock.h>
+#endif
 
 /*
  * The original version of fdt_overlay.c is slow in searching for particular
@@ -682,3 +688,181 @@ fail:
 
   return NULL;
 }
+#ifdef CONFIG_AMAZON_UBOOT_SMP_OPTIMIZATION
+
+typedef struct{
+	unsigned long dtb_addr;
+	unsigned long dtbo_img_addr;
+	bool is_uboot_dtb;
+}DTB_INFO_T;
+
+extern DTB_INFO_T dtb_info;
+
+struct ufdt *g_main_tree = NULL;
+size_t g_MainTree_total_size = 0;
+
+struct ufdt_node_pool g_amazon_pool;
+bool g_is_amazon_ufdt_poll_initialized = false;
+
+extern int dt_binary_selection(unsigned long dtbo_img_addr,int select_id,unsigned long *dtb_addr,unsigned long *dtb_size);
+extern struct ufdt *ufdt_from_fdt_main(void *fdtp, size_t fdt_size,struct ufdt_node_pool *pool);
+
+typedef struct dtbo_id_struct {
+	struct list_head links;
+	int id;
+	int index;
+	void * overlay_tree;
+	size_t overlay_size;
+} dtbo_id_t;
+
+void amazon_init_ufdt_pool(void)
+{
+	ufdt_node_pool_construct(&g_amazon_pool);
+}
+void amazon_destroy_ufdt_pool(void)
+{
+	ufdt_node_pool_destruct(&g_amazon_pool);
+}
+struct ufdt_node_pool * amazon_get_ufdt_pool_pointer(void)
+{
+	if (g_is_amazon_ufdt_poll_initialized == false)
+	{
+		amazon_init_ufdt_pool();
+		g_is_amazon_ufdt_poll_initialized = true;
+	}
+	return &g_amazon_pool;
+}
+
+struct ufdt* amazon_get_main_tree(void)
+{
+	if (g_main_tree == NULL)
+	{
+		g_main_tree = ufdt_from_fdt((struct fdt_header *)dtb_info.dtb_addr, g_MainTree_total_size, amazon_get_ufdt_pool_pointer());
+	}
+	return g_main_tree;
+}
+
+void amazon_update_maintree_totalsize( size_t overlay_size)
+{
+	if (g_MainTree_total_size == 0)
+	{
+		struct fdt_header *source;
+		source = (struct fdt_header *)dtb_info.dtb_addr;
+		g_MainTree_total_size = fdt32_to_cpu(source->totalsize);
+	}
+	g_MainTree_total_size += overlay_size;
+	return;
+}
+
+size_t amazon_get_maintree_total_size(void)
+{
+	if (g_MainTree_total_size == 0)
+	{
+		struct fdt_header *source;
+		source = (struct fdt_header *)dtb_info.dtb_addr;
+		g_MainTree_total_size = fdt32_to_cpu(source->totalsize);
+	}
+	return g_MainTree_total_size;
+}
+
+void amazon_ufdt_destruct(void * tree)
+{
+	if (tree !=  NULL)
+		ufdt_destruct(tree, amazon_get_ufdt_pool_pointer());
+	return;
+}
+void amazon_free_main_tree(void)
+{
+	struct ufdt *main_tree = amazon_get_main_tree();
+	if (main_tree != NULL)
+	{
+		ufdt_destruct(main_tree, amazon_get_ufdt_pool_pointer());
+	}
+	return;
+}
+
+int amazon_dtbo_ufdt_from_fdt(dtbo_id_t* p_id, void *overlay_fdtp, size_t overlay_size) {
+
+    struct ufdt_node_pool *pool = amazon_get_ufdt_pool_pointer();
+	if (overlay_size < 8 || overlay_size != fdt_totalsize(overlay_fdtp)) {
+      printf("amazon:%s, %d,Bad overlay size!\n",__func__, __LINE__);
+      return -1;
+    }
+	struct ufdt *overlay_tree = ufdt_from_fdt(overlay_fdtp, overlay_size, pool);
+	p_id->overlay_tree = (void*)overlay_tree;
+	p_id->overlay_size = overlay_size;
+	amazon_update_maintree_totalsize(overlay_size);
+	return 0;
+}
+int amazon_dtbo_overlaytree_ufdt(dtbo_id_t* p_id)
+{
+	int ret = 0;
+	unsigned long dtb_addr = 0;
+	unsigned long dtb_size = 0;
+	int dtbo_id = p_id->id;
+	ret = dt_binary_selection(dtb_info.dtbo_img_addr, dtbo_id, &dtb_addr, &dtb_size);
+	if (ret == 0)
+	{
+		struct fdt_header *blob = (struct fdt_header *)dtb_addr;
+		amazon_dtbo_ufdt_from_fdt(p_id,(void *)blob, dtb_size);
+	}
+	else {
+		printf("amazon:%d, %s, %d, call dt_binary_selection error!\n", get_cpu_id(), __func__, __LINE__);
+	}
+	return ret;
+}
+int amazon_dtbo_overlay_sub(dtbo_id_t* p_id)
+{
+	struct ufdt_node_pool *pool = amazon_get_ufdt_pool_pointer();
+	struct ufdt *main_tree = amazon_get_main_tree();
+	struct ufdt *overlay_tree = p_id->overlay_tree;
+	size_t overlay_size = p_id->overlay_size;
+
+	int err = ufdt_overlay_apply(main_tree, overlay_tree, overlay_size, pool);
+    if (err < 0) {
+	  printf("amazon: %s,%d, ufdt_overlay_apply error!\n", __func__, __LINE__);
+    }
+	return err;
+
+}
+
+struct fdt_header *g_amazon_out_fdt_header = NULL;
+int amazon_main_tree_ufdt_to_fdt(void)
+{
+	int err = -1;
+	int main_tree_fdt_size = amazon_get_maintree_total_size();
+
+    struct fdt_header *out_fdt_header = malloc(main_tree_fdt_size);
+
+    if (out_fdt_header == NULL) {
+		printf("amazon: %s, %d,%s out_fdt_header ==  NULL\n", __func__, __LINE__, __FILE__);
+      dto_error("failed to allocate memory for DTB blob with overlays\n");
+      return err;
+    }
+	err = ufdt_to_fdt(amazon_get_main_tree(), out_fdt_header, main_tree_fdt_size);
+    if (err < 0) {
+      printf("amazon: %s, %d,%s Failed to dump the device tree to out_fdt_header\n", __func__, __LINE__, __FILE__);
+      goto fail;
+    }
+	g_amazon_out_fdt_header = out_fdt_header;
+	return err;
+fail:
+	free(out_fdt_header);
+	return err;
+}
+int amazon_dtbo_fdt_restore(void)
+{
+	struct fdt_header *source = g_amazon_out_fdt_header;
+	if (source == NULL)
+	{
+		printf("amazon:%d, %s, %d, ufdt_apply_overlay execute failure.\n", get_cpu_id(), __func__, __LINE__);
+		return -1;
+	}
+	else
+	{
+		fdt_open_into(source, (void *)dtb_info.dtb_addr, amazon_get_maintree_total_size());
+		free(source);
+	}
+	return 0;
+}
+#endif

@@ -28,8 +28,8 @@ EN_TCON_LOG_LEVEL g_enTconLogLevel = DEFAULT_TCON_LOG_LEVEL;
 
 //use BOE HV500QUB-F20 panel as the default tcon related file
 #define FILE_CUS_PARTITION          "CusFilePart"
-#define FILE_DEFAULT_PARTITION_1    "bootdata"
-#define FILE_DEFAULT_PARTITION_2    "tvconfig"
+#define FILE_DEFAULT_PARTITION_1    "tvconfig"
+#define FILE_DEFAULT_PARTITION_2    "bootdata"
 #define FILE_FIXED_FOLDER           ""
 #define TCON_FILE_PATH              "4k60/TCON20.bin"
 

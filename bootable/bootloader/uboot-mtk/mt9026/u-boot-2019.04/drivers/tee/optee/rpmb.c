@@ -14,6 +14,7 @@
 #ifdef CONFIG_MULTICORES_PLATFORM
 #include <smp/thread_info.h>
 static int emmc_spin_en = 0;
+static thread_t  *hold_lock_thread;
 extern smp_spin_lock_t emmc_spin_lock;
 #endif
 /*
@@ -66,12 +67,19 @@ static struct mmc *get_mmc(struct optee_private *priv, int dev_id)
 	int rc;
 	#ifdef CONFIG_MULTICORES_PLATFORM
 	unsigned long irq_flag = 0;
+	thread_t *cur_thread = get_current_thread(get_cpu_id());
 	#endif
-	if (priv->rpmb_mmc && priv->rpmb_dev_id == dev_id)
+	if (priv->rpmb_mmc && priv->rpmb_dev_id == dev_id) {
+		#ifdef CONFIG_MULTICORES_PLATFORM
+		if (cur_thread == hold_lock_thread)
+		#endif
 		return priv->rpmb_mmc;
+	}
 
 	#ifdef CONFIG_MULTICORES_PLATFORM
 	smp_spin_lock_save(&emmc_spin_lock, irq_flag);
+	hold_lock_thread = get_current_thread(get_cpu_id());
+
 	//For build error
 	if (!irq_flag)
 		emmc_spin_en = 1;
@@ -232,10 +240,14 @@ void optee_suppl_rpmb_release(struct udevice *dev)
 	#ifdef CONFIG_MULTICORES_PLATFORM
 	unsigned long irq_flag = 0;
 	#endif
+	#ifndef CONFIG_MULTICORES_PLATFORM
 	release_mmc(dev_get_priv(dev));
+	#endif
 	#ifdef CONFIG_MULTICORES_PLATFORM
-	if (emmc_spin_en > 0) {
+	if (emmc_spin_en > 0 && get_current_thread(get_cpu_id())==hold_lock_thread) {
+		release_mmc(dev_get_priv(dev));
 		emmc_spin_en = 0;
+		hold_lock_thread = NULL;
 		smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
 	}
 	#endif

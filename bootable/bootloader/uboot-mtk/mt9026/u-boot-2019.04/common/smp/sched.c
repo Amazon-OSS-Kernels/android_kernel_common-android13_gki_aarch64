@@ -251,10 +251,9 @@ static thread_t *allocate_thread(const char *name, void *(*start)(void *arg), vo
 		dbg_print("Failed to allocate thread\n");
 		return NULL;
 	}
+	memset(data, 0, sizeof(thread_t) + stack_size + (STACK_BUFFER_SIZE * 2));
 	thread = (thread_t *)data;
 	stack = (unsigned char *)(data + sizeof(thread_t) + STACK_BUFFER_SIZE + stack_size);
-
-	memset(thread, 0, sizeof(thread_t));
 
 	thread->reg.sp		= (u64)stack;
 	thread->reg.pc		= (u64)_thread_main;
@@ -499,8 +498,99 @@ void add_run_queue(thread_t *thread)
 #endif
 }
 
+DECLARE_GLOBAL_DATA_PTR;
+
+#if defined(CONFIG_TARGET_MT5877)
+#define CPU_DBG_REG_ENABLE_ADDR      (0x1C000000 + ((0x2C0300 + 0x94) << 1))
+#define CPU_DBG_REG_ENABLE_VAL       0x4
+#define CPU_DBG_REG_SELECT_ADDR      (0x1C000000 + ((0x2C0200 + 0x0) << 1))
+#define CPU_PC_COUNT                 2
+#define CPU_PC_COEFF                 2
+#define CPU_DBG_REG_ADDR_HIGH        (0x1C000000 + ((0x2C0200 + 0x4) << 1))
+#define CPU_DBG_REG_ADDR_LOW         (0x1C000000 + ((0x2C0200 + 0x2) << 1))
+#define CPU_PC_BITS_SHIFT            32
+#else
+#define CPU_DBG_REG_ENABLE_ADDR      (0x1C000000 + ((0x200D00 + (0x67 << 1)) << 1))
+#define CPU_DBG_REG_ENABLE_MASK      0x4
+#define CPU_DBG_REG_START            (0x1C000000 + ((0x200D00 + (0x40 << 1)) << 1))
+#define CPU_PC_BITS_SHIFT            16
+#define CPU_PC_REG_SHIFT             2
+#define CPU_PC_REG_WIDTH             3
+#define CPU_PC_INDEX0                4
+#define CPU_PC_INDEX1                5
+#define CPU_PC_INDEX2                6
+#endif
+
+static void smp_show_pc(unsigned int cpu)
+{
+#if defined(CONFIG_TARGET_MT5877)
+	int index = 0;
+#else
+	unsigned short reg = 0;
+#endif
+	unsigned long pc = 0;
+
+	if (cpu >= NR_CPUS) {
+		printf("Error: invalid cpu number\n");
+		return;
+	}
+
+#if defined(CONFIG_TARGET_MT5877)
+	writel(CPU_DBG_REG_ENABLE_VAL, CPU_DBG_REG_ENABLE_ADDR);
+#ifdef CONFIG_ARM64
+	for (index = 1; index <= CPU_PC_COUNT; index++) {
+		writel((cpu * CPU_PC_COEFF + index), CPU_DBG_REG_SELECT_ADDR);
+		pc = readw((unsigned long)CPU_DBG_REG_ADDR_HIGH);
+		pc <<= CPU_PC_BITS_SHIFT;
+		pc |= readl((unsigned long)CPU_DBG_REG_ADDR_LOW);
+		printf("cpu %d pc%d: 0x%lX\n", cpu, index - 1, pc - gd->reloc_off);
+	}
+#else
+	for (index = 1; index <= CPU_PC_COUNT; index++) {
+		writel((cpu * CPU_PC_COEFF + index), CPU_DBG_REG_ENABLE_ADDR);
+		pc = readl((unsigned long)CPU_DBG_REG_ADDR_LOW);
+		printf("cpu %d pc%d: 0x%lX\n", cpu, index - 1, pc - gd->reloc_off);
+	}
+#endif
+#else
+	reg = readw(CPU_DBG_REG_ENABLE_ADDR);
+	writew((reg | CPU_DBG_REG_ENABLE_MASK), CPU_DBG_REG_ENABLE_ADDR);
+#ifdef CONFIG_ARM64
+	pc = readw((unsigned long)(CPU_DBG_REG_START + (cpu << CPU_PC_REG_SHIFT)));
+	pc <<= CPU_PC_BITS_SHIFT;
+	pc |= readw((unsigned long)(CPU_DBG_REG_START + ((CPU_PC_INDEX2 + cpu * CPU_PC_REG_WIDTH) << CPU_PC_REG_SHIFT)));
+	pc <<= CPU_PC_BITS_SHIFT;
+	pc |= readw((unsigned long)(CPU_DBG_REG_START + ((CPU_PC_INDEX1 + cpu * CPU_PC_REG_WIDTH) << CPU_PC_REG_SHIFT)));
+	pc <<= CPU_PC_BITS_SHIFT;
+	pc |= readw((unsigned long)(CPU_DBG_REG_START + ((CPU_PC_INDEX0 + cpu * CPU_PC_REG_WIDTH) << CPU_PC_REG_SHIFT)));
+#else
+	pc = readw(CPU_DBG_REG_START + ((CPU_PC_INDEX1 + cpu * CPU_PC_REG_WIDTH) << CPU_PC_REG_SHIFT));
+	pc <<= CPU_PC_BITS_SHIFT;
+	pc |= readw(CPU_DBG_REG_START + ((CPU_PC_INDEX0 + cpu * CPU_PC_REG_WIDTH) << CPU_PC_REG_SHIFT));
+#endif
+	printf("cpu %d pc: 0x%lX\n", cpu, pc - gd->reloc_off);
+#endif
+}
+
+static void smp_info_dump(void)
+{
+	unsigned int cpu = 0;
+
+	printf("### dump smp info start ###\n");
+
+	printf("### display all threads ###\n");
+	display_all_threads();
+
+	printf("### show pc of all cpus ###\n");
+	for (cpu = 0; cpu < NR_CPUS; cpu++)
+		smp_show_pc(cpu);
+
+	printf("### dump smp info end ###\n");
+}
+
 #define MSEC_TO_USEC (1000)
-#define SECONDARY_CORE_TIMEOUT_MS (5000)
+//Extend the SECONDARY_CORE_TIMEOUT_MS due to onrf_op timeout is 20s
+#define SECONDARY_CORE_TIMEOUT_MS (25000)
 void release_non_boot_core(void)
 {
 	unsigned int wait_cnt = 0;
@@ -512,6 +602,16 @@ void release_non_boot_core(void)
 			if (get_run_queue(perCPU).next == &get_run_queue(perCPU)) {
 				//printf("runQ check done!  CPU=%d , me=%s,NEXT=%s\n",perCPU, cur_thread->name,nxt_thread->name);
 				runq_check++;
+			} else {
+				if (wait_cnt > SECONDARY_CORE_TIMEOUT_MS) {
+					printf("smp: cpu%d's run queue is not empty !\n", perCPU);
+					smp_info_dump();
+					#ifdef CONFIG_SMP_BOOT_TIMEOUT_RESET
+					do_reset(NULL, 0, 0, NULL);  //just in case, should never be here!
+					#else
+					while (1);
+					#endif
+				}
 			}
 		}
 
@@ -536,7 +636,12 @@ void release_non_boot_core(void)
 				if (!ready_for_parking[perCPU])
 					printf("smp: cpu%d is stuck not finishing its work !\n", perCPU);
 			}
+			smp_info_dump();
+			#ifdef CONFIG_SMP_BOOT_TIMEOUT_RESET
 			do_reset(NULL, 0, 0, NULL);  //just in case, should never be here!
+			#else
+			while (1);
+			#endif
 		}
 	}
 
@@ -554,7 +659,12 @@ void release_non_boot_core(void)
 				if (!smp_cpu_released[perCPU])
 					printf("smp: cpu_not_released_%d !\n", perCPU);
 			}
+			smp_info_dump();
+			#ifdef CONFIG_SMP_BOOT_TIMEOUT_RESET
 			do_reset(NULL, 0, 0, NULL);  //just in case, should never be here!
+			#else
+			while (1);
+			#endif
 		}
 	}
 	dbg_print("%s %d all cpu released!!\n", __func__, __LINE__);

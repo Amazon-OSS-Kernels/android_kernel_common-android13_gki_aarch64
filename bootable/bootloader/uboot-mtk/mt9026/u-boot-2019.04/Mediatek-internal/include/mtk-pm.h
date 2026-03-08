@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #ifndef _MTK_PM_H_
 #define _MTK_PM_H_
@@ -26,7 +26,8 @@
 #define PM_BR_LONG_PRESS_PWR_KEY	(0xA0)
 #define PM_BR_REBOOT_OVER_TEMP	(0xA1)
 #define PM_BR_SW_WATCHDOG   (0xA2)
-#define PM_BR_TCONLESS_FORCE_RESET   (0xA3)
+#define PM_BR_RECOVERY_QUIESCENT  (0xA3)
+#define PM_BR_TCONLESS_FORCE_RESET   (0xA4)
 
 /* Trigger DM probe. */
 int32_t pm_init(void);

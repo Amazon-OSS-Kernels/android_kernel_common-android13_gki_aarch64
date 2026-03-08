@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <common.h>
 #include <fs.h>
@@ -33,9 +33,18 @@
 #include <smp/thread_info.h>
 extern smp_spin_lock_t fs_spin_lock;
 #endif
+
+
+
+#if defined(CONFIG_ROLLBACK_INDEX_IN_RPMB)
+#include <program_rpmb_rollback_index.h>
+#endif
+
 #if defined(CONFIG_ROLLBACK_INDEX_IN_EFUSE)
 #include <program_efuse_rollback_index.h>
 #endif
+
+
 //-------------------------------------------------------------------------------------------------
 //  Local Defines
 //-------------------------------------------------------------------------------------------------
@@ -634,6 +643,12 @@ int pm_check_back_ground_active(void)
         UBOOT_DEBUG("QHB Active Standby Mode FALSE =====\n");
     }
 
+    /* Disable quiescent mode if user forcely reboot DUT by
+       Long Pressing Power Key. */
+    if (pm_get_boot_reason() == PM_BR_LONG_PRESS_PWR_KEY) {
+        UBOOT_DEBUG("Disable quiescent mode =====\n");
+        bActive = 0;
+    }
     qhb_quiescent_mode = bActive;
 
     return bActive;
@@ -1383,7 +1398,32 @@ static bool b_is_pass_rollback_indexes_needed = false;
 int set_pass_rollback_indexes_needed(void)
 {
     int ret = AVB_IO_RESULT_OK;
+
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+    unsigned int rpmb_enabling_bit = 1; //rollback feature is enabled by default
+    ret = get_rpmb_rollback_enabling_bit(&rpmb_enabling_bit);
+    if (ret == AVB_IO_RESULT_OK)
+    {
+        if (rpmb_enabling_bit)
+        {
+            b_is_pass_rollback_indexes_needed = true;
+        }else{
 #if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+             //for CONFIG_ROLLBACK_INDEX_IN_EFUSE, b_is_pass_rollback_indexes_needed is TRUE when rollback enabling bit is set.
+            unsigned int enabling_bit = 1; //rollback feature is enabled by default
+            ret = get_efuse_rollback_enabling_bit(&enabling_bit);
+            if (ret == AVB_IO_RESULT_OK)
+            {
+                if (enabling_bit)
+                {
+                    b_is_pass_rollback_indexes_needed = true;
+                }
+           }
+#endif
+        }
+    }
+
+#elif (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
     //for CONFIG_ROLLBACK_INDEX_IN_EFUSE, b_is_pass_rollback_indexes_needed is TRUE when rollback enabling bit is set.
     unsigned int enabling_bit = 1; //rollback feature is enabled by default
     ret = get_efuse_rollback_enabling_bit(&enabling_bit);
@@ -1432,7 +1472,30 @@ int is_update_rollback_index_needed(bool* b_update_rollback_index_needed)
     *b_update_rollback_index_needed = TRUE;
 #endif
 
+#if (CONFIG_ROLLBACK_INDEX_IN_RPMB == 1)
+    unsigned int rpmb_enabling_bit = 1; //rollback feature is enabled by default
+    ret = get_rpmb_rollback_enabling_bit(&rpmb_enabling_bit);
+    if (ret == AVB_IO_RESULT_OK)
+    {
+        if (!rpmb_enabling_bit){
 #if (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
+            if (*b_update_rollback_index_needed == TRUE)
+            {
+               //for CONFIG_ROLLBACK_INDEX_IN_EFUSE, it programs all versions to RPMB regarding rollback enabling bit.
+               unsigned int enabling_bit = 1; //rollback feature is enabled by default
+               ret = get_efuse_rollback_enabling_bit(&enabling_bit);
+                if (ret == AVB_IO_RESULT_OK)
+                {
+                    //it overrides the flag when efuse enabling bit is unset
+                   *b_update_rollback_index_needed = (enabling_bit ? TRUE:FALSE);
+                }
+            }
+#else
+            *b_update_rollback_index_needed = FALSE;
+#endif
+        }
+    }
+#elif (CONFIG_ROLLBACK_INDEX_IN_EFUSE == 1)
     if (*b_update_rollback_index_needed == TRUE)
     {
         //for CONFIG_ROLLBACK_INDEX_IN_EFUSE, it programs all versions to RPMB regarding rollback enabling bit.

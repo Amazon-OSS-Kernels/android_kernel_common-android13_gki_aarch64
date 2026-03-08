@@ -83,6 +83,8 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 {
 	#ifdef CONFIG_MULTICORES_PLATFORM
 	unsigned long irq_flag = 0;
+
+	smp_spin_lock_save(&emmc_spin_lock, irq_flag);
 	#endif
 #if CONFIG_IS_ENABLED(BLK)
 	struct blk_desc *block_dev = dev_get_uclass_platdata(dev);
@@ -97,22 +99,27 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 	lbaint_t end, hblkcnt = 0 ;
 	char buf[MMC_MAX_BLOCK_LEN];
 
-	if (!mmc)
+	if (!mmc) {
+		#ifdef CONFIG_MULTICORES_PLATFORM
+		smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
+		#endif
 		return -1;
+	}
 
 	err = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_num,
 				       block_dev->hwpart);
-	if (err < 0)
+	if (err < 0) {
+		#ifdef CONFIG_MULTICORES_PLATFORM
+		smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
+		#endif
 		return -1;
+	}
 
 
 	if (mmc->erase_feature_support & SEC_GB_CL_EN) {
 		Onetimeerase_sectorcnt = onetime_erase_sectorcnt;
 
 		if (blkcnt <= Onetimeerase_sectorcnt) {
-			#ifdef CONFIG_MULTICORES_PLATFORM
-			smp_spin_lock_save(&emmc_spin_lock, irq_flag);
-			#endif
 			err = mmc_erase_t(mmc, start, blkcnt);
 			if (err) {
 				#ifdef CONFIG_MULTICORES_PLATFORM
@@ -127,9 +134,6 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 				return 0;
 			}
 		} else {
-			#ifdef CONFIG_MULTICORES_PLATFORM
-			smp_spin_lock_save(&emmc_spin_lock, irq_flag);
-			#endif
 			erase_start = start;
 			erase_end = start + (blkcnt / Onetimeerase_sectorcnt) * Onetimeerase_sectorcnt;
 			for (i = 0; i < (blkcnt / Onetimeerase_sectorcnt); i++) {
@@ -174,7 +178,7 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 		if (start_rem) {
 			start_rem = (blkcnt > mmc->erase_grp_size - start_rem) ? mmc->erase_grp_size - start_rem : blkcnt;
 			for (blk = start; blk < start + start_rem; blk++)
-				mmc_bwrite(dev, blk, 1, buf);
+				mmc_bwrite_without_muliti_core(dev, blk, 1, buf);
 			start = start + start_rem;
 			blkcnt -= start_rem;
 			hblkcnt += start_rem;
@@ -185,14 +189,18 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 		if (blkcnt_rem) {
 			blkcnt_rem = end - blkcnt_rem;
 			for (blk = blkcnt_rem; blk < end; blk++)
-				mmc_bwrite(dev, blk, 1, buf);
+				mmc_bwrite_without_muliti_core(dev, blk, 1, buf);
 			blkcnt -= end - blkcnt_rem;
 			hblkcnt += end - blkcnt_rem;
 		}
 
 		blk = 0;
-		if (!blkcnt)
+		if (!blkcnt) {
+			#ifdef CONFIG_MULTICORES_PLATFORM
+			smp_spin_unlock_restore(&emmc_spin_lock, irq_flag);
+			#endif
 			return hblkcnt;
+		}
 		/*
 		 * We want to see if the requested start or total block count are
 		 * unaligned.  We discard the whole numbers and only care about the
@@ -206,9 +214,7 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 			printf("0x" LBAF, start & ~(mmc->erase_grp_size - 1));
 			printf("~0x" LBAF "\n\n", ((start + blkcnt + mmc->erase_grp_size) & ~(mmc->erase_grp_size - 1)) - 1);
 		}
-		#ifdef CONFIG_MULTICORES_PLATFORM
-		smp_spin_lock_save(&emmc_spin_lock, irq_flag);
-		#endif
+
 		while (blk < blkcnt) {
 			if (IS_SD(mmc) && mmc->ssr.au) {
 				blk_r = ((blkcnt - blk) > mmc->ssr.au) ?
@@ -372,3 +378,42 @@ ulong mmc_bwrite(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
 
 	return blkcnt;
 }
+#if CONFIG_IS_ENABLED(BLK)
+ulong mmc_bwrite_without_muliti_core(struct udevice *dev, lbaint_t start, lbaint_t blkcnt, const void *src)
+#else
+ulong mmc_bwrite_without_muliti_core(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt, const void *src)
+#endif
+{
+#if CONFIG_IS_ENABLED(BLK)
+	struct blk_desc *block_dev = dev_get_uclass_platdata(dev);
+#endif
+	int dev_num = block_dev->devnum;
+	lbaint_t cur, blocks_todo = blkcnt;
+	int err;
+
+	struct mmc *mmc = find_mmc_device(dev_num);
+
+	if (!mmc)
+		return 0;
+
+	err = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_num, block_dev->hwpart);
+	if (err < 0)
+		return 0;
+
+	if (mmc_set_blocklen(mmc, mmc->write_bl_len))
+		return 0;
+
+	do {
+		cur = (blocks_todo > mmc->cfg->b_max) ?
+			mmc->cfg->b_max : blocks_todo;
+		if (mmc_write_blocks(mmc, start, cur, src) != cur)
+			return 0;
+
+		blocks_todo -= cur;
+		start += cur;
+		src += cur * mmc->write_bl_len;
+	} while (blocks_todo > 0);
+
+	return blkcnt;
+}
+

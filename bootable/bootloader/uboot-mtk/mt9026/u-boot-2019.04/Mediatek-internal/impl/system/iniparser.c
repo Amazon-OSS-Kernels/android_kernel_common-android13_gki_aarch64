@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause)
 /*
  * Copyright (c) 2023 MediaTek Inc.
-*/
+ */
 
 #include <errno.h>
 #include <stdio.h>
@@ -12,7 +12,11 @@
 #include <debug_impl.h>
 #include "iniparser.h"
 
-#define MAX_LINE_LENGTH		128
+#ifdef CONFIG_AMZ_ODMTVCONFIG_DTBO_OVERLAY
+#define MAX_LINE_LENGTH        256
+#else
+#define MAX_LINE_LENGTH        128
+#endif
 
 int iniparser_create(const unsigned char *rawdata, const unsigned int length,
 					 iniparser_handle_t *out_handle)
